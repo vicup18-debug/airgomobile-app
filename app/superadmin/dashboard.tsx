@@ -1,0 +1,245 @@
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert } from 'react-native';
+import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width } = Dimensions.get('window');
+
+export default function SuperAdminDashboard() {
+    const router = useRouter();
+
+    // 🟢 MOCK PLATFORM DATA
+    const [platformStats, setPlatformStats] = useState({
+        totalRevenue: 45250000,
+        totalUsers: 12450,
+        totalPartners: 84,
+        activeBookings: 1204,
+        growth: "+14.5%"
+    });
+
+    // 🟢 NEW: LIVE QUEUES FOR QA & DISBURSEMENTS
+    const [pendingPartners, setPendingPartners] = useState([
+        { id: '1', name: 'Grand Royal Hotel', location: 'Lagos', docs: 'Verified' },
+        { id: '2', name: 'Sunset Shortlets', location: 'Abuja', docs: 'Pending' }
+    ]);
+
+    const [pendingDisbursements, setPendingDisbursements] = useState([
+        { id: 'D1', hotel: 'Eko Hotels', amount: '₦450,000', bookingRef: '#BK990', status: 'Awaiting Authorization' }
+    ]);
+
+    // 🟢 NEW: ACTIONS
+    const approvePartner = (id: string) => {
+        setPendingPartners(prev => prev.filter(p => p.id !== id));
+        Alert.alert('Success', 'Hotel has passed Quality Assurance and is now live on Airgo.ng');
+    };
+
+    const declinePartner = (id: string) => {
+        setPendingPartners(prev => prev.filter(p => p.id !== id));
+        Alert.alert('Declined', 'Hotel application rejected due to QA failure.');
+    };
+
+    const authorizePayout = (id: string) => {
+        setPendingDisbursements(prev => prev.filter(p => p.id !== id));
+        Alert.alert('Payout Authorized', 'Funds have been disbursed to the hotel partner.');
+    };
+
+    const handleLogout = async () => {
+        await AsyncStorage.clear();
+        router.replace('/auth/login' as any);
+    };
+
+    return (
+        <View style={styles.container}>
+            {/* 🟢 PREMIUM ADMIN HEADER */}
+            <View style={styles.header}>
+                <View>
+                    <Image
+                        source={require('../../assets/images/logo1.png')}
+                        style={styles.dashboardLogo}
+                        resizeMode="contain"
+                    />
+                    <Text style={styles.adminTag}>Platform Owner Portal</Text>
+                </View>
+                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                    <Ionicons name="log-out-outline" size={20} color="#E53E3E" />
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+                {/* 🟢 MASTER REVENUE CARD */}
+                <View style={styles.masterCard}>
+                    <Text style={styles.masterCardTitle}>Total Platform Revenue</Text>
+                    <Text style={styles.masterCardValue}>₦{platformStats.totalRevenue.toLocaleString()}</Text>
+                    <View style={styles.growthBadge}>
+                        <Ionicons name="trending-up" size={16} color="#38A169" />
+                        <Text style={styles.growthText}>{platformStats.growth} this month</Text>
+                    </View>
+                </View>
+
+                {/* 🟢 KPI METRICS GRID */}
+                <View style={styles.kpiGrid}>
+                    <View style={styles.kpiCard}>
+                        <View style={[styles.iconBox, { backgroundColor: 'rgba(0, 74, 153, 0.1)' }]}>
+                            <Ionicons name="people" size={24} color="#004A99" />
+                        </View>
+                        <Text style={styles.kpiValue}>{platformStats.totalUsers.toLocaleString()}</Text>
+                        <Text style={styles.kpiLabel}>Total Users</Text>
+                    </View>
+
+                    <View style={styles.kpiCard}>
+                        <View style={[styles.iconBox, { backgroundColor: 'rgba(217, 119, 6, 0.1)' }]}>
+                            <Ionicons name="briefcase" size={24} color="#D97706" />
+                        </View>
+                        <Text style={styles.kpiValue}>{platformStats.totalPartners}</Text>
+                        <Text style={styles.kpiLabel}>Active Partners</Text>
+                    </View>
+
+                    <View style={[styles.kpiCard, { width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }]}>
+                        <View style={[styles.iconBox, { backgroundColor: 'rgba(56, 161, 105, 0.1)', marginBottom: 0, marginRight: 15 }]}>
+                            <Ionicons name="calendar" size={24} color="#38A169" />
+                        </View>
+                        <View>
+                            <Text style={styles.kpiLabel}>Platform Bookings (30 Days)</Text>
+                            <Text style={[styles.kpiValue, { fontSize: 24 }]}>{platformStats.activeBookings.toLocaleString()}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* 🟢 ANALYTICAL GROWTH CHART (CSS Built) */}
+                <Text style={styles.sectionTitle}>Revenue Analytics</Text>
+                <View style={styles.chartContainer}>
+                    <View style={styles.chartBars}>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '40%' }]} /><Text style={styles.barLabel}>Mon</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '60%' }]} /><Text style={styles.barLabel}>Tue</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '50%' }]} /><Text style={styles.barLabel}>Wed</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '80%' }]} /><Text style={styles.barLabel}>Thu</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '70%' }]} /><Text style={styles.barLabel}>Fri</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '95%', backgroundColor: '#FFB81C' }]} /><Text style={styles.barLabel}>Sat</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '85%' }]} /><Text style={styles.barLabel}>Sun</Text></View>
+                    </View>
+                </View>
+
+                {/* 🟢 NEW: PARTNER VERIFICATION QA QUEUE */}
+                {pendingPartners.length > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>Partner Verification Queue</Text>
+                        {pendingPartners.map(partner => (
+                            <View key={partner.id} style={styles.reviewCard}>
+                                <View>
+                                    <Text style={styles.hotelName}>{partner.name}</Text>
+                                    <Text style={styles.hotelLoc}>{partner.location} • Docs: {partner.docs}</Text>
+                                </View>
+                                <View style={styles.actionRow}>
+                                    <TouchableOpacity onPress={() => approvePartner(partner.id)} style={styles.approveBtn}>
+                                        <Text style={styles.actionBtnText}>Approve</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => declinePartner(partner.id)} style={styles.declineBtn}>
+                                        <Text style={styles.actionBtnText}>Decline</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ))}
+                    </>
+                )}
+
+                {/* 🟢 NEW: DISBURSEMENT AUTHORIZATIONS */}
+                {pendingDisbursements.length > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>Payout Disbursements</Text>
+                        {pendingDisbursements.map(payout => (
+                            <View key={payout.id} style={styles.payoutCard}>
+                                <View>
+                                    <Text style={styles.payoutAmount}>{payout.amount}</Text>
+                                    <Text style={styles.payoutSub}>{payout.hotel} • {payout.bookingRef}</Text>
+                                    <Text style={styles.payoutSubStatus}>{payout.status}</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => authorizePayout(payout.id)} style={styles.disburseBtn}>
+                                    <Text style={styles.actionBtnText}>Authorize</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </>
+                )}
+
+                {/* 🟢 PLATFORM CONTROLS */}
+                <Text style={styles.sectionTitle}>Platform Management</Text>
+                <View style={styles.managementGrid}>
+                    <TouchableOpacity style={styles.manageButton}>
+                        <View style={[styles.manageIcon, { backgroundColor: '#EBF8FF' }]}><Ionicons name="checkmark-circle" size={24} color="#3182CE" /></View>
+                        <Text style={styles.manageText}>Verify Partners</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.manageButton}>
+                        <View style={[styles.manageIcon, { backgroundColor: '#FEFCBF' }]}><Ionicons name="cash" size={24} color="#D69E2E" /></View>
+                        <Text style={styles.manageText}>Payouts</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.manageButton}>
+                        <View style={[styles.manageIcon, { backgroundColor: '#FED7D7' }]}><Ionicons name="alert-circle" size={24} color="#E53E3E" /></View>
+                        <Text style={styles.manageText}>Disputes</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.manageButton}>
+                        <View style={[styles.manageIcon, { backgroundColor: '#E2E8F0' }]}><Ionicons name="settings" size={24} color="#4A5568" /></View>
+                        <Text style={styles.manageText}>Settings</Text>
+                    </TouchableOpacity>
+                </View>
+
+            </ScrollView>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F8F9FA' },
+
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 25, backgroundColor: '#004A99' },
+    dashboardLogo: { width: 120, height: 40, marginBottom: 5 },
+    adminTag: { color: '#FFB81C', fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+    logoutBtn: { padding: 10, backgroundColor: '#FFF', borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 3 },
+
+    content: { padding: 20, paddingBottom: 60 },
+
+    masterCard: { backgroundColor: '#1A202C', padding: 25, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15, elevation: 8, marginBottom: 25 },
+    masterCardTitle: { color: '#A0AEC0', fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 8 },
+    masterCardValue: { color: '#FFF', fontSize: 36, fontWeight: '900', marginBottom: 15 },
+    growthBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(56, 161, 105, 0.2)', alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 },
+    growthText: { color: '#38A169', fontWeight: 'bold', marginLeft: 5, fontSize: 13 },
+
+    kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 30 },
+    kpiCard: { width: '48%', backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+    iconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+    kpiValue: { color: '#1A202C', fontSize: 26, fontWeight: '900', marginBottom: 2 },
+    kpiLabel: { color: '#718096', fontSize: 13, fontWeight: '600' },
+
+    sectionTitle: { color: '#1A202C', fontSize: 18, fontWeight: '800', marginBottom: 15, letterSpacing: 0.5 },
+
+    chartContainer: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, marginBottom: 30, height: 220 },
+    chartBars: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 140, marginTop: 10, paddingHorizontal: 10 },
+    barWrapper: { alignItems: 'center', width: 30 },
+    bar: { width: 14, backgroundColor: '#004A99', borderRadius: 8 },
+    barLabel: { color: '#A0AEC0', fontSize: 12, marginTop: 10, fontWeight: 'bold' },
+
+    // 🟢 NEW REVIEW CARDS STYLES
+    reviewCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 15, borderLeftWidth: 5, borderLeftColor: '#FFB81C', marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 5, elevation: 2 },
+    hotelName: { fontSize: 16, fontWeight: 'bold', color: '#004A99' },
+    hotelLoc: { fontSize: 13, color: '#718096', marginTop: 4 },
+    actionRow: { flexDirection: 'row', marginTop: 15, gap: 10 },
+    approveBtn: { backgroundColor: '#38A169', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+    declineBtn: { backgroundColor: '#E53E3E', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+    actionBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
+
+    // 🟢 NEW PAYOUT CARDS STYLES
+    payoutCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30, borderLeftWidth: 5, borderLeftColor: '#38A169', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 5, elevation: 2 },
+    payoutAmount: { fontSize: 20, fontWeight: '900', color: '#1A202C' },
+    payoutSub: { fontSize: 12, color: '#718096', marginTop: 2 },
+    payoutSubStatus: { fontSize: 11, color: '#D97706', fontWeight: 'bold', marginTop: 4 },
+    disburseBtn: { backgroundColor: '#004A99', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 8 },
+
+    managementGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+    manageButton: { width: '48%', backgroundColor: '#FFF', padding: 15, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 15, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+    manageIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    manageText: { color: '#1A202C', fontSize: 14, fontWeight: 'bold', flex: 1 }
+});
