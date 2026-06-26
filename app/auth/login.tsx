@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
+import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 import { API_URL } from '../../constants/config';
 
 export default function LoginScreen() {
@@ -37,14 +36,23 @@ export default function LoginScreen() {
                 await AsyncStorage.setItem('userName', data.name || data.user?.name || 'Traveler');
                 await AsyncStorage.setItem('userEmail', data.email || email);
                 await AsyncStorage.setItem('userRole', data.role || 'user');
+                // Store JWT so authenticated endpoints can be called later
+                if (data.token) {
+                    await AsyncStorage.setItem('authToken', data.token);
+                }
+
+                // Register / sync FCM device token now that userId is stored
+                syncPushTokenAfterLogin().catch(e =>
+                    console.warn('FCM post-login sync failed:', e)
+                );
 
                 // 🟢 THE MAGIC TRAFFIC COP
                 if (data.role === 'superadmin') {
-                    router.replace('/superadmin/dashboard' as any); // Send owner to God Mode
+                    router.replace('/superadmin/dashboard' as any);
                 } else if (data.role === 'partner') {
-                    router.replace('/partner/dashboard' as any);    // Send hotels to Partner Portal
+                    router.replace('/partner/dashboard' as any);
                 } else {
-                    router.replace('/(tabs)' as any);               // Send travelers to main app
+                    router.replace('/(tabs)' as any);
                 }
             } else {
                 Alert.alert('Login Failed', data.message || 'Invalid credentials');

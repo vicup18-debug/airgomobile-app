@@ -42,6 +42,16 @@
             "backgroundColor": "#004A99"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#000080",
+          "defaultChannel": "airgo-alerts",
+          "sounds": [],
+          "enableBackgroundRemoteNotifications": true
+        }
       ]
     ],
     "experiments": {
