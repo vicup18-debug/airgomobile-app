@@ -1,4 +1,8 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, ScrollView, TextInput, Modal, Keyboard, Dimensions } from 'react-native';
+import {
+  View, Text, StyleSheet, Image, TouchableOpacity,
+  ActivityIndicator, ScrollView, TextInput, Modal,
+  Keyboard, Dimensions, Animated, Easing
+} from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,22 +13,179 @@ import { API_URL } from '../../constants/config';
 
 const { width } = Dimensions.get('window');
 
-export default function HomeScreen() {
-  const [hotels, setHotels] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [newsletterEmail, setNewsletterEmail] = useState('');
+// ─────────────────────────────────────────────
+// BRANDED SPLASH / LOADING SCREEN
+// ─────────────────────────────────────────────
+function BrandedLoadingScreen() {
+  const pulseAnim  = useRef(new Animated.Value(1)).current;
+  const fadeAnim   = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim   = useRef(new Animated.Value(0.3)).current;
 
-  const [guests, setGuests] = useState({ rooms: 1, adults: 2, children: 0 });
-  const [showGuestModal, setShowGuestModal] = useState(false);
+  useEffect(() => {
+    // Fade in the whole screen
+    Animated.timing(fadeAnim, {
+      toValue: 1, duration: 500, useNativeDriver: true,
+    }).start();
+
+    // Pulse ring
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.18, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Glow pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 0.9, duration: 1200, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.3, duration: 1200, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Progress bar sweeps across
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(progressAnim, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(progressAnim, { toValue: 0, duration: 0,    useNativeDriver: false }),
+      ])
+    ).start();
+  }, []);
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange:  [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
+  return (
+    <Animated.View style={[splashStyles.container, { opacity: fadeAnim }]}>
+      {/* Background gradient effect via layered views */}
+      <View style={splashStyles.bgLayer1} />
+      <View style={splashStyles.bgLayer2} />
+
+      {/* Glow ring behind logo */}
+      <Animated.View style={[splashStyles.glowRing, { opacity: glowAnim, transform: [{ scale: pulseAnim }] }]} />
+      <Animated.View style={[splashStyles.glowRingInner, { opacity: glowAnim }]} />
+
+      {/* Logo */}
+      <View style={splashStyles.logoContainer}>
+        <Image
+          source={require('../../assets/images/logo1.png')}
+          style={splashStyles.logo}
+          resizeMode="contain"
+        />
+      </View>
+
+      {/* Tagline */}
+      <Text style={splashStyles.tagline}>Your journey starts here</Text>
+      <Text style={splashStyles.subTagline}>Premium hotels · Escrow-protected</Text>
+
+      {/* Trust pills */}
+      <View style={splashStyles.pillRow}>
+        {['Verified Hotels', 'Secure Escrow', '24/7 Support'].map((label) => (
+          <View key={label} style={splashStyles.pill}>
+            <Text style={splashStyles.pillText}>{label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Animated progress bar */}
+      <View style={splashStyles.progressTrack}>
+        <Animated.View style={[splashStyles.progressFill, { width: progressWidth }]} />
+      </View>
+      <Text style={splashStyles.loadingLabel}>Loading properties...</Text>
+    </Animated.View>
+  );
+}
+
+const splashStyles = StyleSheet.create({
+  container: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#000080',
+  },
+  bgLayer1: {
+    position: 'absolute', top: -120, right: -80,
+    width: 340, height: 340, borderRadius: 170,
+    backgroundColor: 'rgba(255,184,28,0.07)',
+  },
+  bgLayer2: {
+    position: 'absolute', bottom: -80, left: -100,
+    width: 280, height: 280, borderRadius: 140,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  glowRing: {
+    position: 'absolute',
+    width: 200, height: 200, borderRadius: 100,
+    borderWidth: 2, borderColor: 'rgba(255,184,28,0.35)',
+    backgroundColor: 'transparent',
+  },
+  glowRingInner: {
+    position: 'absolute',
+    width: 160, height: 160, borderRadius: 80,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'transparent',
+  },
+  logoContainer: {
+    width: 180, height: 80, justifyContent: 'center', alignItems: 'center',
+    marginBottom: 28,
+  },
+  logo: { width: '100%', height: '100%' },
+  tagline: {
+    color: '#FFFFFF', fontSize: 20, fontWeight: '800',
+    letterSpacing: 0.3, marginBottom: 6, textAlign: 'center',
+  },
+  subTagline: {
+    color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '500',
+    marginBottom: 28, textAlign: 'center', letterSpacing: 0.5,
+  },
+  pillRow: {
+    flexDirection: 'row', gap: 8, marginBottom: 48,
+  },
+  pill: {
+    backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12,
+    paddingVertical: 5, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+  },
+  pillText: { color: '#E2E8F0', fontSize: 11, fontWeight: '600' },
+  progressTrack: {
+    width: width * 0.55, height: 3, backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 2, overflow: 'hidden', marginBottom: 12,
+  },
+  progressFill: {
+    height: '100%', backgroundColor: '#FFB81C', borderRadius: 2,
+  },
+  loadingLabel: {
+    color: 'rgba(255,255,255,0.4)', fontSize: 11, letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+});
+
+// ─────────────────────────────────────────────
+// MAIN HOME SCREEN
+// ─────────────────────────────────────────────
+export default function HomeScreen() {
+  const [hotels, setHotels]           = useState<any[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoggedIn, setIsLoggedIn]   = useState(false);
+  const [userName, setUserName]       = useState('');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [activeTab, setActiveTab]     = useState<'stays' | 'taxi'>('stays');
+
+  const [guests, setGuests]             = useState({ rooms: 1, adults: 2, children: 0 });
+  const [showGuestModal, setShowGuestModal]       = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [endDate, setEndDate]     = useState('');
 
-  const router = useRouter();
-  const isFocused = useIsFocused();
+  // Taxi fields
+  const [taxiFrom, setTaxiFrom]         = useState('');
+  const [taxiTo, setTaxiTo]             = useState('');
+  const [taxiDateTime, setTaxiDateTime] = useState('');
+
+  const router       = useRouter();
+  const isFocused    = useIsFocused();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const HOTELS_API_URL = `${API_URL}/hotels`;
@@ -39,14 +200,8 @@ export default function HomeScreen() {
 
     fetch(HOTELS_API_URL)
       .then((res) => res.json())
-      .then((data) => {
-        setHotels(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Fetch error:", err);
-        setLoading(false);
-      });
+      .then((data) => { setHotels(data); setLoading(false); })
+      .catch((err) => { console.error('Fetch error:', err); setLoading(false); });
   }, [isFocused]);
 
   const getSafeImage = (imageArray: any, index: number) => {
@@ -54,16 +209,12 @@ export default function HomeScreen() {
       'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000',
       'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1000&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1000&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=1000&auto=format&fit=crop'
+      'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=1000&auto=format&fit=crop',
     ];
-
     const rawUrl = imageArray?.[0];
-
-    // 🟢 NEW: If it's empty, a local IP, OR doesn't start with 'http', use the fallback
     if (!rawUrl || rawUrl.includes('10.') || rawUrl.includes('192.') || rawUrl.includes('localhost') || !rawUrl.startsWith('http')) {
       return fallbacks[index % fallbacks.length];
     }
-
     return rawUrl;
   };
 
@@ -75,7 +226,7 @@ export default function HomeScreen() {
 
   const handleSearchPress = () => {
     Keyboard.dismiss();
-    scrollViewRef.current?.scrollTo({ y: 340, animated: true });
+    scrollViewRef.current?.scrollTo({ y: 360, animated: true });
   };
 
   const updateGuests = (type: 'rooms' | 'adults' | 'children', operation: 'add' | 'subtract') => {
@@ -90,14 +241,10 @@ export default function HomeScreen() {
 
   const onDayPress = (day: any) => {
     if (!startDate || (startDate && endDate)) {
-      setStartDate(day.dateString);
-      setEndDate('');
+      setStartDate(day.dateString); setEndDate('');
     } else if (startDate && !endDate) {
-      if (day.dateString > startDate) {
-        setEndDate(day.dateString);
-      } else {
-        setStartDate(day.dateString);
-      }
+      if (day.dateString > startDate) setEndDate(day.dateString);
+      else setStartDate(day.dateString);
     }
   };
 
@@ -110,33 +257,39 @@ export default function HomeScreen() {
   };
 
   const markedDates: any = {};
-  if (startDate) markedDates[startDate] = { startingDay: true, color: '#004A99', textColor: 'white' };
-  if (endDate) markedDates[endDate] = { endingDay: true, color: '#004A99', textColor: 'white' };
+  if (startDate) markedDates[startDate] = { startingDay: true, color: '#000080', textColor: 'white' };
+  if (endDate)   markedDates[endDate]   = { endingDay: true,   color: '#000080', textColor: 'white' };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#004A99" />
-      </View>
-    );
-  }
+  // ── Show branded splash while loading ──
+  if (loading) return <BrandedLoadingScreen />;
 
-  // Mock data for the Deals section based on the PDF template
+  // Mock deals data
   const topDeals = [
-    { id: '1', type: 'Hotel', name: 'The Blowfish Hotel', price: '95,000', discount: 'Up to 20% off', imgIndex: 0 },
-    { id: '2', type: 'Apartment', name: 'The Blowfish Hotel', price: '95,000', discount: 'Up to 20% off', imgIndex: 1 },
-    { id: '3', type: 'Hotel', name: 'The Blowfish Hotel', price: '95,000', discount: 'Up to 20% off', imgIndex: 2 },
-    { id: '4', type: 'Apartment', name: 'The Blowfish Hotel', price: '95,000', discount: 'Up to 20% off', imgIndex: 3 },
+    { id: '1', type: 'Hotel',     name: 'The Blowfish Hotel', price: '95,000', discount: '20% off', imgIndex: 0 },
+    { id: '2', type: 'Apartment', name: 'The Blowfish Hotel', price: '95,000', discount: '20% off', imgIndex: 1 },
+    { id: '3', type: 'Hotel',     name: 'The Blowfish Hotel', price: '95,000', discount: '15% off', imgIndex: 2 },
+    { id: '4', type: 'Apartment', name: 'The Blowfish Hotel', price: '95,000', discount: '10% off', imgIndex: 3 },
+  ];
+
+  // Trust bar items
+  const trustItems = [
+    { icon: 'shield-checkmark', label: 'Verified Partners', sub: 'Strictly vetted luxury properties' },
+    { icon: 'lock-closed',       label: 'Escrow-Protected',  sub: 'Funds held until service delivered' },
+    { icon: 'headset',           label: '24/7 Support',      sub: 'Always available VIP assistance' },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
 
-        {/* 🟢 PREMIUM BLUE HEADER WITH TABS */}
-        <View style={styles.blueHeader}>
+        {/* ── PREMIUM NAVY HERO HEADER ── */}
+        <View style={styles.navyHeader}>
+          {/* Decorative orbs */}
+          <View style={styles.orb1} />
+          <View style={styles.orb2} />
+
+          {/* Top bar: logo + auth buttons */}
           <View style={styles.headerTop}>
-            {/* 🟢 PREMIUM HOMEPAGE LOGO */}
             <Image
               source={require('../../assets/images/logo1.png')}
               style={styles.homeLogo}
@@ -145,7 +298,8 @@ export default function HomeScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               {isLoggedIn && userName ? (
                 <View style={styles.userBadge}>
-                  <Text style={styles.navLink}>{userName.split(' ')[0]}</Text>
+                  <Ionicons name="person-circle" size={16} color="#FFB81C" style={{ marginRight: 6 }} />
+                  <Text style={styles.userBadgeText}>{userName.split(' ')[0]}</Text>
                 </View>
               ) : (
                 <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -160,60 +314,192 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Template Tabs Navigation */}
-          <View style={styles.topTabs}>
-            <TouchableOpacity style={[styles.tabBtn, styles.activeTab]}><Text style={styles.activeTabText}>Stay</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.tabBtn}><Text style={styles.tabText}>Flights</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.tabBtn}><Text style={styles.tabText}>Car rental</Text></TouchableOpacity>
-          </View>
+          {/* Headline */}
+          <Text style={styles.heroTitle}>Find Your{'\n'}Perfect Stay</Text>
+          <Text style={styles.heroSub}>
+            Secure luxury hotels & executive lodgings across Nigeria with{' '}
+            <Text style={styles.heroEscrow}>Airgo Escrow Protection.</Text>
+          </Text>
 
-          <Text style={styles.headerTagline}>Find your next Hotel & Apartment</Text>
-          <Text style={styles.headerSub}>Search low prices on hotels, homes and much more...</Text>
-        </View>
-
-        {/* 🟢 SEARCH CONSOLE */}
-        <View style={styles.searchConsoleContainer}>
-          <View style={styles.searchConsole}>
-            <View style={styles.searchInputRow}>
-              <Ionicons name="search" size={24} color="#004A99" style={styles.searchIcon} />
-              <TextInput placeholder="Search for hotel, Apartments" placeholderTextColor="#A0AEC0" style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} returnKeyType="search" onSubmitEditing={handleSearchPress} />
-            </View>
-            <View style={styles.consoleDivider} />
-            <View style={styles.consoleActionsRow}>
-              <TouchableOpacity style={styles.consoleAction} onPress={() => setShowCalendarModal(true)}>
-                <Ionicons name="calendar-outline" size={20} color="#004A99" />
-                <Text style={styles.consoleActionText} numberOfLines={1}>{formatDateDisplay()}</Text>
-              </TouchableOpacity>
-              <View style={styles.verticalDivider} />
-              <TouchableOpacity style={styles.consoleAction} onPress={() => setShowGuestModal(true)}>
-                <Ionicons name="people-outline" size={20} color="#004A99" />
-                <Text style={styles.consoleActionText} numberOfLines={1}>{guests.rooms} Room • {guests.adults} Adults</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={styles.executeButton} onPress={handleSearchPress}>
-              <Text style={styles.executeButtonText}>Search</Text>
+          {/* Tab Toggle — Luxury Stay / Taxi */}
+          <View style={styles.tabToggleRow}>
+            <TouchableOpacity
+              style={[styles.tabToggleBtn, activeTab === 'stays' && styles.tabToggleActive]}
+              onPress={() => setActiveTab('stays')}
+            >
+              <Ionicons
+                name="star"
+                size={14}
+                color={activeTab === 'stays' ? '#000080' : '#FFFFFF'}
+                style={{ marginRight: 5 }}
+              />
+              <Text style={[styles.tabToggleText, activeTab === 'stays' && styles.tabToggleTextActive]}>
+                Luxury Stay
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabToggleBtn, activeTab === 'taxi' && styles.tabToggleActive]}
+              onPress={() => setActiveTab('taxi')}
+            >
+              <Ionicons
+                name="car"
+                size={14}
+                color={activeTab === 'taxi' ? '#000080' : '#FFFFFF'}
+                style={{ marginRight: 5 }}
+              />
+              <Text style={[styles.tabToggleText, activeTab === 'taxi' && styles.tabToggleTextActive]}>
+                Taxi
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* ── SEARCH CONSOLE (floats over header) ── */}
+        <View style={styles.searchConsoleContainer}>
+          <View style={styles.searchConsole}>
+            {activeTab === 'stays' ? (
+              <>
+                <View style={styles.searchInputRow}>
+                  <Ionicons name="search" size={22} color="#000080" style={styles.searchIcon} />
+                  <TextInput
+                    placeholder="Hotel, City or Region..."
+                    placeholderTextColor="#A0AEC0"
+                    style={styles.searchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    returnKeyType="search"
+                    onSubmitEditing={handleSearchPress}
+                  />
+                </View>
+                <View style={styles.consoleDivider} />
+                <View style={styles.consoleActionsRow}>
+                  <TouchableOpacity style={styles.consoleAction} onPress={() => setShowCalendarModal(true)}>
+                    <Ionicons name="calendar-outline" size={19} color="#000080" />
+                    <Text style={styles.consoleActionText} numberOfLines={1}>{formatDateDisplay()}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.verticalDivider} />
+                  <TouchableOpacity style={styles.consoleAction} onPress={() => setShowGuestModal(true)}>
+                    <Ionicons name="people-outline" size={19} color="#000080" />
+                    <Text style={styles.consoleActionText} numberOfLines={1}>
+                      {guests.rooms} Room · {guests.adults} Adults
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={styles.searchButton} onPress={handleSearchPress}>
+                  <Text style={styles.searchButtonText}>Search Hotels</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.taxiConsoleTitle}>Request a Taxi</Text>
+                <View style={styles.taxiInputRow}>
+                  <Ionicons name="location" size={18} color="#000080" style={styles.taxiIcon} />
+                  <TextInput
+                    placeholder="Pickup location..."
+                    placeholderTextColor="#A0AEC0"
+                    style={styles.taxiInput}
+                    value={taxiFrom}
+                    onChangeText={setTaxiFrom}
+                  />
+                </View>
+                <View style={styles.consoleDivider} />
+                <View style={styles.taxiInputRow}>
+                  <Ionicons name="navigate" size={18} color="#FFB81C" style={styles.taxiIcon} />
+                  <TextInput
+                    placeholder="Destination..."
+                    placeholderTextColor="#A0AEC0"
+                    style={styles.taxiInput}
+                    value={taxiTo}
+                    onChangeText={setTaxiTo}
+                  />
+                </View>
+                <View style={styles.consoleDivider} />
+                <View style={styles.taxiInputRow}>
+                  <Ionicons name="time-outline" size={18} color="#000080" style={styles.taxiIcon} />
+                  <Text style={[styles.taxiInput, { color: taxiDateTime ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
+                    {taxiDateTime || 'Select date & time...'}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.searchButton} onPress={() => {}}>
+                  <Ionicons name="car" size={16} color="#000080" style={{ marginRight: 8 }} />
+                  <Text style={styles.searchButtonText}>Request Ride</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* ── TRUST BAR ── */}
+        <View style={styles.trustBarSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trustBarScroll}>
+            {trustItems.map((item) => (
+              <View key={item.label} style={styles.trustCard}>
+                <View style={styles.trustIconCircle}>
+                  <Ionicons name={item.icon as any} size={20} color="#FFB81C" />
+                </View>
+                <Text style={styles.trustLabel}>{item.label}</Text>
+                <Text style={styles.trustSub}>{item.sub}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
         <View style={styles.mainCanvas}>
 
-          {/* 🟢 SUGGESTED DESTINATIONS */}
-          {!searchQuery && hotels.length > 0 && (
-            <View style={styles.popularSection}>
+          {/* ── TAXI INFO PANEL (when Taxi tab is active) ── */}
+          {activeTab === 'taxi' && (
+            <View style={styles.taxiInfoPanel}>
+              <View style={styles.taxiBadge}>
+                <Ionicons name="car-sport" size={14} color="#000080" style={{ marginRight: 6 }} />
+                <Text style={styles.taxiBadgeText}>VIP Taxi Concierge</Text>
+              </View>
+              <Text style={styles.taxiInfoTitle}>Request a Ride in Minutes</Text>
+              <Text style={styles.taxiInfoSub}>
+                Nearby verified chauffeurs will bid for your request, guaranteeing the best possible price under Airgo Escrow protection.
+              </Text>
+              <View style={styles.taxiStepsRow}>
+                {[
+                  { step: '1', title: 'Specify Route', desc: 'Enter pickup, destination & timing.' },
+                  { step: '2', title: 'Get Bids',      desc: 'Chauffeurs submit live bids.' },
+                  { step: '3', title: 'Travel Safe',   desc: 'Payment held in escrow until arrival.' },
+                ].map(s => (
+                  <View key={s.step} style={styles.taxiStepCard}>
+                    <View style={styles.taxiStepNum}>
+                      <Text style={styles.taxiStepNumText}>{s.step}</Text>
+                    </View>
+                    <Text style={styles.taxiStepTitle}>{s.title}</Text>
+                    <Text style={styles.taxiStepDesc}>{s.desc}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ── SUGGESTED DESTINATIONS ── */}
+          {activeTab === 'stays' && !searchQuery && hotels.length > 0 && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Suggested Destinations</Text>
-                <Text style={styles.sectionSub}>Below are the most popular travel destinations in Nigeria</Text>
+                <Text style={styles.sectionSub}>Most popular travel destinations in Nigeria</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
                 {hotels.slice(0, 4).map((item, index) => (
-                  <TouchableOpacity key={`pop-${item._id}`} style={styles.popularCard} onPress={() => router.push(`/hotel/${item._id}`)}>
-                    <View style={styles.popImageContainer}>
-                      <Image source={{ uri: getSafeImage(item.images, index) }} style={styles.popularImage} resizeMode="cover" />
-                    </View>
-                    <View style={styles.popularInfo}>
-                      <Text style={styles.popularName} numberOfLines={1}>Hotels in {item.location?.city}</Text>
-                      <Text style={styles.popularLocation}>2,642 hotels</Text>
+                  <TouchableOpacity
+                    key={`pop-${item._id}`}
+                    style={styles.destCard}
+                    activeOpacity={0.85}
+                    onPress={() => router.push(`/hotel/${item._id}`)}
+                  >
+                    <Image
+                      source={{ uri: getSafeImage(item.images, index) }}
+                      style={styles.destImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.destOverlay}>
+                      <Text style={styles.destName} numberOfLines={1}>
+                        Hotels in {item.location?.city}
+                      </Text>
+                      <Text style={styles.destCount}>2,642 hotels</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -221,54 +507,129 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* 🟢 NEW: TOP HOTEL DEALS */}
-          {!searchQuery && (
-            <View style={styles.dealsSection}>
+          {/* ── FEATURED PROPERTIES (main grid) ── */}
+          {activeTab === 'stays' && !searchQuery && (
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Top Hotel Deals</Text>
-                <Text style={styles.sectionSub}>A selection of the best hotel deals, only available today</Text>
+                <Text style={styles.sectionTitle}>Featured Properties</Text>
+                <Text style={styles.sectionSub}>Discover handpicked luxury accommodations</Text>
               </View>
-              <View style={styles.dealsGrid}>
-                {topDeals.map((deal) => (
-                  <View key={deal.id} style={styles.dealCard}>
-                    <View style={styles.dealImageContainer}>
-                      <Image source={{ uri: getSafeImage([], deal.imgIndex) }} style={styles.dealImage} resizeMode="cover" />
-                      <View style={styles.discountBadge}>
-                        <Text style={styles.discountText}>{deal.discount}</Text>
+
+              {hotels.length === 0 ? (
+                // Show top deals if no live hotel data yet
+                <View style={styles.dealsGrid}>
+                  {topDeals.map((deal) => (
+                    <View key={deal.id} style={styles.propertyCard}>
+                      <View style={styles.propertyImageWrap}>
+                        <Image
+                          source={{ uri: getSafeImage([], deal.imgIndex) }}
+                          style={styles.propertyImage}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.discountBadge}>
+                          <Text style={styles.discountText}>{deal.discount}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.propertyInfo}>
+                        <Text style={styles.propertyType}>{deal.type}</Text>
+                        <Text style={styles.propertyName} numberOfLines={1}>{deal.name}</Text>
+                        <View style={styles.propertyFooter}>
+                          <Text style={styles.propertyPrice}>₦{deal.price}</Text>
+                          <View style={styles.bookBadge}>
+                            <Text style={styles.bookBadgeText}>Book</Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
-                    <View style={styles.dealInfo}>
-                      <Text style={styles.dealType}>{deal.type}</Text>
-                      <Text style={styles.dealName} numberOfLines={1}>{deal.name}</Text>
-                      <Text style={styles.dealPrice}>NGN {deal.price}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.dealsGrid}>
+                  {hotels.slice(0, 6).map((item, index) => (
+                    <TouchableOpacity
+                      key={item._id}
+                      style={styles.propertyCard}
+                      activeOpacity={0.88}
+                      onPress={() => router.push(`/hotel/${item._id}`)}
+                    >
+                      <View style={styles.propertyImageWrap}>
+                        <Image
+                          source={{ uri: getSafeImage(item.images, index) }}
+                          style={styles.propertyImage}
+                          resizeMode="cover"
+                        />
+                        {item.discountPercentage > 0 && (
+                          <View style={styles.discountBadge}>
+                            <Text style={styles.discountText}>{item.discountPercentage}% off</Text>
+                          </View>
+                        )}
+                        <View style={styles.escrowBadge}>
+                          <Ionicons name="shield-checkmark" size={10} color="#fff" />
+                          <Text style={styles.escrowText}>Escrow</Text>
+                        </View>
+                      </View>
+                      <View style={styles.propertyInfo}>
+                        <Text style={styles.propertyType}>{item.partnerType || 'Hotel'}</Text>
+                        <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.propertyLocation} numberOfLines={1}>
+                          <Ionicons name="location-outline" size={11} color="#718096" /> {item.location?.city || 'Nigeria'}
+                        </Text>
+                        <View style={styles.propertyFooter}>
+                          <Text style={styles.propertyPrice}>
+                            ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
+                          </Text>
+                          <View style={styles.bookBadge}>
+                            <Text style={styles.bookBadgeText}>Book</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
-          {/* 🟢 MAIN RESULTS FEED */}
-          {searchQuery && (
-            <View style={styles.feedSection}>
-              <Text style={styles.sectionTitle}>Results for &quot;{searchQuery}&quot;</Text>
+          {/* ── SEARCH RESULTS ── */}
+          {activeTab === 'stays' && searchQuery && (
+            <View style={[styles.section, { paddingHorizontal: 24 }]}>
+              <Text style={styles.sectionTitle}>Results for "{searchQuery}"</Text>
               {filteredHotels.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="search-outline" size={50} color="#CBD5E0" />
-                  <Text style={styles.noResultsText}>No hotels found in this area.</Text>
+                  <View style={styles.emptyIconCircle}>
+                    <Ionicons name="search-outline" size={32} color="#A0AEC0" />
+                  </View>
+                  <Text style={styles.emptyTitle}>No hotels found</Text>
+                  <Text style={styles.emptySubTitle}>Try a different city or hotel name</Text>
                 </View>
               ) : (
                 filteredHotels.map((item, index) => (
-                  <TouchableOpacity key={item._id} style={styles.hotelCard} activeOpacity={0.9} onPress={() => router.push(`/hotel/${item._id}`)}>
-                    <View style={styles.imageContainer}>
-                      <Image source={{ uri: getSafeImage(item.images, index) }} style={styles.hotelImage} resizeMode="cover" />
-                    </View>
-                    <View style={styles.cardInfo}>
-                      <View style={styles.cardHeaderRow}>
-                        <Text style={styles.hotelName} numberOfLines={1}>{item.name}</Text>
-                        <Text style={styles.hotelPrice}>NGN {item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}</Text>
+                  <TouchableOpacity
+                    key={item._id}
+                    style={styles.listCard}
+                    activeOpacity={0.88}
+                    onPress={() => router.push(`/hotel/${item._id}`)}
+                  >
+                    <Image
+                      source={{ uri: getSafeImage(item.images, index) }}
+                      style={styles.listCardImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.listCardInfo}>
+                      <View style={styles.listCardHeader}>
+                        <Text style={styles.listCardName} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.listCardPrice}>
+                          ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
+                        </Text>
                       </View>
-                      <Text style={styles.hotelLocation}><Ionicons name="location-outline" size={16} color="#718096" /> {item.location?.city || 'Nigeria'}</Text>
+                      <Text style={styles.listCardLocation}>
+                        <Ionicons name="location-outline" size={14} color="#718096" />{' '}
+                        {item.location?.city || 'Nigeria'}
+                      </Text>
+                      <View style={styles.escrowRow}>
+                        <Ionicons name="shield-checkmark" size={12} color="#000080" />
+                        <Text style={styles.escrowRowText}>Escrow-protected booking</Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ))
@@ -276,15 +637,15 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* 🟢 NEW: NEWSLETTER SUBSCRIPTION */}
+          {/* ── NEWSLETTER ── */}
           <View style={styles.newsletterSection}>
-            <Ionicons name="mail-open" size={40} color="#FFB81C" style={{ marginBottom: 10 }} />
-            <Text style={styles.newsTitle}>SPECIAL HOTEL DEALS AND OFFERS</Text>
-            <Text style={styles.newsSub}>Enter your email address to receive secret hotels deals</Text>
+            <Ionicons name="mail-open" size={36} color="#FFB81C" style={{ marginBottom: 10 }} />
+            <Text style={styles.newsTitle}>SPECIAL HOTEL DEALS & OFFERS</Text>
+            <Text style={styles.newsSub}>Enter your email address to receive secret hotel deals</Text>
             <View style={styles.newsInputContainer}>
               <TextInput
                 style={styles.newsInput}
-                placeholder="Enter your email Address"
+                placeholder="Enter your email address"
                 placeholderTextColor="#A0AEC0"
                 value={newsletterEmail}
                 onChangeText={setNewsletterEmail}
@@ -295,86 +656,109 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* 🟢 NEW: FOOTER */}
+          {/* ── FOOTER ── */}
           <View style={styles.footerSection}>
             <View style={styles.footerGrid}>
               <View style={styles.footerCol}>
-                <Text style={styles.footerHeader}>Support</Text>
-                <Text style={styles.footerLink}>Contact Customer Service</Text>
-                <Text style={styles.footerLink}>Airgo.ng for Travel Agents</Text>
-              </View>
-              <View style={styles.footerCol}>
-                <Text style={styles.footerHeader}>Terms and settings</Text>
-                <Text style={styles.footerLink}>Privacy Notice</Text>
-                <Text style={styles.footerLink}>Terms of Service</Text>
-                <Text style={styles.footerLink}>Partner dispute</Text>
+                <Text style={styles.footerHeader}>Company</Text>
+                <TouchableOpacity onPress={() => router.push('/info/about' as any)}>
+                  <Text style={styles.footerLink}>About Airgo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/info/how-we-work' as any)}>
+                  <Text style={styles.footerLink}>How We Work</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/info/sustainability' as any)}>
+                  <Text style={styles.footerLink}>Sustainability</Text>
+                </TouchableOpacity>
               </View>
               <View style={styles.footerCol}>
                 <Text style={styles.footerHeader}>Partners</Text>
                 <TouchableOpacity onPress={() => router.push('/partner/select-type' as any)}>
-                  <Text style={[styles.footerLink, { color: '#FFB81C', fontWeight: 'bold' }]}>List your property</Text>
+                  <Text style={[styles.footerLink, { color: '#FFB81C', fontWeight: 'bold' }]}>
+                    List your property
+                  </Text>
                 </TouchableOpacity>
                 <Text style={styles.footerLink}>Become an affiliate</Text>
               </View>
-              {/* Footer Links Column 1 */}
-              <View style={styles.footerCol}>
-                <Text style={styles.footerHeader}>Company</Text>
-                <TouchableOpacity onPress={() => router.push('/info/about' as any)}><Text style={styles.footerLink}>About Airgo</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/info/how-we-work' as any)}><Text style={styles.footerLink}>How We Work</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/info/sustainability' as any)}><Text style={styles.footerLink}>Sustainability</Text></TouchableOpacity>
-              </View>
-
-              {/* Footer Links Column 2 */}
               <View style={styles.footerCol}>
                 <Text style={styles.footerHeader}>Support</Text>
-                <TouchableOpacity><Text style={styles.footerLink}>Help Center</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/info/terms' as any)}><Text style={styles.footerLink}>Terms of Service</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/info/privacy' as any)}><Text style={styles.footerLink}>Privacy Policy</Text></TouchableOpacity>
+                <Text style={styles.footerLink}>Help Center</Text>
+                <TouchableOpacity onPress={() => router.push('/info/terms' as any)}>
+                  <Text style={styles.footerLink}>Terms of Service</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/info/privacy' as any)}>
+                  <Text style={styles.footerLink}>Privacy Policy</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.footerCol}>
+                <Text style={styles.footerHeader}>Legal</Text>
+                <Text style={styles.footerLink}>Partner dispute</Text>
+                <Text style={styles.footerLink}>Cookie Policy</Text>
               </View>
             </View>
             <View style={styles.footerDivider} />
-            <Text style={styles.copyrightText}>Copyright © 2026 Airgo.ng All rights reserved.</Text>
+            <Text style={styles.copyrightText}>© 2026 Airgo.ng — All rights reserved.</Text>
           </View>
 
         </View>
       </ScrollView>
 
-      {/* MODALS REMAIN THE SAME... */}
-      <Modal visible={showCalendarModal} transparent={true} animationType="slide">
+      {/* ── MODALS ── */}
+      <Modal visible={showCalendarModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Dates</Text>
-              <TouchableOpacity onPress={() => setShowCalendarModal(false)}><Ionicons name="close-circle" size={30} color="#E2E8F0" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowCalendarModal(false)}>
+                <Ionicons name="close-circle" size={30} color="#CBD5E0" />
+              </TouchableOpacity>
             </View>
-            <Calendar markingType={'period'} markedDates={markedDates} onDayPress={onDayPress} theme={{ todayTextColor: '#004A99', arrowColor: '#004A99' }} />
-            <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowCalendarModal(false)}><Text style={styles.modalApplyText}>Confirm Dates</Text></TouchableOpacity>
+            <Calendar
+              markingType="period"
+              markedDates={markedDates}
+              onDayPress={onDayPress}
+              theme={{ todayTextColor: '#000080', arrowColor: '#000080', selectedDayBackgroundColor: '#000080' }}
+            />
+            <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowCalendarModal(false)}>
+              <Text style={styles.modalApplyText}>Confirm Dates</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      <Modal visible={showGuestModal} transparent={true} animationType="fade">
+      <Modal visible={showGuestModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Who is coming?</Text>
-              <TouchableOpacity onPress={() => setShowGuestModal(false)}><Ionicons name="close-circle" size={30} color="#E2E8F0" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowGuestModal(false)}>
+                <Ionicons name="close-circle" size={30} color="#CBD5E0" />
+              </TouchableOpacity>
             </View>
             {[
-              { label: 'Rooms', key: 'rooms' as const },
-              { label: 'Adults', key: 'adults' as const, sub: 'Ages 13 or above' },
-              { label: 'Children', key: 'children' as const, sub: 'Ages 0-12' }
+              { label: 'Rooms',    key: 'rooms'    as const },
+              { label: 'Adults',   key: 'adults'   as const, sub: 'Ages 13 or above' },
+              { label: 'Children', key: 'children' as const, sub: 'Ages 0-12' },
             ].map(item => (
               <View key={item.key} style={styles.counterRow}>
-                <View><Text style={styles.counterLabel}>{item.label}</Text>{item.sub && <Text style={styles.counterSub}>{item.sub}</Text>}</View>
+                <View>
+                  <Text style={styles.counterLabel}>{item.label}</Text>
+                  {item.sub && <Text style={styles.counterSub}>{item.sub}</Text>}
+                </View>
                 <View style={styles.counterControls}>
-                  <TouchableOpacity style={styles.counterBtn} onPress={() => updateGuests(item.key, 'subtract')}><Ionicons name="remove" size={20} color="#004A99" /></TouchableOpacity>
+                  <TouchableOpacity style={styles.counterBtn} onPress={() => updateGuests(item.key, 'subtract')}>
+                    <Ionicons name="remove" size={20} color="#000080" />
+                  </TouchableOpacity>
                   <Text style={styles.counterValue}>{guests[item.key]}</Text>
-                  <TouchableOpacity style={styles.counterBtn} onPress={() => updateGuests(item.key, 'add')}><Ionicons name="add" size={20} color="#004A99" /></TouchableOpacity>
+                  <TouchableOpacity style={styles.counterBtn} onPress={() => updateGuests(item.key, 'add')}>
+                    <Ionicons name="add" size={20} color="#000080" />
+                  </TouchableOpacity>
                 </View>
               </View>
             ))}
-            <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowGuestModal(false)}><Text style={styles.modalApplyText}>Apply</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowGuestModal(false)}>
+              <Text style={styles.modalApplyText}>Apply</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -382,115 +766,260 @@ export default function HomeScreen() {
   );
 }
 
+// ─────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' },
 
-  blueHeader: { backgroundColor: '#004A99', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 90 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  // 🟢 HOMEPAGE LOGO STYLE
-  homeLogo: {
-    width: 140,
-    height: 45,
-    marginBottom: 5,
-    // tintColor: '#FFF' // Uncomment this ONLY if your logo text is dark and you need it to turn pure white against the blue header!
+  // ── HERO HEADER ──
+  navyHeader: {
+    backgroundColor: '#000080',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 100,
+    overflow: 'hidden',
+    position: 'relative',
   },
-
-  userBadge: { backgroundColor: 'rgba(255, 255, 255, 0.2)', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
-  navLink: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
-
+  orb1: {
+    position: 'absolute', top: -60, right: -60,
+    width: 220, height: 220, borderRadius: 110,
+    backgroundColor: 'rgba(255,184,28,0.08)',
+  },
+  orb2: {
+    position: 'absolute', bottom: 20, left: -80,
+    width: 180, height: 180, borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  headerTop: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 24,
+  },
+  homeLogo: { width: 130, height: 42 },
+  userBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+  },
+  userBadgeText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
   ghostBtn: { paddingHorizontal: 12, paddingVertical: 8 },
-  ghostBtnText: { color: '#E2E8F0', fontSize: 15, fontWeight: 'bold' },
-  solidBtn: { backgroundColor: '#FFB81C', paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20 },
-  solidBtnText: { color: '#004A99', fontSize: 15, fontWeight: 'bold' },
+  ghostBtnText: { color: '#E2E8F0', fontSize: 14, fontWeight: '700' },
+  solidBtn: {
+    backgroundColor: '#FFB81C',
+    paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20,
+  },
+  solidBtnText: { color: '#000080', fontSize: 14, fontWeight: '900' },
+  heroTitle: {
+    color: '#FFFFFF', fontSize: 32, fontWeight: '900',
+    lineHeight: 38, marginBottom: 10,
+  },
+  heroSub: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 13,
+    lineHeight: 20, marginBottom: 24,
+  },
+  heroEscrow: { color: '#FFB81C', fontWeight: '700' },
 
-  topTabs: { flexDirection: 'row', gap: 15, marginBottom: 25 },
-  tabBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  activeTab: { backgroundColor: '#FFF', borderColor: '#FFF' },
-  tabText: { color: '#FFF', fontWeight: '600' },
-  activeTabText: { color: '#004A99', fontWeight: 'bold' },
+  // ── TAB TOGGLE ──
+  tabToggleRow: { flexDirection: 'row', gap: 10 },
+  tabToggleBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
+  },
+  tabToggleActive: { backgroundColor: '#FFB81C', borderColor: '#FFB81C' },
+  tabToggleText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
+  tabToggleTextActive: { color: '#000080' },
 
-  headerTagline: { color: '#FFF', fontSize: 26, fontWeight: '900', marginBottom: 8 },
-  headerSub: { color: '#E2E8F0', fontSize: 14, opacity: 0.9 },
+  // ── SEARCH CONSOLE ──
+  searchConsoleContainer: {
+    paddingHorizontal: 20, marginTop: -55, zIndex: 10,
+  },
+  searchConsole: {
+    backgroundColor: '#FFF', padding: 16, borderRadius: 24,
+    shadowColor: '#000080', shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12, shadowRadius: 24, elevation: 10,
+  },
+  searchInputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6 },
+  searchIcon: { marginRight: 12 },
+  searchInput: { flex: 1, fontSize: 15, color: '#1A202C', fontWeight: '600' },
+  consoleDivider: { height: 1, backgroundColor: '#EDF2F7', marginVertical: 10, marginHorizontal: 10 },
+  consoleActionsRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingHorizontal: 10, marginBottom: 14, alignItems: 'center',
+  },
+  consoleAction: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 7 },
+  consoleActionText: { color: '#4A5568', fontSize: 13, fontWeight: '600' },
+  verticalDivider: { width: 1, height: 28, backgroundColor: '#EDF2F7', marginHorizontal: 10 },
+  searchButton: {
+    backgroundColor: '#FFB81C', justifyContent: 'center', alignItems: 'center',
+    flexDirection: 'row', padding: 16, borderRadius: 16,
+  },
+  searchButtonText: { color: '#000080', fontSize: 16, fontWeight: '900' },
 
-  searchConsoleContainer: { paddingHorizontal: 20, marginTop: -50, zIndex: 10 },
-  searchConsole: { backgroundColor: '#FFF', padding: 15, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 8 },
-  searchInputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8 },
-  searchIcon: { marginRight: 15 },
-  searchInput: { flex: 1, fontSize: 16, color: '#1A202C', fontWeight: '500' },
-  consoleDivider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 10, marginHorizontal: 15 },
-  consoleActionsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, marginBottom: 15, alignItems: 'center' },
-  consoleAction: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 },
-  consoleActionText: { color: '#4A5568', fontSize: 14, fontWeight: '600' },
-  verticalDivider: { width: 1, height: 30, backgroundColor: '#E2E8F0', marginHorizontal: 15 },
-  executeButton: { backgroundColor: '#FFB81C', justifyContent: 'center', alignItems: 'center', padding: 16, borderRadius: 16 },
-  executeButtonText: { color: '#004A99', fontSize: 18, fontWeight: '900' },
+  // Taxi search console fields
+  taxiConsoleTitle: { fontSize: 14, fontWeight: '800', color: '#1A202C', marginBottom: 10, paddingHorizontal: 8 },
+  taxiInputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 8 },
+  taxiIcon: { marginRight: 10 },
+  taxiInput: { flex: 1, fontSize: 14, color: '#1A202C', fontWeight: '500' },
 
-  mainCanvas: { backgroundColor: '#F8F9FA', minHeight: '100%', paddingTop: 20 },
+  // ── TRUST BAR ──
+  trustBarSection: { marginTop: 20, paddingBottom: 4 },
+  trustBarScroll: { paddingHorizontal: 20, gap: 12 },
+  trustCard: {
+    width: 140, backgroundColor: '#FFF', borderRadius: 18,
+    padding: 14, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
+  },
+  trustIconCircle: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#EBF4FF', justifyContent: 'center', alignItems: 'center',
+    marginBottom: 8,
+  },
+  trustLabel: { fontSize: 12, fontWeight: '800', color: '#1A202C', textAlign: 'center', marginBottom: 4 },
+  trustSub: { fontSize: 10, color: '#718096', textAlign: 'center', lineHeight: 14 },
 
-  popularSection: { marginBottom: 30 },
-  sectionHeader: { paddingHorizontal: 24, marginBottom: 15 },
+  // ── MAIN CANVAS ──
+  mainCanvas: { backgroundColor: '#F8F9FA', minHeight: 400, paddingTop: 24 },
+
+  // ── TAXI INFO PANEL ──
+  taxiInfoPanel: { marginHorizontal: 20, marginBottom: 28, backgroundColor: '#FFF', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOpacity: 0.06, elevation: 4 },
+  taxiBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EBF4FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start', marginBottom: 14 },
+  taxiBadgeText: { fontSize: 11, fontWeight: '800', color: '#000080', textTransform: 'uppercase', letterSpacing: 0.5 },
+  taxiInfoTitle: { fontSize: 20, fontWeight: '900', color: '#1A202C', marginBottom: 8 },
+  taxiInfoSub: { fontSize: 13, color: '#718096', lineHeight: 20, marginBottom: 20 },
+  taxiStepsRow: { flexDirection: 'row', gap: 10 },
+  taxiStepCard: { flex: 1, backgroundColor: '#F8F9FA', borderRadius: 14, padding: 12 },
+  taxiStepNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#EBF4FF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  taxiStepNumText: { fontSize: 13, fontWeight: '900', color: '#000080' },
+  taxiStepTitle: { fontSize: 12, fontWeight: '800', color: '#1A202C', marginBottom: 4 },
+  taxiStepDesc: { fontSize: 11, color: '#718096', lineHeight: 15 },
+
+  // ── SECTIONS ──
+  section: { marginBottom: 32 },
+  sectionHeader: { paddingHorizontal: 24, marginBottom: 16 },
   sectionTitle: { fontSize: 20, fontWeight: '900', color: '#1A202C' },
-  sectionSub: { fontSize: 13, color: '#718096', marginTop: 4 },
+  sectionSub: { fontSize: 12, color: '#718096', marginTop: 3 },
   horizontalScroll: { paddingLeft: 24, paddingRight: 10 },
 
-  popularCard: { width: 160, marginRight: 16, backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 3, marginBottom: 10 },
-  popImageContainer: { height: 120 },
-  popularImage: { width: '100%', height: '100%' },
-  popularInfo: { padding: 12 },
-  popularName: { fontSize: 14, fontWeight: 'bold', color: '#1A202C', marginBottom: 4 },
-  popularLocation: { color: '#718096', fontSize: 12 },
+  // ── DESTINATION CARDS ──
+  destCard: {
+    width: 150, height: 140, marginRight: 14, borderRadius: 20,
+    overflow: 'hidden', position: 'relative',
+  },
+  destImage: { width: '100%', height: '100%' },
+  destOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)', padding: 10,
+  },
+  destName: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  destCount: { color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 2 },
 
-  dealsSection: { paddingHorizontal: 24, marginBottom: 30 },
-  dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  dealCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 15, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, elevation: 3 },
-  dealImageContainer: { height: 110, position: 'relative' },
-  dealImage: { width: '100%', height: '100%' },
-  discountBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#E53E3E', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6 },
-  discountText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
-  dealInfo: { padding: 12 },
-  dealType: { fontSize: 10, color: '#718096', textTransform: 'uppercase', marginBottom: 2 },
-  dealName: { fontSize: 14, fontWeight: 'bold', color: '#1A202C', marginBottom: 4 },
-  dealPrice: { fontSize: 14, fontWeight: '900', color: '#004A99' },
+  // ── PROPERTY GRID CARDS ──
+  dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20, gap: 14 },
+  propertyCard: {
+    width: '47%', backgroundColor: '#FFF', borderRadius: 20,
+    overflow: 'hidden', shadowColor: '#000080',
+    shadowOpacity: 0.07, shadowRadius: 10, elevation: 4,
+  },
+  propertyImageWrap: { height: 120, position: 'relative' },
+  propertyImage: { width: '100%', height: '100%' },
+  discountBadge: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: '#E53E3E', paddingHorizontal: 7,
+    paddingVertical: 3, borderRadius: 8,
+  },
+  discountText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  escrowBadge: {
+    position: 'absolute', bottom: 8, left: 8,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(0,0,128,0.75)', paddingHorizontal: 7,
+    paddingVertical: 3, borderRadius: 8, gap: 4,
+  },
+  escrowText: { color: '#FFF', fontSize: 9, fontWeight: '700' },
+  propertyInfo: { padding: 12 },
+  propertyType: { fontSize: 9, color: '#718096', textTransform: 'uppercase', fontWeight: '700', marginBottom: 2 },
+  propertyName: { fontSize: 13, fontWeight: '800', color: '#1A202C', marginBottom: 3 },
+  propertyLocation: { fontSize: 11, color: '#718096', marginBottom: 8 },
+  propertyFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  propertyPrice: { fontSize: 14, fontWeight: '900', color: '#000080' },
+  bookBadge: { backgroundColor: '#000080', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  bookBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
 
-  feedSection: { paddingHorizontal: 24 },
-  emptyState: { alignItems: 'center', marginTop: 40 },
-  noResultsText: { fontSize: 16, color: '#718096', marginTop: 10 },
-  hotelCard: { backgroundColor: '#FFF', borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.08, elevation: 4 },
-  imageContainer: { position: 'relative' },
-  hotelImage: { width: '100%', height: 200, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  cardInfo: { padding: 16 },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  hotelName: { fontSize: 18, fontWeight: '800', color: '#1A202C', flex: 1 },
-  hotelPrice: { fontSize: 18, fontWeight: '900', color: '#004A99' },
-  hotelLocation: { color: '#718096', fontSize: 14 },
+  // ── LIST CARD (search results) ──
+  listCard: {
+    backgroundColor: '#FFF', borderRadius: 20, marginBottom: 16,
+    shadowColor: '#000', shadowOpacity: 0.07, elevation: 4, overflow: 'hidden',
+  },
+  listCardImage: { width: '100%', height: 180, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  listCardInfo: { padding: 16 },
+  listCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  listCardName: { fontSize: 17, fontWeight: '800', color: '#1A202C', flex: 1 },
+  listCardPrice: { fontSize: 17, fontWeight: '900', color: '#000080' },
+  listCardLocation: { color: '#718096', fontSize: 13, marginBottom: 8 },
+  escrowRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  escrowRowText: { fontSize: 12, color: '#000080', fontWeight: '600' },
 
-  newsletterSection: { backgroundColor: '#004A99', padding: 30, alignItems: 'center', marginTop: 20 },
-  newsTitle: { color: '#FFF', fontSize: 18, fontWeight: '900', textAlign: 'center', marginBottom: 8 },
-  newsSub: { color: '#E2E8F0', fontSize: 13, textAlign: 'center', marginBottom: 20 },
-  newsInputContainer: { flexDirection: 'row', width: '100%', backgroundColor: '#FFF', borderRadius: 12, overflow: 'hidden' },
-  newsInput: { flex: 1, paddingHorizontal: 15, height: 50, color: '#1A202C' },
-  newsBtn: { backgroundColor: '#FFB81C', justifyContent: 'center', paddingHorizontal: 20 },
-  newsBtnText: { color: '#004A99', fontWeight: 'bold' },
+  // ── EMPTY STATE ──
+  emptyState: { alignItems: 'center', paddingTop: 40, paddingBottom: 20 },
+  emptyIconCircle: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: '#F0F4F8',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 14,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#2D3748', marginBottom: 6 },
+  emptySubTitle: { fontSize: 13, color: '#A0AEC0' },
 
-  footerSection: { backgroundColor: '#1A202C', padding: 30, paddingBottom: 50 },
+  // ── NEWSLETTER ──
+  newsletterSection: {
+    backgroundColor: '#000080', padding: 30, alignItems: 'center', marginTop: 10,
+  },
+  newsTitle: { color: '#FFF', fontSize: 16, fontWeight: '900', textAlign: 'center', marginBottom: 6 },
+  newsSub: { color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center', marginBottom: 18 },
+  newsInputContainer: {
+    flexDirection: 'row', width: '100%', backgroundColor: '#FFF',
+    borderRadius: 14, overflow: 'hidden',
+  },
+  newsInput: { flex: 1, paddingHorizontal: 15, height: 50, color: '#1A202C', fontSize: 13 },
+  newsBtn: { backgroundColor: '#FFB81C', justifyContent: 'center', paddingHorizontal: 18 },
+  newsBtnText: { color: '#000080', fontWeight: '900', fontSize: 13 },
+
+  // ── FOOTER ──
+  footerSection: { backgroundColor: '#0D1117', padding: 28, paddingBottom: 50 },
   footerGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  footerCol: { width: '45%', marginBottom: 25 },
-  footerHeader: { color: '#FFF', fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
-  footerLink: { color: '#A0AEC0', fontSize: 13, marginBottom: 8 },
-  footerDivider: { height: 1, backgroundColor: '#2D3748', marginVertical: 20 },
-  copyrightText: { color: '#718096', fontSize: 12, textAlign: 'center' },
+  footerCol: { width: '45%', marginBottom: 22 },
+  footerHeader: { color: '#FFF', fontSize: 14, fontWeight: '800', marginBottom: 10 },
+  footerLink: { color: '#718096', fontSize: 12, marginBottom: 7 },
+  footerDivider: { height: 1, backgroundColor: '#1E2530', marginVertical: 18 },
+  copyrightText: { color: '#4A5568', fontSize: 11, textAlign: 'center' },
 
-  // Modals
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 25, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  // ── MODALS ──
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  modalContent: {
+    backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    padding: 25, paddingBottom: 44,
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 24,
+  },
   modalTitle: { fontSize: 22, fontWeight: '900', color: '#1A202C' },
-  counterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  counterLabel: { fontSize: 18, color: '#2D3748', fontWeight: '700' },
-  counterSub: { fontSize: 13, color: '#A0AEC0', marginTop: 4 },
+  counterRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 24,
+  },
+  counterLabel: { fontSize: 17, color: '#2D3748', fontWeight: '700' },
+  counterSub: { fontSize: 12, color: '#A0AEC0', marginTop: 3 },
   counterControls: { flexDirection: 'row', alignItems: 'center' },
-  counterBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' },
-  counterValue: { fontSize: 18, fontWeight: '800', color: '#1A202C', width: 45, textAlign: 'center' },
-  modalApplyButton: { backgroundColor: '#004A99', padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 15 },
-  modalApplyText: { color: '#FFF', fontSize: 18, fontWeight: 'bold' }
+  counterBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA',
+  },
+  counterValue: {
+    fontSize: 18, fontWeight: '800', color: '#1A202C',
+    width: 45, textAlign: 'center',
+  },
+  modalApplyButton: {
+    backgroundColor: '#000080', padding: 18, borderRadius: 16,
+    alignItems: 'center', marginTop: 14,
+  },
+  modalApplyText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
 });

@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import { API_URL } from '../../constants/config';
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -11,6 +12,12 @@ export default function ProfileScreen() {
     const [userName, setUserName] = useState('Airgo Traveler');
     const [userRole, setUserRole] = useState('user');
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+    // Delete account modal state
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
 
     // Fetch the actual user data whenever the screen is focused
     useEffect(() => {
@@ -37,6 +44,66 @@ export default function ProfileScreen() {
                 }
             }
         ]);
+    };
+
+    // Step 1: Show initial warning alert
+    const handleDeleteAccountPress = () => {
+        Alert.alert(
+            '⚠️ Delete Account',
+            'This will permanently delete your Airgo account and all associated data. This action cannot be undone.\n\nAre you sure you want to continue?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Continue',
+                    style: 'destructive',
+                    onPress: () => {
+                        setDeletePassword('');
+                        setDeleteError('');
+                        setDeleteModalVisible(true);
+                    }
+                }
+            ]
+        );
+    };
+
+    // Step 2: Confirm with password and call API
+    const handleConfirmDelete = async () => {
+        if (!deletePassword.trim()) {
+            setDeleteError('Please enter your password to confirm.');
+            return;
+        }
+        setDeleteLoading(true);
+        setDeleteError('');
+        try {
+            const userId = await AsyncStorage.getItem('userId');
+            if (!userId) throw new Error('Session not found. Please log in again.');
+
+            const response = await fetch(`${API_URL}/auth/account`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, password: deletePassword }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setDeleteError(data.message || 'Deletion failed. Please try again.');
+                setDeleteLoading(false);
+                return;
+            }
+
+            // Success — clear session and redirect
+            setDeleteModalVisible(false);
+            await AsyncStorage.clear();
+            Alert.alert(
+                'Account Deleted',
+                'Your account and all associated data have been permanently deleted. We\'re sorry to see you go.',
+                [{ text: 'OK', onPress: () => router.replace('/auth/login' as any) }]
+            );
+        } catch (err: any) {
+            setDeleteError(err.message || 'A network error occurred. Please check your connection.');
+            setDeleteLoading(false);
+        }
     };
 
     const MenuItem = ({ icon, title, subtitle, onPress, isSwitch, switchValue, onSwitchToggle, color = "#1A202C" }: any) => (
@@ -132,9 +199,73 @@ export default function ProfileScreen() {
                     <Text style={styles.signOutText}>Sign Out</Text>
                 </TouchableOpacity>
 
+                {/* 🗑️ DELETE ACCOUNT BUTTON */}
+                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccountPress}>
+                    <Ionicons name="trash-outline" size={20} color="#718096" style={{ marginRight: 8 }} />
+                    <Text style={styles.deleteButtonText}>Delete Account</Text>
+                </TouchableOpacity>
+
                 <Text style={styles.versionText}>Airgo v1.0.0</Text>
 
             </ScrollView>
+
+            {/* 🗑️ DELETE ACCOUNT CONFIRMATION MODAL */}
+            <Modal
+                visible={deleteModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => !deleteLoading && setDeleteModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <View style={styles.modalIconWrap}>
+                            <Ionicons name="warning" size={32} color="#E53E3E" />
+                        </View>
+                        <Text style={styles.modalTitle}>Confirm Account Deletion</Text>
+                        <Text style={styles.modalBody}>
+                            Enter your password below to permanently delete your account. All bookings, data, and history will be erased.
+                        </Text>
+
+                        <TextInput
+                            style={[styles.passwordInput, deleteError ? styles.passwordInputError : null]}
+                            placeholder="Enter your password"
+                            placeholderTextColor="#A0AEC0"
+                            secureTextEntry
+                            value={deletePassword}
+                            onChangeText={(t) => { setDeletePassword(t); setDeleteError(''); }}
+                            editable={!deleteLoading}
+                            autoCorrect={false}
+                            autoCapitalize="none"
+                        />
+
+                        {deleteError ? (
+                            <Text style={styles.errorText}>{deleteError}</Text>
+                        ) : null}
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.modalCancelBtn}
+                                onPress={() => setDeleteModalVisible(false)}
+                                disabled={deleteLoading}
+                            >
+                                <Text style={styles.modalCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalConfirmBtn, deleteLoading && styles.modalConfirmBtnDisabled]}
+                                onPress={handleConfirmDelete}
+                                disabled={deleteLoading}
+                            >
+                                {deleteLoading ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={styles.modalConfirmText}>Delete Forever</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
         </View>
     );
 }
@@ -165,8 +296,27 @@ const styles = StyleSheet.create({
 
     divider: { height: 1, backgroundColor: '#E2E8F0', marginLeft: 55 },
 
-    signOutButton: { flexDirection: 'row', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FEB2B2', borderRadius: 16, paddingVertical: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+    signOutButton: { flexDirection: 'row', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FEB2B2', borderRadius: 16, paddingVertical: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
     signOutText: { color: '#E53E3E', fontSize: 16, fontWeight: 'bold' },
 
-    versionText: { textAlign: 'center', color: '#A0AEC0', fontSize: 13 }
+    deleteButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 14, marginBottom: 24 },
+    deleteButtonText: { color: '#A0AEC0', fontSize: 14, textDecorationLine: 'underline' },
+
+    versionText: { textAlign: 'center', color: '#A0AEC0', fontSize: 13 },
+
+    // Delete account modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 28, width: '100%', maxWidth: 400 },
+    modalIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF5F5', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginBottom: 16 },
+    modalTitle: { fontSize: 20, fontWeight: '900', color: '#1A202C', textAlign: 'center', marginBottom: 10 },
+    modalBody: { fontSize: 14, color: '#718096', textAlign: 'center', lineHeight: 22, marginBottom: 20 },
+    passwordInput: { borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: '#1A202C', backgroundColor: '#F8F9FA', marginBottom: 8 },
+    passwordInputError: { borderColor: '#E53E3E' },
+    errorText: { color: '#E53E3E', fontSize: 13, marginBottom: 12, paddingHorizontal: 4 },
+    modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+    modalCancelBtn: { flex: 1, borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+    modalCancelText: { color: '#4A5568', fontSize: 15, fontWeight: '600' },
+    modalConfirmBtn: { flex: 1, backgroundColor: '#E53E3E', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+    modalConfirmBtnDisabled: { backgroundColor: '#FC8181' },
+    modalConfirmText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
 });

@@ -16,6 +16,7 @@
     "android": {
       "package": "ng.airgo.app",
       "versionCode": 1,
+      "targetSdkVersion": 35,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/logo1.png",
@@ -63,6 +64,12 @@
       "eas": {
         "projectId": "b2b91674-a429-4384-a27f-a4d45182b813"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b2b91674-a429-4384-a27f-a4d45182b813"
     }
   }
 }
