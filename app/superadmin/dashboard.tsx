@@ -1,13 +1,45 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert } from 'react-native';
-import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert, ActivityIndicator, Linking } from 'react-native';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../constants/config';
 
 const { width } = Dimensions.get('window');
 
 export default function SuperAdminDashboard() {
     const router = useRouter();
+
+    // 🟢 LIVE STATS from staging backend
+    const [liveStats, setLiveStats] = useState({ total: 0, activeEscrow: 0, totalRevenue: 0, loading: true });
+
+    useEffect(() => {
+        const fetchLiveStats = async () => {
+            try {
+                const res = await fetch(`${API_URL}/bookings`);
+                if (res.ok) {
+                    const data: any[] = await res.json();
+                    const bookings = Array.isArray(data) ? data : [];
+                    const activeEscrow = bookings.filter(b =>
+                        ['Pending Escrow','Paid - Escrow Secured','Escrow Active','Trip Started']
+                            .some(s => (b.status || '').includes(s))
+                    ).length;
+                    const totalRevenue = bookings.reduce((sum, b) => {
+                        const p = typeof b.totalPrice === 'string'
+                            ? parseInt(b.totalPrice.replace(/\D/g,''), 10)
+                            : Number(b.totalPrice || 0);
+                        return sum + (isNaN(p) ? 0 : p);
+                    }, 0);
+                    setLiveStats({ total: bookings.length, activeEscrow, totalRevenue, loading: false });
+                } else {
+                    setLiveStats(prev => ({ ...prev, loading: false }));
+                }
+            } catch {
+                setLiveStats(prev => ({ ...prev, loading: false }));
+            }
+        };
+        fetchLiveStats();
+    }, []);
 
     // 🟢 MOCK PLATFORM DATA
     const [platformStats, setPlatformStats] = useState({
@@ -67,6 +99,40 @@ export default function SuperAdminDashboard() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+                {/* 🟢 LIVE STATS BAR */}
+                <Text style={styles.sectionLabel}>Live Platform Stats</Text>
+                {liveStats.loading ? (
+                    <ActivityIndicator color="#FFB81C" style={{ marginBottom: 20 }} />
+                ) : (
+                    <View style={styles.liveStatsRow}>
+                        <View style={styles.liveStatCard}>
+                            <Text style={styles.liveStatVal}>{liveStats.total}</Text>
+                            <Text style={styles.liveStatLabel}>Total Bookings</Text>
+                        </View>
+                        <View style={[styles.liveStatCard, styles.liveStatMid]}>
+                            <Text style={[styles.liveStatVal, { color: '#FFB81C' }]}>{liveStats.activeEscrow}</Text>
+                            <Text style={styles.liveStatLabel}>Active Escrow</Text>
+                        </View>
+                        <View style={styles.liveStatCard}>
+                            <Text style={[styles.liveStatVal, { fontSize: 14 }]}>
+                                {liveStats.totalRevenue > 999999
+                                    ? `₦${(liveStats.totalRevenue/1000000).toFixed(1)}M`
+                                    : `₦${liveStats.totalRevenue.toLocaleString()}`}
+                            </Text>
+                            <Text style={styles.liveStatLabel}>Revenue</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* 🌐 OPEN FULL WEB ADMIN */}
+                <TouchableOpacity
+                    style={styles.webAdminBtn}
+                    onPress={() => Linking.openURL('https://airgo.ng/admin')}
+                >
+                    <Ionicons name="open-outline" size={18} color="#000080" />
+                    <Text style={styles.webAdminBtnText}>Open Full Admin Panel in Browser</Text>
+                </TouchableOpacity>
 
                 {/* 🟢 MASTER REVENUE CARD */}
                 <View style={styles.masterCard}>
@@ -214,7 +280,26 @@ const styles = StyleSheet.create({
     kpiValue: { color: '#1A202C', fontSize: 26, fontWeight: '900', marginBottom: 2 },
     kpiLabel: { color: '#718096', fontSize: 13, fontWeight: '600' },
 
+    sectionLabel: { color: '#FFB81C', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+
+    liveStatsRow: {
+        flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 16,
+        marginBottom: 16, overflow: 'hidden',
+    },
+    liveStatCard:  { flex: 1, alignItems: 'center', paddingVertical: 16 },
+    liveStatMid:   { borderLeftWidth: 1, borderRightWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+    liveStatVal:   { color: '#FFF', fontSize: 20, fontWeight: '900', marginBottom: 4 },
+    liveStatLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+
+    webAdminBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        backgroundColor: '#FFB81C', borderRadius: 14, paddingVertical: 14, marginBottom: 24,
+        shadowColor: '#FFB81C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 4,
+    },
+    webAdminBtnText: { color: '#000080', fontSize: 14, fontWeight: '900' },
+
     sectionTitle: { color: '#1A202C', fontSize: 18, fontWeight: '800', marginBottom: 15, letterSpacing: 0.5 },
+
 
     chartContainer: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, marginBottom: 30, height: 220 },
     chartBars: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 140, marginTop: 10, paddingHorizontal: 10 },

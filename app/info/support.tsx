@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, Linking } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { API_URL } from '../../constants/config';
 
 export default function SupportScreen() {
     const router = useRouter();
@@ -9,15 +10,37 @@ export default function SupportScreen() {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
 
-    const handleSendMessage = () => {
+    const [isSending, setIsSending] = useState(false);
+
+    const handleSendMessage = async () => {
         if (!name || !email || !message) {
             Alert.alert('Error', 'Please fill in all fields before sending.');
             return;
         }
-        Alert.alert('Message Sent', 'Our 24/7 support team will get back to you shortly!');
-        setName('');
-        setEmail('');
-        setMessage('');
+        
+        setIsSending(true);
+        try {
+            const response = await fetch(`${API_URL}/auth/support`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, subject: 'Inquiry', message })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                Alert.alert('Message Sent', 'Our 24/7 support team will get back to you shortly!');
+                setName('');
+                setEmail('');
+                setMessage('');
+            } else {
+                Alert.alert('Error', data.message || 'Failed to send message.');
+            }
+        } catch (error) {
+            Alert.alert('Network Error', 'Please check your connection and try again.');
+        } finally {
+            setIsSending(false);
+        }
     };
 
     return (
@@ -39,13 +62,13 @@ export default function SupportScreen() {
 
                 {/* 🟢 CONTACT CARDS */}
                 <View style={styles.contactGrid}>
-                    <TouchableOpacity style={styles.contactCard} onPress={() => Alert.alert('Calling...', '+2347078344409')}>
+                    <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('tel:+2347078344409')}>
                         <View style={styles.iconBox}><Ionicons name="call" size={24} color="#004A99" /></View>
                         <Text style={styles.contactLabel}>Call Us 24/7</Text>
                         <Text style={styles.contactValue}>+234 707 834 4409</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.contactCard} onPress={() => Alert.alert('Emailing...', 'info@airgo.ng')}>
+                    <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('mailto:info@airgo.ng')}>
                         <View style={styles.iconBox}><Ionicons name="mail" size={24} color="#004A99" /></View>
                         <Text style={styles.contactLabel}>Email Support</Text>
                         <Text style={styles.contactValue}>info@airgo.ng</Text>
@@ -81,8 +104,8 @@ export default function SupportScreen() {
                         value={message}
                         onChangeText={setMessage}
                     />
-                    <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-                        <Text style={styles.sendButtonText}>Send Message</Text>
+                    <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage} disabled={isSending}>
+                        <Text style={styles.sendButtonText}>{isSending ? 'Sending...' : 'Send Message'}</Text>
                         <Ionicons name="send" size={18} color="#FFF" style={{ marginLeft: 8 }} />
                     </TouchableOpacity>
                 </View>

@@ -11,6 +11,7 @@ export default function ProfileScreen() {
     const isFocused = useIsFocused();
     const [userName, setUserName] = useState('Airgo Traveler');
     const [userRole, setUserRole] = useState('user');
+    const [userEmail, setUserEmail] = useState('');
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
     // Delete account modal state
@@ -22,10 +23,12 @@ export default function ProfileScreen() {
     // Fetch the actual user data whenever the screen is focused
     useEffect(() => {
         const fetchUserData = async () => {
-            const name = await AsyncStorage.getItem('userName');
-            const role = await AsyncStorage.getItem('userRole');
-            if (name) setUserName(name);
-            if (role) setUserRole(role);
+            const name  = await AsyncStorage.getItem('userName');
+            const role  = await AsyncStorage.getItem('userRole');
+            const email = await AsyncStorage.getItem('userEmail');
+            if (name)  setUserName(name);
+            if (role)  setUserRole(role);
+            if (email) setUserEmail(email);
         };
         if (isFocused) {
             fetchUserData();
@@ -149,9 +152,9 @@ export default function ProfileScreen() {
                 {/* 🟢 ACCOUNT SETTINGS */}
                 <Text style={styles.sectionTitle}>Account Settings</Text>
                 <View style={styles.cardGroup}>
-                    <MenuItem icon="person-outline" title="Personal Information" color="#004A99" />
+                    <MenuItem icon="person-outline" title="Personal Information" color="#004A99" onPress={() => router.push('/profile/personal-info' as any)} />
                     <View style={styles.divider} />
-                    <MenuItem icon="card-outline" title="Payment Methods" color="#004A99" />
+                    <MenuItem icon="card-outline" title="Payment Methods" color="#004A99" onPress={() => router.push('/profile/payment-methods' as any)} />
                     <View style={styles.divider} />
                     <MenuItem
                         icon="notifications-outline"
@@ -163,10 +166,54 @@ export default function ProfileScreen() {
                     />
                 </View>
 
-                {/* 🟢 HOSTING / PARTNER BRIDGE */}
-                <Text style={styles.sectionTitle}>Hosting</Text>
+                {/* 🟢 ROLE-BASED WORKSPACE */}
+                <Text style={styles.sectionTitle}>My Workspace</Text>
                 <View style={styles.cardGroup}>
-                    {userRole === 'partner' || userRole === 'superadmin' ? (
+                    {(userRole === 'admin' || userRole === 'superadmin') ? (
+                        <>
+                            <MenuItem
+                                icon="shield-checkmark"
+                                title="Admin Console"
+                                subtitle="Platform management &amp; oversight"
+                                color="#E53E3E"
+                                onPress={() => router.push('/superadmin/dashboard' as any)}
+                            />
+                            <View style={styles.divider} />
+                            <MenuItem
+                                icon="briefcase"
+                                title="Partner Dashboard"
+                                subtitle="Properties, bookings &amp; revenue"
+                                color="#D97706"
+                                onPress={() => router.push('/partner/dashboard' as any)}
+                            />
+                        </>
+                    ) : userRole === 'driver' ? (
+                        <>
+                            <MenuItem
+                                icon="car"
+                                title="Driver Dashboard"
+                                subtitle="Rides, bids &amp; active trips"
+                                color="#3182CE"
+                                onPress={() => router.push('/driver/dashboard' as any)}
+                            />
+                            <View style={styles.divider} />
+                            <MenuItem
+                                icon="cash-outline"
+                                title="My Earnings"
+                                subtitle="Commission &amp; payout history"
+                                color="#38A169"
+                                onPress={() => router.push('/driver/dashboard' as any)}
+                            />
+                        </>
+                    ) : userRole === 'affiliate' ? (
+                        <MenuItem
+                            icon="people"
+                            title="Affiliate Hub"
+                            subtitle="Referrals, commissions &amp; payouts"
+                            color="#D97706"
+                            onPress={() => router.push('/affiliate/dashboard' as any)}
+                        />
+                    ) : userRole === 'partner' ? (
                         <MenuItem
                             icon="briefcase"
                             title="Partner Dashboard"
@@ -175,22 +222,32 @@ export default function ProfileScreen() {
                             onPress={() => router.push('/partner/dashboard' as any)}
                         />
                     ) : (
-                        <MenuItem
-                            icon="home"
-                            title="List your property"
-                            subtitle="Earn money by hosting on Airgo"
-                            color="#D97706"
-                            onPress={() => router.push('/partner/select-type' as any)}
-                        />
+                        <>
+                            <MenuItem
+                                icon="home"
+                                title="List Your Property"
+                                subtitle="Earn money by hosting on Airgo"
+                                color="#D97706"
+                                onPress={() => router.push('/partner/select-type' as any)}
+                            />
+                            <View style={styles.divider} />
+                            <MenuItem
+                                icon="car-outline"
+                                title="Become a Driver"
+                                subtitle="Join Airgo's driver network"
+                                color="#3182CE"
+                                onPress={() => router.push('/info/how-we-work' as any)}
+                            />
+                        </>
                     )}
                 </View>
 
                 {/* 🟢 SUPPORT & LEGAL */}
                 <Text style={styles.sectionTitle}>Support & About</Text>
                 <View style={styles.cardGroup}>
-                    <MenuItem icon="help-buoy-outline" title="Help Center" color="#4A5568" />
+                    <MenuItem icon="help-buoy-outline" title="Help Center" color="#4A5568" onPress={() => router.push('/profile/help-center' as any)} />
                     <View style={styles.divider} />
-                    <MenuItem icon="shield-checkmark-outline" title="Terms & Privacy" color="#4A5568" />
+                    <MenuItem icon="shield-checkmark-outline" title="Terms & Privacy" color="#4A5568" onPress={() => router.push('/profile/terms' as any)} />
                 </View>
 
                 {/* 🟢 SIGN OUT BUTTON */}
@@ -273,7 +330,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
 
-    header: { backgroundColor: '#004A99', paddingTop: 60, paddingBottom: 80, paddingHorizontal: 24, alignItems: 'center' },
+    header: { backgroundColor: '#000080', paddingTop: 90, paddingBottom: 80, paddingHorizontal: 24, alignItems: 'center' },
     headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
 
     content: { paddingHorizontal: 20, paddingBottom: 40, marginTop: -50 },

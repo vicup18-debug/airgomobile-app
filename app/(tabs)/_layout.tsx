@@ -7,15 +7,15 @@ export default function TabLayout() {
       initialRouteName="index"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#FFB81C', // Updated to match your new Dark Theme!
+        tabBarActiveTintColor: '#FFB81C',
         tabBarInactiveTintColor: '#999',
         tabBarStyle: {
           height: 65,
           paddingBottom: 10,
           paddingTop: 10,
-          backgroundColor: '#121212', // Updated to Dark Theme
+          backgroundColor: '#000080',
           borderTopWidth: 1,
-          borderTopColor: '#333'
+          borderTopColor: '#000080'
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -31,13 +31,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <Ionicons name="compass" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="bookings"
         options={{
           title: 'Bookings',
@@ -49,6 +42,13 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
+        }}
+      />
+      {/* Hidden from tab bar — kept for router compatibility */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

@@ -1,12 +1,13 @@
 import {
   View, Text, StyleSheet, Image, TouchableOpacity,
   ActivityIndicator, ScrollView, TextInput, Modal,
-  Keyboard, Dimensions, Animated, Easing
+  Keyboard, Dimensions, Animated, Easing, Alert, Platform
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { API_URL } from '../../constants/config';
@@ -23,12 +24,10 @@ function BrandedLoadingScreen() {
   const glowAnim   = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
-    // Fade in the whole screen
     Animated.timing(fadeAnim, {
       toValue: 1, duration: 500, useNativeDriver: true,
     }).start();
 
-    // Pulse ring
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.18, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -36,7 +35,6 @@ function BrandedLoadingScreen() {
       ])
     ).start();
 
-    // Glow pulse
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, { toValue: 0.9, duration: 1200, useNativeDriver: true }),
@@ -44,7 +42,6 @@ function BrandedLoadingScreen() {
       ])
     ).start();
 
-    // Progress bar sweeps across
     Animated.loop(
       Animated.sequence([
         Animated.timing(progressAnim, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
@@ -60,15 +57,12 @@ function BrandedLoadingScreen() {
 
   return (
     <Animated.View style={[splashStyles.container, { opacity: fadeAnim }]}>
-      {/* Background gradient effect via layered views */}
       <View style={splashStyles.bgLayer1} />
       <View style={splashStyles.bgLayer2} />
 
-      {/* Glow ring behind logo */}
       <Animated.View style={[splashStyles.glowRing, { opacity: glowAnim, transform: [{ scale: pulseAnim }] }]} />
       <Animated.View style={[splashStyles.glowRingInner, { opacity: glowAnim }]} />
 
-      {/* Logo */}
       <View style={splashStyles.logoContainer}>
         <Image
           source={require('../../assets/images/logo1.png')}
@@ -77,11 +71,9 @@ function BrandedLoadingScreen() {
         />
       </View>
 
-      {/* Tagline */}
       <Text style={splashStyles.tagline}>Your journey starts here</Text>
       <Text style={splashStyles.subTagline}>Premium hotels · Escrow-protected</Text>
 
-      {/* Trust pills */}
       <View style={splashStyles.pillRow}>
         {['Verified Hotels', 'Secure Escrow', '24/7 Support'].map((label) => (
           <View key={label} style={splashStyles.pill}>
@@ -90,7 +82,6 @@ function BrandedLoadingScreen() {
         ))}
       </View>
 
-      {/* Animated progress bar */}
       <View style={splashStyles.progressTrack}>
         <Animated.View style={[splashStyles.progressFill, { width: progressWidth }]} />
       </View>
@@ -161,16 +152,76 @@ const splashStyles = StyleSheet.create({
   },
 });
 
-// ─────────────────────────────────────────────
-// MAIN HOME SCREEN
-// ─────────────────────────────────────────────
+const FALLBACK_HOTELS = [
+  {
+    _id: 'airgo_hotel_01',
+    name: 'Sheraton Lagos Hotel',
+    location: { city: 'Lagos' },
+    images: ['https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80'],
+    pricePerNight: 120000,
+    totalAllocated: 5,
+    partnerType: 'hotel',
+    bookedDates: [],
+    discountPercentage: 0,
+  },
+  {
+    _id: 'airgo_hotel_02',
+    name: 'Transcorp Hilton Abuja',
+    location: { city: 'Abuja' },
+    images: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80'],
+    pricePerNight: 150000,
+    totalAllocated: 8,
+    partnerType: 'hotel',
+    bookedDates: [],
+    discountPercentage: 10,
+  },
+  {
+    _id: 'airgo_hotel_03',
+    name: 'Eko Hotel & Suites',
+    location: { city: 'Lagos' },
+    images: ['https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80'],
+    pricePerNight: 95000,
+    totalAllocated: 10,
+    partnerType: 'hotel',
+    bookedDates: [],
+    discountPercentage: 15,
+  },
+  {
+    _id: 'airgo_hotel_04',
+    name: 'Four Points Sheraton',
+    location: { city: 'Port Harcourt' },
+    images: ['https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&q=80'],
+    pricePerNight: 85000,
+    totalAllocated: 6,
+    partnerType: 'apartment',
+    bookedDates: [],
+    discountPercentage: 20,
+  },
+];
+
+function isHotelAvailable(hotel: any, checkIn: string, checkOut: string): boolean {
+  if (!hotel) return false;
+  const allocated = hotel.totalAllocated !== undefined ? hotel.totalAllocated : 1;
+  if (allocated <= 0) return false;
+  if (!checkIn || !checkOut || !hotel.bookedDates) return true;
+
+  let d = new Date(checkIn);
+  const endD = new Date(checkOut);
+  while (d < endD) {
+    const dateStr = d.toISOString().split('T')[0];
+    const dayMatch = hotel.bookedDates?.find((b: any) => b.date === dateStr);
+    if (dayMatch && dayMatch.count >= allocated) return false;
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return true;
+}
+
 export default function HomeScreen() {
-  const [hotels, setHotels]           = useState<any[]>([]);
+  const [hotels, setHotels]           = useState<any[]>(FALLBACK_HOTELS);
   const [loading, setLoading]         = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoggedIn, setIsLoggedIn]   = useState(false);
   const [userName, setUserName]       = useState('');
-  const [newsletterEmail, setNewsletterEmail] = useState('');
   const [activeTab, setActiveTab]     = useState<'stays' | 'taxi'>('stays');
 
   const [guests, setGuests]             = useState({ rooms: 1, adults: 2, children: 0 });
@@ -179,10 +230,31 @@ export default function HomeScreen() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate]     = useState('');
 
-  // Taxi fields
   const [taxiFrom, setTaxiFrom]         = useState('');
   const [taxiTo, setTaxiTo]             = useState('');
   const [taxiDateTime, setTaxiDateTime] = useState('');
+  const [showTaxiDateModal, setShowTaxiDateModal] = useState(false);
+  const [taxiDateObj, setTaxiDateObj] = useState(new Date());
+
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationType, setLocationType] = useState<'from' | 'to'>('from');
+  const [locationQuery, setLocationQuery] = useState('');
+
+  const POPULAR_LOCATIONS = [
+    'Nnamdi Azikiwe International Airport, Abuja',
+    'Murtala Muhammed International Airport, Lagos',
+    'Maitama, Abuja',
+    'Asokoro, Abuja',
+    'Wuse 2, Abuja',
+    'Garki, Abuja',
+    'Victoria Island, Lagos',
+    'Lekki Phase 1, Lagos',
+    'Ikeja GRA, Lagos',
+    'Ikoyi, Lagos',
+  ];
+
+  const [hasActiveTripLock, setHasActiveTripLock] = useState(false);
+  const [lockCheckDone, setLockCheckDone]         = useState(false);
 
   const router       = useRouter();
   const isFocused    = useIsFocused();
@@ -190,27 +262,48 @@ export default function HomeScreen() {
 
   const HOTELS_API_URL = `${API_URL}/hotels`;
 
+  const checkActiveTripLock = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) { setHasActiveTripLock(false); setLockCheckDone(true); return; }
+
+      const res = await fetch(`${API_URL}/bookings/user/${userId}/active-lock`);
+      if (!res.ok) { setLockCheckDone(true); return; }
+      const data = await res.json();
+      setHasActiveTripLock(!!data.hasActiveLock);
+    } catch (e) {
+      console.warn('Active-lock check failed:', e);
+    } finally {
+      setLockCheckDone(true);
+    }
+  };
+
   useEffect(() => {
     if (isFocused) {
       AsyncStorage.getItem('userId').then(id => setIsLoggedIn(!!id));
       AsyncStorage.getItem('userName').then(name => {
         if (name) setUserName(name);
       });
+      checkActiveTripLock();
     }
 
     fetch(HOTELS_API_URL)
       .then((res) => res.json())
-      .then((data) => { setHotels(data); setLoading(false); })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setHotels(data);
+        setLoading(false);
+      })
       .catch((err) => { console.error('Fetch error:', err); setLoading(false); });
   }, [isFocused]);
 
-  const getSafeImage = (imageArray: any, index: number) => {
+  const getSafeImage = (item: any, index: number) => {
     const fallbacks = [
       'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000',
       'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1000&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1000&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=1000&auto=format&fit=crop',
     ];
+    const imageArray = item?.images || (item?.image ? [item.image] : []);
     const rawUrl = imageArray?.[0];
     if (!rawUrl || rawUrl.includes('10.') || rawUrl.includes('192.') || rawUrl.includes('localhost') || !rawUrl.startsWith('http')) {
       return fallbacks[index % fallbacks.length];
@@ -218,34 +311,24 @@ export default function HomeScreen() {
     return rawUrl;
   };
 
-  const filteredHotels = hotels.filter((hotel) => {
-    const cityMatch = hotel?.location?.city?.toLowerCase().includes(searchQuery.toLowerCase());
-    const nameMatch = hotel?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return cityMatch || nameMatch;
-  });
-
   const handleSearchPress = () => {
     Keyboard.dismiss();
     scrollViewRef.current?.scrollTo({ y: 360, animated: true });
   };
 
-  const updateGuests = (type: 'rooms' | 'adults' | 'children', operation: 'add' | 'subtract') => {
-    setGuests(prev => {
-      const newValue = operation === 'add' ? prev[type] + 1 : prev[type] - 1;
-      if (newValue < 0) return prev;
-      if (type === 'rooms' && newValue < 1) return prev;
-      if (type === 'adults' && newValue < 1) return prev;
-      return { ...prev, [type]: newValue };
-    });
-  };
-
-  const onDayPress = (day: any) => {
-    if (!startDate || (startDate && endDate)) {
-      setStartDate(day.dateString); setEndDate('');
-    } else if (startDate && !endDate) {
-      if (day.dateString > startDate) setEndDate(day.dateString);
-      else setStartDate(day.dateString);
+  const handleTaxiSearch = () => {
+    if (hasActiveTripLock) {
+      Alert.alert(
+        '🚗 Active Ride in Progress',
+        'You already have an active trip or pending escrow payment. Please complete or cancel it before requesting a new ride.',
+        [{ text: 'View My Trips', onPress: () => router.push('/(tabs)/bookings' as any) }, { text: 'Dismiss', style: 'cancel' }]
+      );
+      return;
     }
+    router.push({
+      pathname: '/taxi-escrow' as any,
+      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime },
+    });
   };
 
   const formatDateDisplay = () => {
@@ -256,14 +339,8 @@ export default function HomeScreen() {
     return `${start} - ${end}`;
   };
 
-  const markedDates: any = {};
-  if (startDate) markedDates[startDate] = { startingDay: true, color: '#000080', textColor: 'white' };
-  if (endDate)   markedDates[endDate]   = { endingDay: true,   color: '#000080', textColor: 'white' };
-
-  // ── Show branded splash while loading ──
   if (loading) return <BrandedLoadingScreen />;
 
-  // Mock deals data
   const topDeals = [
     { id: '1', type: 'Hotel',     name: 'The Blowfish Hotel', price: '95,000', discount: '20% off', imgIndex: 0 },
     { id: '2', type: 'Apartment', name: 'The Blowfish Hotel', price: '95,000', discount: '20% off', imgIndex: 1 },
@@ -271,7 +348,6 @@ export default function HomeScreen() {
     { id: '4', type: 'Apartment', name: 'The Blowfish Hotel', price: '95,000', discount: '10% off', imgIndex: 3 },
   ];
 
-  // Trust bar items
   const trustItems = [
     { icon: 'shield-checkmark', label: 'Verified Partners', sub: 'Strictly vetted luxury properties' },
     { icon: 'lock-closed',       label: 'Escrow-Protected',  sub: 'Funds held until service delivered' },
@@ -282,19 +358,12 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
 
-        {/* ── PREMIUM NAVY HERO HEADER ── */}
         <View style={styles.navyHeader}>
-          {/* Decorative orbs */}
           <View style={styles.orb1} />
           <View style={styles.orb2} />
 
-          {/* Top bar: logo + auth buttons */}
           <View style={styles.headerTop}>
-            <Image
-              source={require('../../assets/images/logo1.png')}
-              style={styles.homeLogo}
-              resizeMode="contain"
-            />
+            <Text style={styles.homeLogoText}>Airgo.ng</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               {isLoggedIn && userName ? (
                 <View style={styles.userBadge}>
@@ -314,47 +383,30 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Headline */}
           <Text style={styles.heroTitle}>Find Your{'\n'}Perfect Stay</Text>
           <Text style={styles.heroSub}>
             Secure luxury hotels & executive lodgings across Nigeria with{' '}
             <Text style={styles.heroEscrow}>Airgo Escrow Protection.</Text>
           </Text>
 
-          {/* Tab Toggle — Luxury Stay / Taxi */}
           <View style={styles.tabToggleRow}>
             <TouchableOpacity
               style={[styles.tabToggleBtn, activeTab === 'stays' && styles.tabToggleActive]}
               onPress={() => setActiveTab('stays')}
             >
-              <Ionicons
-                name="star"
-                size={14}
-                color={activeTab === 'stays' ? '#000080' : '#FFFFFF'}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={[styles.tabToggleText, activeTab === 'stays' && styles.tabToggleTextActive]}>
-                Luxury Stay
-              </Text>
+              <Ionicons name="star" size={14} color={activeTab === 'stays' ? '#000080' : '#FFFFFF'} style={{ marginRight: 5 }} />
+              <Text style={[styles.tabToggleText, activeTab === 'stays' && styles.tabToggleTextActive]}>Luxury Stay</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tabToggleBtn, activeTab === 'taxi' && styles.tabToggleActive]}
               onPress={() => setActiveTab('taxi')}
             >
-              <Ionicons
-                name="car"
-                size={14}
-                color={activeTab === 'taxi' ? '#000080' : '#FFFFFF'}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={[styles.tabToggleText, activeTab === 'taxi' && styles.tabToggleTextActive]}>
-                Taxi
-              </Text>
+              <Ionicons name="car" size={14} color={activeTab === 'taxi' ? '#000080' : '#FFFFFF'} style={{ marginRight: 5 }} />
+              <Text style={[styles.tabToggleText, activeTab === 'taxi' && styles.tabToggleTextActive]}>Taxi</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── SEARCH CONSOLE (floats over header) ── */}
         <View style={styles.searchConsoleContainer}>
           <View style={styles.searchConsole}>
             {activeTab === 'stays' ? (
@@ -391,38 +443,72 @@ export default function HomeScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.taxiConsoleTitle}>Request a Taxi</Text>
-                <View style={styles.taxiInputRow}>
-                  <Ionicons name="location" size={18} color="#000080" style={styles.taxiIcon} />
-                  <TextInput
-                    placeholder="Pickup location..."
-                    placeholderTextColor="#A0AEC0"
-                    style={styles.taxiInput}
-                    value={taxiFrom}
-                    onChangeText={setTaxiFrom}
-                  />
-                </View>
+                <Text style={styles.taxiConsoleTitle}>WHERE DO YOU WANT TO GO?</Text>
+                <TouchableOpacity style={styles.taxiInputRow} onPress={() => { setLocationType('from'); setLocationQuery(''); setShowLocationModal(true); }}>
+                  <Ionicons name="location" size={18} color="#FFB81C" style={styles.taxiIcon} />
+                  <Text style={[styles.taxiInput, { color: taxiFrom ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
+                    {taxiFrom || 'Pickup location...'}
+                  </Text>
+                </TouchableOpacity>
                 <View style={styles.consoleDivider} />
-                <View style={styles.taxiInputRow}>
+                <TouchableOpacity style={styles.taxiInputRow} onPress={() => { setLocationType('to'); setLocationQuery(''); setShowLocationModal(true); }}>
                   <Ionicons name="navigate" size={18} color="#FFB81C" style={styles.taxiIcon} />
-                  <TextInput
-                    placeholder="Destination..."
-                    placeholderTextColor="#A0AEC0"
-                    style={styles.taxiInput}
-                    value={taxiTo}
-                    onChangeText={setTaxiTo}
-                  />
-                </View>
+                  <Text style={[styles.taxiInput, { color: taxiTo ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
+                    {taxiTo || 'Destination...'}
+                  </Text>
+                </TouchableOpacity>
                 <View style={styles.consoleDivider} />
-                <View style={styles.taxiInputRow}>
+                <TouchableOpacity style={styles.taxiInputRow} onPress={() => setShowTaxiDateModal(true)}>
                   <Ionicons name="time-outline" size={18} color="#000080" style={styles.taxiIcon} />
                   <Text style={[styles.taxiInput, { color: taxiDateTime ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
                     {taxiDateTime || 'Select date & time...'}
                   </Text>
                 </View>
-                <TouchableOpacity style={styles.searchButton} onPress={() => {}}>
-                  <Ionicons name="car" size={16} color="#000080" style={{ marginRight: 8 }} />
-                  <Text style={styles.searchButtonText}>Request Ride</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.searchButton,
+                    hasActiveTripLock && styles.searchButtonLocked,
+                  ]}
+                  onPress={() => {
+                    if (hasActiveTripLock) {
+                      Alert.alert(
+                        '🚗 Active Ride in Progress',
+                        'You already have an active trip or pending escrow payment. Please complete or cancel it before requesting a new ride.',
+                        [{ text: 'View My Trips', onPress: () => router.push('/(tabs)/bookings' as any) }, { text: 'Dismiss', style: 'cancel' }]
+                      );
+                      return;
+                    }
+                    if (!taxiFrom.trim()) {
+                      Alert.alert('Missing Info', 'Please enter a pickup location.');
+                      return;
+                    }
+                    if (!taxiTo.trim()) {
+                      Alert.alert('Missing Info', 'Please enter a destination.');
+                      return;
+                    }
+                    if (!taxiDateTime) {
+                      Alert.alert('Missing Info', 'Please select a pickup date and time.');
+                      return;
+                    }
+                    // Navigate to the dedicated Paystack escrow screen
+                    router.push({
+                      pathname: '/taxi-escrow' as any,
+                      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime },
+                    });
+                  }}
+                  disabled={!lockCheckDone}
+                >
+                  {hasActiveTripLock ? (
+                    <>
+                      <Ionicons name="lock-closed" size={15} color="#FFF" style={{ marginRight: 8 }} />
+                      <Text style={[styles.searchButtonText, { color: '#FFF' }]}>Ride in Progress</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="car" size={16} color="#000080" style={{ marginRight: 8 }} />
+                      <Text style={styles.searchButtonText}>Request Ride</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </>
             )}
@@ -491,7 +577,7 @@ export default function HomeScreen() {
                     onPress={() => router.push(`/hotel/${item._id}`)}
                   >
                     <Image
-                      source={{ uri: getSafeImage(item.images, index) }}
+                      source={{ uri: getSafeImage(item, index) }}
                       style={styles.destImage}
                       resizeMode="cover"
                     />
@@ -522,7 +608,7 @@ export default function HomeScreen() {
                     <View key={deal.id} style={styles.propertyCard}>
                       <View style={styles.propertyImageWrap}>
                         <Image
-                          source={{ uri: getSafeImage([], deal.imgIndex) }}
+                          source={{ uri: getSafeImage({ images: [] }, deal.imgIndex) }}
                           style={styles.propertyImage}
                           resizeMode="cover"
                         />
@@ -545,46 +631,58 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.dealsGrid}>
-                  {hotels.slice(0, 6).map((item, index) => (
-                    <TouchableOpacity
-                      key={item._id}
-                      style={styles.propertyCard}
-                      activeOpacity={0.88}
-                      onPress={() => router.push(`/hotel/${item._id}`)}
-                    >
-                      <View style={styles.propertyImageWrap}>
-                        <Image
-                          source={{ uri: getSafeImage(item.images, index) }}
-                          style={styles.propertyImage}
-                          resizeMode="cover"
-                        />
-                        {item.discountPercentage > 0 && (
-                          <View style={styles.discountBadge}>
-                            <Text style={styles.discountText}>{item.discountPercentage}% off</Text>
+                  {hotels.slice(0, 6).map((item, index) => {
+                    const available = isHotelAvailable(item, startDate, endDate);
+                    return (
+                      <TouchableOpacity
+                        key={item._id}
+                        style={[styles.propertyCard, !available && { opacity: 0.65 }]}
+                        activeOpacity={available ? 0.88 : 1}
+                        onPress={() => available ? router.push(`/hotel/${item._id}`) : null}
+                      >
+                        <View style={styles.propertyImageWrap}>
+                          <Image
+                            source={{ uri: getSafeImage(item, index) }}
+                            style={styles.propertyImage}
+                            resizeMode="cover"
+                          />
+                          {/* Sold Out overlay — absolute, mirrors web's bg-black/50 + rotate badge */}
+                          {!available && (
+                            <View style={styles.soldOutOverlay}>
+                              <View style={styles.soldOutBadge}>
+                                <Text style={styles.soldOutText}>SOLD OUT</Text>
+                              </View>
+                            </View>
+                          )}
+                          {/* Discount badge — only shown when available */}
+                          {available && item.discountPercentage > 0 && (
+                            <View style={styles.discountBadge}>
+                              <Text style={styles.discountText}>{item.discountPercentage}% OFF</Text>
+                            </View>
+                          )}
+                          <View style={styles.escrowBadge}>
+                            <Ionicons name="shield-checkmark" size={10} color="#fff" />
+                            <Text style={styles.escrowText}>Escrow</Text>
                           </View>
-                        )}
-                        <View style={styles.escrowBadge}>
-                          <Ionicons name="shield-checkmark" size={10} color="#fff" />
-                          <Text style={styles.escrowText}>Escrow</Text>
                         </View>
-                      </View>
-                      <View style={styles.propertyInfo}>
-                        <Text style={styles.propertyType}>{item.partnerType || 'Hotel'}</Text>
-                        <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
-                        <Text style={styles.propertyLocation} numberOfLines={1}>
-                          <Ionicons name="location-outline" size={11} color="#718096" /> {item.location?.city || 'Nigeria'}
-                        </Text>
-                        <View style={styles.propertyFooter}>
-                          <Text style={styles.propertyPrice}>
-                            ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
+                        <View style={styles.propertyInfo}>
+                          <Text style={styles.propertyType}>{item.partnerType || 'Hotel'}</Text>
+                          <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
+                          <Text style={styles.propertyLocation} numberOfLines={1}>
+                            <Ionicons name="location-outline" size={11} color="#718096" /> {item.location?.city || 'Nigeria'}
                           </Text>
-                          <View style={styles.bookBadge}>
-                            <Text style={styles.bookBadgeText}>Book</Text>
+                          <View style={styles.propertyFooter}>
+                            <Text style={styles.propertyPrice}>
+                              ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
+                            </Text>
+                            <View style={[styles.bookBadge, !available && styles.bookBadgeUnavailable]}>
+                              <Text style={styles.bookBadgeText}>{available ? 'Book' : 'Full'}</Text>
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               )}
             </View>
@@ -611,7 +709,7 @@ export default function HomeScreen() {
                     onPress={() => router.push(`/hotel/${item._id}`)}
                   >
                     <Image
-                      source={{ uri: getSafeImage(item.images, index) }}
+                      source={{ uri: getSafeImage(item, index) }}
                       style={styles.listCardImage}
                       resizeMode="cover"
                     />
@@ -762,6 +860,61 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+      {/* ── TAXI MODALS ── */}
+      {showTaxiDateModal && (
+        <DateTimePicker
+          value={taxiDateObj}
+          mode="datetime"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event, selectedDate) => {
+            if (Platform.OS === 'android') setShowTaxiDateModal(false);
+            if (selectedDate) {
+              setTaxiDateObj(selectedDate);
+              const formatted = selectedDate.toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+              });
+              setTaxiDateTime(formatted);
+            }
+          }}
+        />
+      )}
+
+      <Modal visible={showLocationModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{locationType === 'from' ? 'Pickup Location' : 'Destination'}</Text>
+              <TouchableOpacity onPress={() => setShowLocationModal(false)}>
+                <Ionicons name="close-circle" size={30} color="#CBD5E0" />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={[styles.searchInput, { borderWidth: 1, borderColor: '#EDF2F7', borderRadius: 12, padding: 12, marginBottom: 16 }]}
+              placeholder="Search city, airport, or area..."
+              value={locationQuery}
+              onChangeText={setLocationQuery}
+              autoFocus
+            />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {POPULAR_LOCATIONS.filter(loc => loc.toLowerCase().includes(locationQuery.toLowerCase())).map((loc, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F5FA', flexDirection: 'row', alignItems: 'center' }}
+                  onPress={() => {
+                    if (locationType === 'from') setTaxiFrom(loc);
+                    else setTaxiTo(loc);
+                    setShowLocationModal(false);
+                  }}
+                >
+                  <Ionicons name="location-outline" size={20} color="#A0AEC0" style={{ marginRight: 12 }} />
+                  <Text style={{ fontSize: 16, color: '#2D3748' }}>{loc}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -794,7 +947,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 24,
   },
-  homeLogo: { width: 130, height: 42 },
+  homeLogoText: {
+    color: '#FFF',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
   userBadge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -922,10 +1080,29 @@ const styles = StyleSheet.create({
   },
   propertyImageWrap: { height: 120, position: 'relative' },
   propertyImage: { width: '100%', height: '100%' },
+
+  // ── SOLD OUT overlay ── mirrors web bg-black/50 + rotate-12 badge
+  soldOutOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  soldOutBadge: {
+    backgroundColor: '#C53030', paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 8, transform: [{ rotate: '-12deg' }],
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)',
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, elevation: 8,
+  },
+  soldOutText: {
+    color: '#FFF', fontSize: 10, fontWeight: '900',
+    letterSpacing: 1.5, textTransform: 'uppercase',
+  },
+
   discountBadge: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: '#E53E3E', paddingHorizontal: 7,
     paddingVertical: 3, borderRadius: 8,
+    shadowColor: '#E53E3E', shadowOpacity: 0.5, shadowRadius: 6, elevation: 4,
   },
   discountText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
   escrowBadge: {
@@ -942,7 +1119,11 @@ const styles = StyleSheet.create({
   propertyFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   propertyPrice: { fontSize: 14, fontWeight: '900', color: '#000080' },
   bookBadge: { backgroundColor: '#000080', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  bookBadgeUnavailable: { backgroundColor: '#A0AEC0' },
   bookBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
+
+  // ── LOCKED REQUEST RIDE button ──
+  searchButtonLocked: { backgroundColor: '#4A5568' },
 
   // ── LIST CARD (search results) ──
   listCard: {
