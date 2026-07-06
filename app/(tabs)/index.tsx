@@ -463,7 +463,7 @@ export default function HomeScreen() {
                   <Text style={[styles.taxiInput, { color: taxiDateTime ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
                     {taxiDateTime || 'Select date & time...'}
                   </Text>
-                </View>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.searchButton,
