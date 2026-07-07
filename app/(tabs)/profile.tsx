@@ -245,7 +245,7 @@ export default function ProfileScreen() {
                 {/* 🟢 SUPPORT & LEGAL */}
                 <Text style={styles.sectionTitle}>Support & About</Text>
                 <View style={styles.cardGroup}>
-                    <MenuItem icon="help-buoy-outline" title="Help Center" color="#4A5568" onPress={() => router.push('/profile/help-center' as any)} />
+                    <MenuItem icon="help-buoy-outline" title="Support & AI Help Center" color="#4A5568" onPress={() => router.push('/profile/help-center' as any)} />
                     <View style={styles.divider} />
                     <MenuItem icon="shield-checkmark-outline" title="Terms & Privacy" color="#4A5568" onPress={() => router.push('/profile/terms' as any)} />
                 </View>
