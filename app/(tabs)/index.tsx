@@ -251,7 +251,7 @@ export default function HomeScreen() {
   const [locationType, setLocationType] = useState<'from' | 'to' | ''>('');
   const [locationQuery, setLocationQuery] = useState('');
 
-  const handleUseCurrentLocation = async () => {
+  const handleUseCurrentLocation = async (target: 'stays' | 'taxi' = 'taxi') => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -259,14 +259,26 @@ export default function HomeScreen() {
         return;
       }
       const location = await Location.getCurrentPositionAsync({});
-      setTaxiFrom('Current Location');
+      
+      if (target === 'stays') {
+        setSearchQuery('Current Location');
+      } else {
+        setTaxiFrom('Current Location');
+      }
+
       const reverse = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       });
       if (reverse && reverse.length > 0) {
         const place = reverse[0];
-        setTaxiFrom(`${place.street || place.name || ''} ${place.city || place.subregion || ''}`.trim());
+        const readableLocation = `${place.street || place.name || ''} ${place.city || place.subregion || ''}`.trim();
+        
+        if (target === 'stays') {
+          setSearchQuery(place.city || place.subregion || readableLocation);
+        } else {
+          setTaxiFrom(readableLocation);
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Could not get your location.');
@@ -500,6 +512,13 @@ export default function HomeScreen() {
             {activeTab === 'stays' ? (
               <>
                 <View style={{ zIndex: 10 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080', textTransform: 'uppercase' }}>Hotel, City or Region</Text>
+                    <TouchableOpacity onPress={() => handleUseCurrentLocation('stays')} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+                      <Ionicons name="location" size={12} color="#000080" style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080' }}>Use Current Location</Text>
+                    </TouchableOpacity>
+                  </View>
                   <View style={styles.searchInputRow}>
                     <Ionicons name="search" size={22} color="#000080" style={styles.searchIcon} />
                     <TextInput
@@ -565,7 +584,7 @@ export default function HomeScreen() {
                 <View style={{ zIndex: 20 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                         <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080', textTransform: 'uppercase' }}>Pickup Location</Text>
-                        <TouchableOpacity onPress={handleUseCurrentLocation} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+                        <TouchableOpacity onPress={() => handleUseCurrentLocation('taxi')} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
                             <Ionicons name="location" size={12} color="#000080" style={{ marginRight: 4 }} />
                             <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080' }}>Use Current Location</Text>
                         </TouchableOpacity>
