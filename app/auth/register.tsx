@@ -3,10 +3,16 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
   ScrollView
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -62,6 +68,61 @@ export default function RegisterScreen() {
     }
   };
 
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const idToken = response.authentication?.idToken || response.params?.id_token;
+      if (idToken) {
+        handleBackendGoogleRegister(idToken);
+      }
+    } else if (response?.type === 'error') {
+      setErrorMsg(response.error?.message || 'Failed to authenticate with Google');
+    }
+  }, [response]);
+
+  const handleBackendGoogleRegister = async (idToken: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: idToken })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await AsyncStorage.setItem('userId', data._id || data.userId);
+        await AsyncStorage.setItem('userName', data.name || data.user?.name || 'Traveler');
+        await AsyncStorage.setItem('userEmail', data.email || data.user?.email || '');
+        await AsyncStorage.setItem('userRole', data.role || 'user');
+        if (data.token) {
+          await AsyncStorage.setItem('authToken', data.token);
+        }
+
+        syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
+
+        setSuccessMsg("✅ Signed in with Google successfully! Redirecting...");
+        setTimeout(() => {
+          if (data.role === 'superadmin') {
+            router.replace('/superadmin/dashboard' as any);
+          } else if (data.role === 'partner') {
+            router.replace('/partner/dashboard' as any);
+          } else {
+            router.replace('/(tabs)' as any);
+          }
+        }, 1500);
+      } else {
+        setErrorMsg(data.message || 'Google Sign-Up Failed');
+      }
+    } catch (error) {
+      setErrorMsg('Network Error: Check your connection');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -85,6 +146,17 @@ export default function RegisterScreen() {
                     <Text style={styles.successBannerText}>{successMsg}</Text>
                 </View>
             ) : null}
+
+            <TouchableOpacity style={styles.googleButton} onPress={() => promptAsync()} activeOpacity={0.8}>
+              <Ionicons name="logo-google" size={20} color="#DB4437" style={{ marginRight: 10 }} />
+              <Text style={styles.googleButtonText}>SIGN UP WITH GOOGLE</Text>
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or sign up with email</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
             <Text style={styles.label}>Full Name</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} />
@@ -147,6 +219,13 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 22, fontWeight: 'bold', color: '#1A202C', marginTop: 10 },
   
   card: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: {width:0, height:10}, shadowRadius: 20, elevation: 5, borderWidth: 1, borderColor: '#EDF2F7' },
+  
+  googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', paddingVertical: 14, borderRadius: 14, marginBottom: 20, backgroundColor: '#FAFAFA' },
+  googleButtonText: { color: '#1A202C', fontSize: 14, fontWeight: '700' },
+  
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  dividerText: { color: '#A0AEC0', fontSize: 12, fontWeight: '500', marginHorizontal: 10 },
   
   errorBanner: { backgroundColor: '#FFF5F5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#FED7D7', marginBottom: 15 },
   errorBannerText: { color: '#E53E3E', fontSize: 13, fontWeight: 'bold' },

@@ -248,7 +248,7 @@ export default function HomeScreen() {
   const [taxiDateObj, setTaxiDateObj] = useState(new Date());
 
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locationType, setLocationType] = useState<'from' | 'to'>('from');
+  const [locationType, setLocationType] = useState<'from' | 'to' | ''>('');
   const [locationQuery, setLocationQuery] = useState('');
 
   const handleUseCurrentLocation = async () => {
@@ -856,7 +856,7 @@ export default function HomeScreen() {
           {/* ── SEARCH RESULTS ── */}
           {activeTab === 'stays' && searchQuery && (
             <View style={[styles.section, { paddingHorizontal: 24 }]}>
-              <Text style={styles.sectionTitle}>Results for "{searchQuery}"</Text>
+              <Text style={styles.sectionTitle}>Results for &quot;{searchQuery}&quot;</Text>
               {filteredHotels.length === 0 ? (
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconCircle}>

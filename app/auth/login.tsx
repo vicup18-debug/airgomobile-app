@@ -2,12 +2,16 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, ScrollView
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 import { API_URL } from '../../constants/config';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -64,12 +68,61 @@ export default function LoginScreen() {
     }
   };
 
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      // expo-auth-session uses response.authentication.idToken or response.params.id_token
+      const idToken = response.authentication?.idToken || response.params?.id_token;
+      if (idToken) {
+        handleBackendGoogleLogin(idToken);
+      }
+    } else if (response?.type === 'error') {
+      Alert.alert('Authentication error', response.error?.message || 'Failed to authenticate with Google');
+    }
+  }, [response]);
+
+  const handleBackendGoogleLogin = async (idToken: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: idToken })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await AsyncStorage.setItem('userId', data._id || data.userId);
+        await AsyncStorage.setItem('userName', data.name || data.user?.name || 'Traveler');
+        await AsyncStorage.setItem('userEmail', data.email || data.user?.email || '');
+        await AsyncStorage.setItem('userRole', data.role || 'user');
+        if (data.token) {
+          await AsyncStorage.setItem('authToken', data.token);
+        }
+
+        syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
+
+        if (data.role === 'superadmin') {
+          router.replace('/superadmin/dashboard' as any);
+        } else if (data.role === 'partner') {
+          router.replace('/partner/dashboard' as any);
+        } else {
+          router.replace('/(tabs)' as any);
+        }
+      } else {
+        Alert.alert('Google Sign-In Failed', data.message || 'Invalid credentials');
+      }
+    } catch (error) {
+      Alert.alert('Network Error', 'Check your connection');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Google Sign-In will be available in the next update. Please use your email and password to sign in.',
-      [{ text: 'OK' }]
-    );
+    promptAsync();
   };
 
   return (
