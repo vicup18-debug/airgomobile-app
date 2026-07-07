@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
 
-export default function RegisterScreen() {
+export default function PartnerRegisterScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -40,7 +40,7 @@ export default function RegisterScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name, email, password, phone, role: 'client'
+          name, email, password, phone, role: 'partner'
         })
       });
 
@@ -50,7 +50,7 @@ export default function RegisterScreen() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccessMsg("✅ Account created successfully! Please check your email for a verification link to activate your account. Redirecting...");
+      setSuccessMsg("✅ Partner Account created successfully! Please check your email for verification. Redirecting...");
 
       setTimeout(() => {
         router.push('/auth/login?verifyEmail=true' as any);
@@ -70,7 +70,7 @@ export default function RegisterScreen() {
             <TouchableOpacity onPress={() => router.push('/(tabs)' as any)}>
                 <Text style={styles.logoText}>Airgo<Text style={styles.logoDot}>.ng</Text></Text>
             </TouchableOpacity>
-            <Text style={styles.subtitle}>Create a Client Account</Text>
+            <Text style={styles.subtitle}>Create a Partner Account</Text>
         </View>
 
         <View style={styles.card}>
@@ -86,10 +86,10 @@ export default function RegisterScreen() {
                 </View>
             ) : null}
 
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.label}>Business / Full Name</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} />
 
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={styles.label}>Business Email Address</Text>
             <TextInput style={styles.input} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
 
             <Text style={styles.label}>Phone Number</Text>
@@ -125,12 +125,12 @@ export default function RegisterScreen() {
                 onPress={handleRegister} 
                 disabled={loading || !agreed}
             >
-                {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>Create Account</Text>}
+                {loading ? <ActivityIndicator color="#000080" /> : <Text style={styles.submitBtnText}>Create Partner Account</Text>}
             </TouchableOpacity>
 
             <View style={styles.footerLinks}>
-                <Text style={styles.footerText}>Already have an account? <Text style={styles.footerLink} onPress={() => router.push('/auth/login' as any)}>Sign in</Text></Text>
-                <Text style={[styles.footerText, {marginTop: 10}]}>Want to list your fleet? <Text style={[styles.footerLink, {color: '#FFB81C'}]} onPress={() => router.push('/auth/partner-register' as any)}>Become a Partner</Text></Text>
+                <Text style={styles.footerText}>Already have a partner account? <Text style={styles.footerLink} onPress={() => router.push('/auth/login' as any)}>Sign in</Text></Text>
+                <Text style={[styles.footerText, {marginTop: 10}]}>Looking for a ride or stay? <Text style={[styles.footerLink, {color: '#000080'}]} onPress={() => router.push('/auth/register' as any)}>Sign up as Client</Text></Text>
             </View>
         </View>
       </ScrollView>
@@ -166,9 +166,9 @@ const styles = StyleSheet.create({
   termsText: { flex: 1, fontSize: 12, color: '#4A5568', lineHeight: 18 },
   linkText: { color: '#000080', fontWeight: 'bold' },
   
-  submitBtn: { backgroundColor: '#000080', padding: 16, borderRadius: 12, alignItems: 'center', shadowColor: '#000080', shadowOpacity: 0.3, shadowRadius: 10, elevation: 4 },
+  submitBtn: { backgroundColor: '#FFB81C', padding: 16, borderRadius: 12, alignItems: 'center', shadowColor: '#FFB81C', shadowOpacity: 0.3, shadowRadius: 10, elevation: 4 },
   submitBtnDisabled: { backgroundColor: '#A0AEC0', shadowOpacity: 0, elevation: 0 },
-  submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+  submitBtnText: { color: '#000080', fontSize: 16, fontWeight: '900' },
   
   footerLinks: { marginTop: 24, borderTopWidth: 1, borderTopColor: '#EDF2F7', paddingTop: 24, alignItems: 'center' },
   footerText: { fontSize: 13, color: '#4A5568' },

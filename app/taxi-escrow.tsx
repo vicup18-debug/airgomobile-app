@@ -1,15 +1,7 @@
 /**
  * taxi-escrow.tsx — Dedicated Paystack escrow screen for the taxi ride request flow.
  *
- * Flow:
- *  1. Receives { from, to, dateTime } as route params from the home screen.
- *  2. Fetches user details from AsyncStorage.
- *  3. On mount, POSTs a "Pending Escrow" car booking to the backend.
- *  4. Opens the Paystack WebView for payment.
- *  5. On onSuccess: begins polling the backend (every 3s, max 10 attempts)
- *     to confirm booking transitions to "Paid - Escrow Secured".
- *  6. On confirmed: navigates to /(tabs)/bookings with a success screen.
- *  7. On onCancel: PATCHes the pending booking to Cancelled and pops back.
+ * Refactored to use PaystackProvider & usePaystack hook from version 5+
  */
 
 import {
@@ -20,7 +12,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Paystack } from 'react-native-paystack-webview';
+import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import { API_URL } from '../constants/config';
 
 const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_e3f508dda06464163976ebde1d31f008ee8f524d';
@@ -50,9 +42,10 @@ function extractCity(address: string): string {
   return address.split(',')[0].trim();
 }
 
-export default function TaxiEscrowScreen() {
+function TaxiEscrowContent() {
   const router = useRouter();
   const params = useLocalSearchParams<{ from: string; to: string; dateTime: string }>();
+  const { popup } = usePaystack();
 
   const [phase, setPhase] = useState<'creating' | 'payment' | 'verifying' | 'success' | 'error'>('creating');
   const [booking, setBooking]           = useState<any>(null);
@@ -60,13 +53,39 @@ export default function TaxiEscrowScreen() {
   const [pollCount, setPollCount]       = useState(0);
   const [userEmail, setUserEmail]       = useState('');
 
-  const paystackRef  = useRef<any>(null);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     initBooking();
     return () => { if (pollTimerRef.current) clearTimeout(pollTimerRef.current); };
   }, []);
+
+  // Automatically trigger Paystack checkout when booking is ready
+  useEffect(() => {
+    if (phase === 'payment' && booking) {
+      triggerPayment();
+    }
+  }, [phase, booking]);
+
+  const triggerPayment = () => {
+    if (!booking) return;
+    const amountKobo = priceToKobo(booking.totalPrice || '15000');
+    popup.checkout({
+      email: userEmail || AIRGO_PLATFORM_EMAIL,
+      amount: amountKobo,
+      reference: booking._id,
+      metadata: {
+        custom_fields: [
+          { display_name: 'Booking ID',  variable_name: 'bookingId', value: booking._id },
+          { display_name: 'Service',     variable_name: 'service',   value: 'Taxi Escrow' },
+          { display_name: 'Pickup',      variable_name: 'from',      value: params.from },
+          { display_name: 'Destination', variable_name: 'to',        value: params.to },
+        ],
+      },
+      onCancel: () => handleCancel(),
+      onSuccess: () => { if (booking?._id) startPolling(booking._id); },
+    });
+  };
 
   const initBooking = async () => {
     try {
@@ -221,8 +240,6 @@ export default function TaxiEscrowScreen() {
     );
   }
 
-  const amountKobo = booking ? priceToKobo(booking.totalPrice || '15000') : 1500000;
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
       <View style={styles.header}>
@@ -249,30 +266,29 @@ export default function TaxiEscrowScreen() {
         <Text style={styles.routeDateTime}>{params.dateTime}</Text>
       </View>
 
-      {booking && (
-        <Paystack
-          paystackKey={PAYSTACK_PUBLIC_KEY}
-          billingEmail={userEmail || AIRGO_PLATFORM_EMAIL}
-          amount={amountKobo}
-          currency="NGN"
-          channels={['card', 'bank', 'ussd', 'mobile_money']}
-          refNumber={booking._id}
-          metadata={{
-            custom_fields: [
-              { display_name: 'Booking ID',  variable_name: 'bookingId', value: booking._id },
-              { display_name: 'Service',     variable_name: 'service',   value: 'Taxi Escrow' },
-              { display_name: 'Pickup',      variable_name: 'from',      value: params.from },
-              { display_name: 'Destination', variable_name: 'to',        value: params.to },
-            ],
-          }}
-          onCancel={() => handleCancel()}
-          onSuccess={(_response: any) => { if (booking?._id) startPolling(booking._id); }}
-          ref={paystackRef}
-          autoStart
-          style={styles.paystack}
-        />
+      {phase === 'payment' && (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#000080" />
+          <Text style={styles.statusText}>Waiting for payment to complete...</Text>
+          <Text style={styles.statusSub}>If checkout closed, you can retry using the button below.</Text>
+          <TouchableOpacity
+            style={[styles.successBtn, { marginTop: 24, backgroundColor: '#000080' }]}
+            onPress={triggerPayment}
+          >
+            <Ionicons name="card-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={[styles.successBtnText, { color: '#FFF' }]}>Pay with Paystack</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </SafeAreaView>
+  );
+}
+
+export default function TaxiEscrowScreen() {
+  return (
+    <PaystackProvider publicKey={PAYSTACK_PUBLIC_KEY}>
+      <TaxiEscrowContent />
+    </PaystackProvider>
   );
 }
 
@@ -302,5 +318,4 @@ const styles = StyleSheet.create({
   routeText:    { flex: 1, fontSize: 14, fontWeight: '700', color: '#1A202C' },
   routeLine:    { width: 2, height: 18, backgroundColor: '#E2E8F0', marginLeft: 6, marginVertical: 5 },
   routeDateTime: { fontSize: 12, color: '#718096', fontWeight: '600', marginTop: 10, marginLeft: 24 },
-  paystack:     { flex: 1 },
 });

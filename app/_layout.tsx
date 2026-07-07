@@ -1,6 +1,11 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
+import { LogBox } from 'react-native';
 import { usePushNotifications, checkColdStartNotification } from '../hooks/usePushNotifications';
+
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+]);
 
 export default function RootLayout() {
   // Register FCM device token and notification listeners for the full app session

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { API_URL } from '../../constants/config';
+import { io } from 'socket.io-client';
 
 // ── STATUS ACTIVE CHECK ────────────────────────────────────────────────────
 const ACTIVE_STATUSES = ['Trip Started', 'Paid - Escrow Secured', 'Escrow Active', 'Accepted'];
@@ -127,6 +128,35 @@ export default function DriverDashboard() {
   useEffect(() => { if (isFocused && userId) fetchData(); }, [isFocused, userId]);
 
   const onRefresh = () => { setRefreshing(true); fetchData(); };
+
+  // ── WebSocket Listener ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAvailable) return;
+
+    const socketUrl = API_URL.replace('/api', '');
+    const socket = io(socketUrl, {
+      transports: ['websocket'],
+    });
+
+    socket.on('connect', () => {
+      console.log('Driver connected to WebSocket:', socket.id);
+    });
+
+    socket.on('new_booking_request', (data) => {
+      console.log('New ride request via WS:', data);
+      fetchData(); // Refresh the list of available requests
+      Alert.alert(
+        'New Ride Request! 🚕',
+        'A new ride request is available in your area. Open your feed to claim it!',
+        [{ text: 'View Requests', onPress: () => fetchData() }]
+      );
+    });
+
+    return () => {
+      socket.off('new_booking_request');
+      socket.disconnect();
+    };
+  }, [isAvailable, fetchData]);
 
   // ── Toggle availability ───────────────────────────────────────────────────
   const toggleAvailability = async (val: boolean) => {

@@ -37,6 +37,7 @@ import * as Device from 'expo-device';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../constants/config';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 // ─────────────────────────────────────────────
 // FOREGROUND NOTIFICATION HANDLER
@@ -46,6 +47,8 @@ Notifications.setNotificationHandler({
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
     }),
 });
 
@@ -79,6 +82,12 @@ async function registerTokenWithServer(devicePushToken: string): Promise<void> {
 // PERMISSION + TOKEN RETRIEVAL
 // ─────────────────────────────────────────────
 async function registerForPushNotificationsAsync(): Promise<string | null> {
+    const isExpoGo = Constants?.executionEnvironment === ExecutionEnvironment.StoreClient;
+    if (isExpoGo) {
+        console.log('📡 Airgo FCM: Skipping push token registration on Expo Go (not supported).');
+        return null;
+    }
+
     if (!Device.isDevice) {
         console.log('📡 Airgo FCM: Skipping — running in simulator/emulator.');
         return null;
@@ -233,10 +242,10 @@ export function usePushNotifications() {
         return () => {
             mounted = false;
             if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(notificationListener.current);
+                notificationListener.current.remove();
             }
             if (responseListener.current) {
-                Notifications.removeNotificationSubscription(responseListener.current);
+                responseListener.current.remove();
             }
         };
     }, []);

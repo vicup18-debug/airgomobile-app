@@ -228,7 +228,7 @@ export default function ProfileScreen() {
                                 title="List Your Property"
                                 subtitle="Earn money by hosting on Airgo"
                                 color="#D97706"
-                                onPress={() => router.push('/partner/select-type' as any)}
+                                onPress={() => router.push('/auth/partner-register' as any)}
                             />
                             <View style={styles.divider} />
                             <MenuItem
@@ -236,7 +236,7 @@ export default function ProfileScreen() {
                                 title="Become a Driver"
                                 subtitle="Join Airgo's driver network"
                                 color="#3182CE"
-                                onPress={() => router.push('/info/how-we-work' as any)}
+                                onPress={() => router.push('/auth/partner-register' as any)}
                             />
                         </>
                     )}

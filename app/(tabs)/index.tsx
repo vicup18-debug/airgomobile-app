@@ -10,6 +10,7 @@ import { Calendar } from 'react-native-calendars';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import { API_URL } from '../../constants/config';
 
 const { width } = Dimensions.get('window');
@@ -220,9 +221,19 @@ export default function HomeScreen() {
   const [hotels, setHotels]           = useState<any[]>(FALLBACK_HOTELS);
   const [loading, setLoading]         = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isLoggedIn, setIsLoggedIn]   = useState(false);
   const [userName, setUserName]       = useState('');
   const [activeTab, setActiveTab]     = useState<'stays' | 'taxi'>('stays');
+  const [stayType, setStayType]       = useState<'any' | 'hotel' | 'apartment'>('any');
+
+  const filteredHotels = hotels.filter((hotel: any) => {
+    const query = searchQuery.toLowerCase();
+    const matchesQuery = hotel.name?.toLowerCase().includes(query) || hotel.location?.city?.toLowerCase().includes(query);
+    const hType = (hotel.partnerType || 'hotel').toLowerCase();
+    const matchesType = stayType === 'any' || hType === stayType;
+    return matchesQuery && matchesType;
+  });
 
   const [guests, setGuests]             = useState({ rooms: 1, adults: 2, children: 0 });
   const [showGuestModal, setShowGuestModal]       = useState(false);
@@ -239,6 +250,74 @@ export default function HomeScreen() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationType, setLocationType] = useState<'from' | 'to'>('from');
   const [locationQuery, setLocationQuery] = useState('');
+
+  const handleUseCurrentLocation = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Allow location access to use this feature.');
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      setTaxiFrom('Current Location');
+      const reverse = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
+      });
+      if (reverse && reverse.length > 0) {
+        const place = reverse[0];
+        setTaxiFrom(`${place.street || place.name || ''} ${place.city || place.subregion || ''}`.trim());
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Could not get your location.');
+    }
+  };
+
+  // Calendar range selection states & helpers
+  const onDayPress = (day: any) => {
+    const dateStr = day.dateString;
+    if (!startDate || (startDate && endDate)) {
+      setStartDate(dateStr);
+      setEndDate('');
+    } else {
+      if (new Date(dateStr) < new Date(startDate)) {
+        setStartDate(dateStr);
+        setEndDate('');
+      } else {
+        setEndDate(dateStr);
+      }
+    }
+  };
+
+  const markedDates = (() => {
+    const marked: any = {};
+    if (startDate) {
+      marked[startDate] = { startingDay: true, color: '#000080', textColor: 'white', selected: true };
+    }
+    if (endDate) {
+      marked[endDate] = { endingDay: true, color: '#000080', textColor: 'white', selected: true };
+      
+      let start = new Date(startDate);
+      const end = new Date(endDate);
+      start.setDate(start.getDate() + 1);
+      while (start < end) {
+        const dateString = start.toISOString().split('T')[0];
+        marked[dateString] = { color: 'rgba(0, 0, 128, 0.1)', textColor: '#000080' };
+        start.setDate(start.getDate() + 1);
+      }
+    }
+    return marked;
+  })();
+
+  // Guest counter updater
+  const updateGuests = (key: 'rooms' | 'adults' | 'children', action: 'add' | 'subtract') => {
+    setGuests(prev => {
+      const minVal = key === 'children' ? 0 : 1;
+      const current = prev[key];
+      const nextVal = action === 'add' ? current + 1 : Math.max(minVal, current - 1);
+      return { ...prev, [key]: nextVal };
+    });
+  };
 
   const POPULAR_LOCATIONS = [
     'Nnamdi Azikiwe International Airport, Abuja',
@@ -293,7 +372,7 @@ export default function HomeScreen() {
         if (Array.isArray(data) && data.length > 0) setHotels(data);
         setLoading(false);
       })
-      .catch((err) => { console.error('Fetch error:', err); setLoading(false); });
+      .catch((err) => { console.warn('Fetch error:', err); setLoading(false); });
   }, [isFocused]);
 
   const getSafeImage = (item: any, index: number) => {
@@ -314,6 +393,15 @@ export default function HomeScreen() {
   const handleSearchPress = () => {
     Keyboard.dismiss();
     scrollViewRef.current?.scrollTo({ y: 360, animated: true });
+  };
+
+  const navigateToHotel = (hotelId: string) => {
+    let calculatedNights = 2;
+    if (startDate && endDate) {
+      const diff = new Date(endDate).getTime() - new Date(startDate).getTime();
+      calculatedNights = Math.max(1, Math.round(diff / (1000 * 3600 * 24)));
+    }
+    router.push(`/hotel/${hotelId}?nights=${calculatedNights}`);
   };
 
   const handleTaxiSearch = () => {
@@ -411,17 +499,46 @@ export default function HomeScreen() {
           <View style={styles.searchConsole}>
             {activeTab === 'stays' ? (
               <>
-                <View style={styles.searchInputRow}>
-                  <Ionicons name="search" size={22} color="#000080" style={styles.searchIcon} />
-                  <TextInput
-                    placeholder="Hotel, City or Region..."
-                    placeholderTextColor="#A0AEC0"
-                    style={styles.searchInput}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    returnKeyType="search"
-                    onSubmitEditing={handleSearchPress}
-                  />
+                <View style={{ zIndex: 10 }}>
+                  <View style={styles.searchInputRow}>
+                    <Ionicons name="search" size={22} color="#000080" style={styles.searchIcon} />
+                    <TextInput
+                      placeholder="Hotel, City or Region..."
+                      placeholderTextColor="#A0AEC0"
+                      style={styles.searchInput}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      returnKeyType="search"
+                      onSubmitEditing={handleSearchPress}
+                    />
+                  </View>
+                  {searchQuery.length > 0 && (
+                    <View style={styles.inlineSuggestions}>
+                      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{maxHeight: 150}}>
+                        {POPULAR_LOCATIONS.filter(l => l.toLowerCase().includes(searchQuery.toLowerCase())).map(loc => (
+                          <TouchableOpacity key={loc} style={styles.suggestionItem} onPress={() => { setSearchQuery(loc); handleSearchPress(); }}>
+                            <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
+                            <Text style={styles.suggestionText}>{loc}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.consoleDivider} />
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center'}}>
+                    <Text style={{fontSize: 12, fontWeight: 'bold', color: '#000080'}}>STAY TYPE:</Text>
+                    <View style={{flexDirection: 'row', gap: 10}}>
+                        <TouchableOpacity onPress={() => setStayType('any')} style={{paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: stayType === 'any' ? '#000080' : '#E2E8F0'}}>
+                            <Text style={{fontSize: 12, fontWeight: 'bold', color: stayType === 'any' ? '#FFF' : '#4A5568'}}>Any</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setStayType('hotel')} style={{paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: stayType === 'hotel' ? '#000080' : '#E2E8F0'}}>
+                            <Text style={{fontSize: 12, fontWeight: 'bold', color: stayType === 'hotel' ? '#FFF' : '#4A5568'}}>Hotels</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setStayType('apartment')} style={{paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: stayType === 'apartment' ? '#000080' : '#E2E8F0'}}>
+                            <Text style={{fontSize: 12, fontWeight: 'bold', color: stayType === 'apartment' ? '#FFF' : '#4A5568'}}>Apartments</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
                 <View style={styles.consoleDivider} />
                 <View style={styles.consoleActionsRow}>
@@ -444,19 +561,68 @@ export default function HomeScreen() {
             ) : (
               <>
                 <Text style={styles.taxiConsoleTitle}>WHERE DO YOU WANT TO GO?</Text>
-                <TouchableOpacity style={styles.taxiInputRow} onPress={() => { setLocationType('from'); setLocationQuery(''); setShowLocationModal(true); }}>
-                  <Ionicons name="location" size={18} color="#FFB81C" style={styles.taxiIcon} />
-                  <Text style={[styles.taxiInput, { color: taxiFrom ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
-                    {taxiFrom || 'Pickup location...'}
-                  </Text>
-                </TouchableOpacity>
+                
+                <View style={{ zIndex: 20 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080', textTransform: 'uppercase' }}>Pickup Location</Text>
+                        <TouchableOpacity onPress={handleUseCurrentLocation} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+                            <Ionicons name="location" size={12} color="#000080" style={{ marginRight: 4 }} />
+                            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080' }}>Use Current Location</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.taxiInputRow}>
+                    <Ionicons name="location" size={18} color="#FFB81C" style={styles.taxiIcon} />
+                    <TextInput 
+                        style={styles.taxiInput}
+                        placeholder="Pickup location..."
+                        placeholderTextColor="#A0AEC0"
+                        value={taxiFrom}
+                        onChangeText={(t) => { setTaxiFrom(t); setLocationType('from'); }}
+                        onFocus={() => setLocationType('from')}
+                    />
+                    </View>
+                    {locationType === 'from' && taxiFrom.length > 0 && (
+                        <View style={styles.inlineSuggestions}>
+                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{maxHeight: 150}}>
+                            {POPULAR_LOCATIONS.filter(l => l.toLowerCase().includes(taxiFrom.toLowerCase())).map(loc => (
+                            <TouchableOpacity key={loc} style={styles.suggestionItem} onPress={() => { setTaxiFrom(loc); setLocationType(''); }}>
+                                <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
+                                <Text style={styles.suggestionText}>{loc}</Text>
+                            </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        </View>
+                    )}
+                </View>
+
                 <View style={styles.consoleDivider} />
-                <TouchableOpacity style={styles.taxiInputRow} onPress={() => { setLocationType('to'); setLocationQuery(''); setShowLocationModal(true); }}>
-                  <Ionicons name="navigate" size={18} color="#FFB81C" style={styles.taxiIcon} />
-                  <Text style={[styles.taxiInput, { color: taxiTo ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
-                    {taxiTo || 'Destination...'}
-                  </Text>
-                </TouchableOpacity>
+
+                <View style={{ zIndex: 10 }}>
+                    <View style={styles.taxiInputRow}>
+                    <Ionicons name="navigate" size={18} color="#FFB81C" style={styles.taxiIcon} />
+                    <TextInput 
+                        style={styles.taxiInput}
+                        placeholder="Destination..."
+                        placeholderTextColor="#A0AEC0"
+                        value={taxiTo}
+                        onChangeText={(t) => { setTaxiTo(t); setLocationType('to'); }}
+                        onFocus={() => setLocationType('to')}
+                    />
+                    </View>
+                    {locationType === 'to' && taxiTo.length > 0 && (
+                        <View style={styles.inlineSuggestions}>
+                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{maxHeight: 150}}>
+                            {POPULAR_LOCATIONS.filter(l => l.toLowerCase().includes(taxiTo.toLowerCase())).map(loc => (
+                            <TouchableOpacity key={loc} style={styles.suggestionItem} onPress={() => { setTaxiTo(loc); setLocationType(''); }}>
+                                <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
+                                <Text style={styles.suggestionText}>{loc}</Text>
+                            </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        </View>
+                    )}
+                </View>
+
                 <View style={styles.consoleDivider} />
                 <TouchableOpacity style={styles.taxiInputRow} onPress={() => setShowTaxiDateModal(true)}>
                   <Ionicons name="time-outline" size={18} color="#000080" style={styles.taxiIcon} />
@@ -490,7 +656,6 @@ export default function HomeScreen() {
                       Alert.alert('Missing Info', 'Please select a pickup date and time.');
                       return;
                     }
-                    // Navigate to the dedicated Paystack escrow screen
                     router.push({
                       pathname: '/taxi-escrow' as any,
                       params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime },
@@ -566,7 +731,7 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Suggested Destinations</Text>
-                <Text style={styles.sectionSub}>Most popular travel destinations in Nigeria</Text>
+<Text style={styles.sectionSub}>Most popular travel destinations in Nigeria</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
                 {hotels.slice(0, 4).map((item, index) => (
@@ -574,7 +739,7 @@ export default function HomeScreen() {
                     key={`pop-${item._id}`}
                     style={styles.destCard}
                     activeOpacity={0.85}
-                    onPress={() => router.push(`/hotel/${item._id}`)}
+                    onPress={() => navigateToHotel(item._id)}
                   >
                     <Image
                       source={{ uri: getSafeImage(item, index) }}
@@ -638,7 +803,7 @@ export default function HomeScreen() {
                         key={item._id}
                         style={[styles.propertyCard, !available && { opacity: 0.65 }]}
                         activeOpacity={available ? 0.88 : 1}
-                        onPress={() => available ? router.push(`/hotel/${item._id}`) : null}
+                        onPress={() => available ? navigateToHotel(item._id) : null}
                       >
                         <View style={styles.propertyImageWrap}>
                           <Image
@@ -706,7 +871,7 @@ export default function HomeScreen() {
                     key={item._id}
                     style={styles.listCard}
                     activeOpacity={0.88}
-                    onPress={() => router.push(`/hotel/${item._id}`)}
+                    onPress={() => navigateToHotel(item._id)}
                   >
                     <Image
                       source={{ uri: getSafeImage(item, index) }}
@@ -879,41 +1044,7 @@ export default function HomeScreen() {
         />
       )}
 
-      <Modal visible={showLocationModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { height: '80%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{locationType === 'from' ? 'Pickup Location' : 'Destination'}</Text>
-              <TouchableOpacity onPress={() => setShowLocationModal(false)}>
-                <Ionicons name="close-circle" size={30} color="#CBD5E0" />
-              </TouchableOpacity>
-            </View>
-            <TextInput
-              style={[styles.searchInput, { borderWidth: 1, borderColor: '#EDF2F7', borderRadius: 12, padding: 12, marginBottom: 16 }]}
-              placeholder="Search city, airport, or area..."
-              value={locationQuery}
-              onChangeText={setLocationQuery}
-              autoFocus
-            />
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {POPULAR_LOCATIONS.filter(loc => loc.toLowerCase().includes(locationQuery.toLowerCase())).map((loc, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F5FA', flexDirection: 'row', alignItems: 'center' }}
-                  onPress={() => {
-                    if (locationType === 'from') setTaxiFrom(loc);
-                    else setTaxiTo(loc);
-                    setShowLocationModal(false);
-                  }}
-                >
-                  <Ionicons name="location-outline" size={20} color="#A0AEC0" style={{ marginRight: 12 }} />
-                  <Text style={{ fontSize: 16, color: '#2D3748' }}>{loc}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+
 
     </View>
   );
@@ -1018,6 +1149,9 @@ const styles = StyleSheet.create({
   taxiInputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 8 },
   taxiIcon: { marginRight: 10 },
   taxiInput: { flex: 1, fontSize: 14, color: '#1A202C', fontWeight: '500' },
+  inlineSuggestions: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#FFF', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5, zIndex: 100, borderWidth: 1, borderColor: '#EDF2F7', marginTop: 4 },
+  suggestionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F8F9FA' },
+  suggestionText: { fontSize: 14, color: '#2D3748' },
 
   // ── TRUST BAR ──
   trustBarSection: { marginTop: 20, paddingBottom: 4 },

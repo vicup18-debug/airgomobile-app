@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
 
 export default function HotelDetailsScreen() {
-    const { id } = useLocalSearchParams();
+    const { id, nights = "2" } = useLocalSearchParams();
     const router = useRouter();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export default function HotelDetailsScreen() {
             return;
         }
         // Proceed to checkout page, passing the room info
-        router.push(`/hotel/checkout?id=${id}&roomId=${selectedRoom}`);
+        router.push(`/hotel/checkout?id=${id}&roomId=${selectedRoom}&nights=${nights}`);
     };
 
     return (
