@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from '../../constants/config';
 
 export default function ProfileScreen() {
@@ -134,9 +135,11 @@ export default function ProfileScreen() {
     return (
         <View style={styles.container}>
             {/* 🟢 PREMIUM DEEP BLUE HEADER */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Profile</Text>
-            </View>
+            <SafeAreaView edges={['top']} style={{ backgroundColor: '#000080' }}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>My Profile</Text>
+                </View>
+            </SafeAreaView>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
@@ -330,8 +333,8 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
 
-    header: { backgroundColor: '#000080', paddingTop: 90, paddingBottom: 80, paddingHorizontal: 24, alignItems: 'center' },
-    headerTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
+    header: { backgroundColor: '#000080', paddingTop: 20, paddingBottom: 80, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    headerTitle: { color: '#FFF', fontSize: 22, fontWeight: '900' },
 
     content: { paddingHorizontal: 20, paddingBottom: 40, marginTop: -50 },
 
