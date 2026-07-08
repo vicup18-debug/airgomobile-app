@@ -219,7 +219,7 @@ function isHotelAvailable(hotel: any, checkIn: string, checkOut: string): boolea
 
 export default function HomeScreen() {
   const [hotels, setHotels]           = useState<any[]>(FALLBACK_HOTELS);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading]         = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isLoggedIn, setIsLoggedIn]   = useState(false);
