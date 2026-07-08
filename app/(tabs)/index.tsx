@@ -949,22 +949,29 @@ export default function HomeScreen() {
                 <TouchableOpacity onPress={() => router.push('/info/how-we-work' as any)}>
                   <Text style={styles.footerLink}>How We Work</Text>
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/info/corporate' as any)}>
+                  <Text style={styles.footerLink}>Corporate Solutions</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/info/sustainability' as any)}>
                   <Text style={styles.footerLink}>Sustainability</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.footerCol}>
                 <Text style={styles.footerHeader}>Partners</Text>
-                <TouchableOpacity onPress={() => router.push('/partner/select-type' as any)}>
+                <TouchableOpacity onPress={() => router.push('/auth/partner-register' as any)}>
                   <Text style={[styles.footerLink, { color: '#FFB81C', fontWeight: 'bold' }]}>
                     List your property
                   </Text>
                 </TouchableOpacity>
-                <Text style={styles.footerLink}>Become an affiliate</Text>
+                <TouchableOpacity onPress={() => router.push('/info/affiliate' as any)}>
+                  <Text style={styles.footerLink}>Affiliate Program</Text>
+                </TouchableOpacity>
               </View>
               <View style={styles.footerCol}>
                 <Text style={styles.footerHeader}>Support</Text>
-                <Text style={styles.footerLink}>Help Center</Text>
+                <TouchableOpacity onPress={() => router.push('/info/support' as any)}>
+                  <Text style={styles.footerLink}>Help Center</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/info/terms' as any)}>
                   <Text style={styles.footerLink}>Terms of Service</Text>
                 </TouchableOpacity>
@@ -974,12 +981,19 @@ export default function HomeScreen() {
               </View>
               <View style={styles.footerCol}>
                 <Text style={styles.footerHeader}>Legal</Text>
-                <Text style={styles.footerLink}>Partner dispute</Text>
-                <Text style={styles.footerLink}>Cookie Policy</Text>
+                <TouchableOpacity onPress={() => router.push('/info/escrow-protection' as any)}>
+                  <Text style={styles.footerLink}>Escrow Protection</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/info/partner-dispute' as any)}>
+                  <Text style={styles.footerLink}>Partner Dispute</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/info/cookie-policy' as any)}>
+                  <Text style={styles.footerLink}>Cookie Policy</Text>
+                </TouchableOpacity>
               </View>
             </View>
             <View style={styles.footerDivider} />
-            <Text style={styles.copyrightText}>© 2026 Airgo.ng — All rights reserved.</Text>
+            <Text style={styles.copyrightText}>© {new Date().getFullYear()} Airgo.ng — All rights reserved.</Text>
           </View>
 
         </View>
