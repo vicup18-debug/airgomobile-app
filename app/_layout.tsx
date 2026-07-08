@@ -9,12 +9,14 @@ LogBox.ignoreLogs([
 
 export default function RootLayout() {
   // Register FCM device token and notification listeners for the full app session
-  usePushNotifications();
+  // Temporarily disabled for Expo Go SDK 53
+  // usePushNotifications();
 
   // Handle cold-start deep links: when the app was dead and the user tapped
   // a lock-screen notification, the response is only available after mount.
   useEffect(() => {
-    checkColdStartNotification();
+    // Temporarily disabled for Expo Go SDK 53
+    // checkColdStartNotification();
   }, []);
 
   return (
