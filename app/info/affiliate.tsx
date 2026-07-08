@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -46,7 +46,7 @@ export default function AffiliateProgramScreen() {
 
                 <TouchableOpacity 
                     style={styles.ctaButton} 
-                    onPress={() => router.push('/auth/register' as any)}
+                    onPress={() => Linking.openURL('https://airgo.ng/affiliate')}
                 >
                     <Text style={styles.ctaText}>Become an Affiliate Today</Text>
                 </TouchableOpacity>
