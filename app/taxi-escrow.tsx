@@ -102,6 +102,34 @@ function TaxiEscrowContent() {
 
       setUserEmail(email);
 
+      let finalPrice = 15000;
+      let calculatedDistance = 0;
+
+      try {
+        const resFrom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(params.from)}&countrycodes=ng&limit=1`);
+        const dataFrom = await resFrom.json();
+        
+        const resTo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(params.to)}&countrycodes=ng&limit=1`);
+        const dataTo = await resTo.json();
+
+        if (dataFrom && dataFrom.length > 0 && dataTo && dataTo.length > 0) {
+          const start = [parseFloat(dataFrom[0].lat), parseFloat(dataFrom[0].lon)];
+          const end = [parseFloat(dataTo[0].lat), parseFloat(dataTo[0].lon)];
+
+          const resRoute = await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=false`);
+          const dataRoute = await resRoute.json();
+
+          if (dataRoute && dataRoute.routes && dataRoute.routes.length > 0) {
+            calculatedDistance = parseFloat((dataRoute.routes[0].distance / 1000).toFixed(1));
+            // Dynamic Pricing Formula: ₦1,000 Base Fare + ₦500 per km
+            finalPrice = 1000 + (calculatedDistance * 500);
+            finalPrice = Math.round(finalPrice / 100) * 100; // round to nearest 100
+          }
+        }
+      } catch (e) {
+        console.warn('Distance calculation failed, falling back to default price', e);
+      }
+
       const payload = {
         userId,
         itemId:          'airgo_direct',
@@ -111,7 +139,7 @@ function TaxiEscrowContent() {
         checkIn:         params.dateTime,
         checkOut:        params.dateTime,
         guests:          1,
-        totalPrice:      '15000',
+        totalPrice:      finalPrice.toString(),
         status:          'Pending Escrow',
         clientName:      userName  || 'Airgo Client',
         clientEmail:     email,
