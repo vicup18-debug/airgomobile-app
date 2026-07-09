@@ -4,7 +4,7 @@
     "slug": "airgo-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.jpg",
+    "icon": "./assets/images/logo1.png",
     "scheme": "airgo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -16,7 +16,6 @@
     "android": {
       "package": "ng.airgo.app",
       "versionCode": 1,
-      "targetSdkVersion": 35,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/logo1.png",
