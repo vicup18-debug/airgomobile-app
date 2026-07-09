@@ -6,12 +6,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
+import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 import { API_URL } from '../../constants/config';
-// import * as WebBrowser from 'expo-web-browser';
-// import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 
-// WebBrowser.maybeCompleteAuthSession();
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -47,9 +47,9 @@ export default function LoginScreen() {
           await AsyncStorage.setItem('authToken', data.token);
         }
 
-        // syncPushTokenAfterLogin().catch(e =>
-        //   console.warn('FCM post-login sync failed:', e)
-        // );
+        syncPushTokenAfterLogin().catch(e =>
+          console.warn('FCM post-login sync failed:', e)
+        );
 
         if (data.role === 'superadmin') {
           router.replace('/superadmin/dashboard' as any);
@@ -68,7 +68,6 @@ export default function LoginScreen() {
     }
   };
 
-  /*
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
   });
@@ -103,7 +102,7 @@ export default function LoginScreen() {
           await AsyncStorage.setItem('authToken', data.token);
         }
 
-        // syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
+        syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
 
         if (data.role === 'superadmin') {
           router.replace('/superadmin/dashboard' as any);
@@ -121,10 +120,9 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
-  */
 
   const handleGoogleSignIn = () => {
-    Alert.alert('Notice', 'Google Sign-In requires a Custom Development Build in Expo SDK 53.');
+    promptAsync();
   };
 
   return (

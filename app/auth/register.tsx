@@ -7,12 +7,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
-// import * as WebBrowser from 'expo-web-browser';
-// import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
+import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 
-// WebBrowser.maybeCompleteAuthSession();
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -68,7 +68,6 @@ export default function RegisterScreen() {
     }
   };
 
-  /*
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
   });
@@ -102,7 +101,7 @@ export default function RegisterScreen() {
           await AsyncStorage.setItem('authToken', data.token);
         }
 
-        // syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
+        syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
 
         setSuccessMsg("✅ Signed in with Google successfully! Redirecting...");
         setTimeout(() => {
@@ -122,11 +121,6 @@ export default function RegisterScreen() {
     } finally {
       setLoading(false);
     }
-  };
-  */
-
-  const promptAsync = () => {
-    alert('Google Sign-In requires a Custom Development Build in Expo SDK 53.');
   };
 
   return (
