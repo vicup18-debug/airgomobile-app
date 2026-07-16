@@ -63,7 +63,8 @@ export default function PartnerRegisterScreen() {
         const formData = new FormData();
         const filename = documentUri.split('/').pop() || 'upload.jpg';
         const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image`;
+        let type = match ? `image/${match[1]}` : `image`;
+        if (type === 'image/jpg') type = 'image/jpeg';
 
         formData.append('file', { uri: documentUri, name: filename, type } as any);
         formData.append('upload_preset', 'airgo_fleet');
