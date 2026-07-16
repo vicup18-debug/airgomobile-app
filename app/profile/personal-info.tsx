@@ -1,13 +1,108 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import Toast from 'react-native-toast-message';
+import { API_URL } from '../../constants/config';
 
 export default function PersonalInfoScreen() {
     const router = useRouter();
-    const [name, setName] = useState('ThankGod Gabriel');
-    const [email, setEmail] = useState('vicup18@gmail.com');
-    const [phone, setPhone] = useState('+234 812 345 6789');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [profileImage, setProfileImage] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadUserData();
+    }, []);
+
+    const loadUserData = async () => {
+        try {
+            const uid = await AsyncStorage.getItem('userId');
+            if (uid) {
+                setUserId(uid);
+                const userName = await AsyncStorage.getItem('userName');
+                const userEmail = await AsyncStorage.getItem('userEmail');
+                const userPhone = await AsyncStorage.getItem('userPhone') || '';
+                const userImage = await AsyncStorage.getItem('profileImageUrl');
+                
+                setName(userName || '');
+                setEmail(userEmail || '');
+                setPhone(userPhone);
+                if (userImage) {
+                    setProfileImage(`${API_URL.replace('/api', '')}${userImage}`);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load user data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0].base64) {
+            const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+            setProfileImage(base64Image); // show preview immediately
+        }
+    };
+
+    const handleSave = async () => {
+        if (!userId) return;
+        setSaving(true);
+        try {
+            const payload: any = { name, email, phoneNumber: phone };
+            if (profileImage && profileImage.startsWith('data:image/')) {
+                payload.profileImage = profileImage;
+            }
+
+            const response = await fetch(`${API_URL}/auth/profile/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                await AsyncStorage.setItem('userName', name);
+                await AsyncStorage.setItem('userEmail', email);
+                await AsyncStorage.setItem('userPhone', phone);
+                if (data.user?.profileImageUrl) {
+                    await AsyncStorage.setItem('profileImageUrl', data.user.profileImageUrl);
+                }
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Profile updated successfully!' });
+                router.back();
+            } else {
+                Toast.show({ type: 'error', text1: 'Update Failed', text2: data.message || 'Something went wrong.' });
+            }
+        } catch (error) {
+            console.error('Profile update error:', error);
+            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection.' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#004A99" />
+            </View>
+        );
+    }
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
@@ -22,8 +117,12 @@ export default function PersonalInfoScreen() {
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.avatarSection}>
                     <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarText}>{name.charAt(0)}</Text>
-                        <TouchableOpacity style={styles.editAvatarBtn}>
+                        {profileImage ? (
+                            <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
+                        )}
+                        <TouchableOpacity style={styles.editAvatarBtn} onPress={handlePickImage}>
                             <Ionicons name="camera" size={14} color="#FFF" />
                         </TouchableOpacity>
                     </View>
@@ -44,8 +143,8 @@ export default function PersonalInfoScreen() {
                     <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
                 </View>
 
-                <TouchableOpacity style={styles.saveBtn} onPress={() => router.back()}>
-                    <Text style={styles.saveBtnText}>Save Changes</Text>
+                <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
+                    {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
                 </TouchableOpacity>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -66,6 +165,7 @@ const styles = StyleSheet.create({
         width: 100, height: 100, borderRadius: 50, backgroundColor: '#E2E8F0',
         justifyContent: 'center', alignItems: 'center', position: 'relative'
     },
+    avatarImage: { width: 100, height: 100, borderRadius: 50 },
     avatarText: { fontSize: 40, fontWeight: 'bold', color: '#004A99' },
     editAvatarBtn: {
         position: 'absolute', bottom: 0, right: 0, backgroundColor: '#FFB81C',

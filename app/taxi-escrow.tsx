@@ -6,13 +6,14 @@
 
 import {
   View, Text, StyleSheet, ActivityIndicator,
-  TouchableOpacity, Alert, SafeAreaView,
+  TouchableOpacity, SafeAreaView,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
+import Toast from 'react-native-toast-message';
 import { API_URL } from '../constants/config';
 
 const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_e3f508dda06464163976ebde1d31f008ee8f524d';
@@ -34,6 +35,7 @@ function priceToKobo(priceStr: string): number {
 }
 
 function extractCity(address: string): string {
+  if (!address) return 'Unknown';
   const known = ['Abuja', 'Lagos', 'Port Harcourt', 'Kano', 'Ibadan', 'Enugu', 'Kaduna', 'Benin City'];
   const lower = address.toLowerCase();
   for (const city of known) {
@@ -106,10 +108,17 @@ function TaxiEscrowContent() {
       let calculatedDistance = 0;
 
       try {
-        const resFrom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(params.from)}&countrycodes=ng&limit=1`);
+        const safeFrom = params?.from || '';
+        const safeTo = params?.to || '';
+
+        const resFrom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(safeFrom)}&countrycodes=ng&limit=1`, {
+          headers: { 'User-Agent': 'AirgoHotelBookingApp/1.0', 'Accept': 'application/json' }
+        });
         const dataFrom = await resFrom.json();
         
-        const resTo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(params.to)}&countrycodes=ng&limit=1`);
+        const resTo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(safeTo)}&countrycodes=ng&limit=1`, {
+          headers: { 'User-Agent': 'AirgoHotelBookingApp/1.0', 'Accept': 'application/json' }
+        });
         const dataTo = await resTo.json();
 
         if (dataFrom && dataFrom.length > 0 && dataTo && dataTo.length > 0) {
@@ -133,20 +142,20 @@ function TaxiEscrowContent() {
       const payload = {
         userId,
         itemId:          'airgo_direct',
-        itemName:        `Taxi: ${params.from} -> ${params.to}`,
+        itemName:        `Taxi: ${params?.from || 'Unknown'} -> ${params?.to || 'Unknown'}`,
         itemType:        'car',
         partnerId:       'airgo_direct',
-        checkIn:         params.dateTime,
-        checkOut:        params.dateTime,
+        checkIn:         params?.dateTime || new Date().toISOString(),
+        checkOut:        params?.dateTime || new Date().toISOString(),
         guests:          1,
         totalPrice:      finalPrice.toString(),
         status:          'Pending Escrow',
         clientName:      userName  || 'Airgo Client',
         clientEmail:     email,
         clientPhone:     userPhone || '',
-        deliveryAddress: params.from,
-        city:            extractCity(params.from),
-        dropoffAddress:  params.to,
+        deliveryAddress: params?.from || 'Unknown',
+        city:            extractCity(params?.from || ''),
+        dropoffAddress:  params?.to || 'Unknown',
       };
 
       const res  = await fetch(`${API_URL}/bookings`, {
@@ -190,11 +199,12 @@ function TaxiEscrowContent() {
       if (attempts < MAX_POLL_ATTEMPTS) {
         pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
       } else {
-        Alert.alert(
-          'Payment Submitted',
-          'Your payment was submitted. We are confirming your escrow. Check My Trips for the live status.',
-          [{ text: 'View My Trips', onPress: () => router.replace('/(tabs)/bookings' as any) }]
-        );
+        Toast.show({ 
+          type: 'success', 
+          text1: 'Payment Submitted', 
+          text2: 'Your payment was submitted. We are confirming your escrow. Check My Trips for the live status.' 
+        });
+        setTimeout(() => router.replace('/(tabs)/bookings' as any), 3000);
       }
     };
 

@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 
 export default function AddHotelScreen() {
     const router = useRouter();
@@ -19,15 +20,12 @@ export default function AddHotelScreen() {
     const handleSubmit = () => {
         // Validation check
         if (!hotelName || !email || !city) {
-            Alert.alert("Missing Fields", "Please fill in the required hotel details.");
+            Toast.show({ type: 'error', text1: 'Missing Fields', text2: 'Please fill in the required hotel details.' });
             return;
         }
 
-        Alert.alert(
-            "Registration Submitted",
-            "Note: after submitting, email needs to be verified before proceeding to next steps.",
-            [{ text: "OK", onPress: () => router.push('/partner/dashboard' as any) }]
-        );
+        Toast.show({ type: 'success', text1: 'Registration Submitted', text2: 'Note: after submitting, email needs to be verified before proceeding to next steps.' });
+        setTimeout(() => router.push('/partner/dashboard' as any), 2000);
         // Next step: we will hook this up to your 10.47.238.149 backend!
     };
 

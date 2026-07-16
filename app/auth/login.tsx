@@ -2,16 +2,19 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image, ScrollView
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 import { API_URL } from '../../constants/config';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-WebBrowser.maybeCompleteAuthSession();
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
+  // offlineAccess: true,
+});
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -19,6 +22,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const params = useLocalSearchParams<{ verifyEmail?: string }>();
+  const [pendingApprovalMsg, setPendingApprovalMsg] = useState('');
 
   const LOGIN_API_URL = `${API_URL}/auth/login`;
 
@@ -38,11 +45,13 @@ export default function LoginScreen() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        await AsyncStorage.setItem('userId', data._id || data.userId);
-        await AsyncStorage.setItem('userName', data.name || data.user?.name || 'Traveler');
-        await AsyncStorage.setItem('userEmail', data.email || email);
-        await AsyncStorage.setItem('userRole', data.role || 'user');
+      if (response.status === 429) {
+        Toast.show({ type: 'error', text1: 'Account Locked', text2: 'Too many failed attempts. Please try again in 15 minutes.' });
+      } else if (response.ok) {
+        await AsyncStorage.setItem('userId', String(data._id || data.userId || ''));
+        await AsyncStorage.setItem('userName', String(data.name || data.user?.name || 'Traveler'));
+        await AsyncStorage.setItem('userEmail', String(data.email || email || ''));
+        await AsyncStorage.setItem('userRole', String(data.role || 'user'));
         if (data.token) {
           await AsyncStorage.setItem('authToken', data.token);
         }
@@ -59,30 +68,63 @@ export default function LoginScreen() {
           router.replace('/(tabs)' as any);
         }
       } else {
-        Alert.alert('Login Failed', data.message || 'Invalid credentials');
+        Toast.show({ type: 'error', text1: 'Login Failed', text2: data.message || 'Invalid credentials' });
+        if (response.status === 403 && data.message?.toLowerCase().includes('pending approval')) {
+          setPendingApprovalMsg(data.message);
+        } else if (response.status === 403 && data.message?.toLowerCase().includes('verify')) {
+          setShowResend(true);
+        } else {
+          setShowResend(false);
+        }
       }
     } catch (error) {
-      Alert.alert('Network Error', 'Check your connection');
+      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection' });
     } finally {
       setLoading(false);
     }
   };
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
-  });
+  const handleResendEmail = async () => {
+    if (!email) return;
+    setResendLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        Toast.show({ type: 'success', text1: 'Verification Sent', text2: 'Please check your email inbox.' });
+        setShowResend(false);
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: data.message || 'Failed to resend email.' });
+      }
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection.' });
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
-  useEffect(() => {
-    if (response?.type === 'success') {
-      // expo-auth-session uses response.authentication.idToken or response.params.id_token
-      const idToken = response.authentication?.idToken || response.params?.id_token;
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken || response.idToken;
+      
       if (idToken) {
         handleBackendGoogleLogin(idToken);
+      } else {
+        Toast.show({ type: 'error', text1: 'Authentication Error', text2: 'No ID token returned' });
+        setLoading(false);
       }
-    } else if (response?.type === 'error') {
-      Alert.alert('Authentication error', response.error?.message || 'Failed to authenticate with Google');
+    } catch (error: any) {
+      setLoading(false);
+      Toast.show({ type: 'error', text1: 'Sign in failed', text2: error.message || 'Could not connect to Google' });
     }
-  }, [response]);
+  };
 
   const handleBackendGoogleLogin = async (idToken: string) => {
     setLoading(true);
@@ -94,10 +136,10 @@ export default function LoginScreen() {
       });
       const data = await res.json();
       if (res.ok) {
-        await AsyncStorage.setItem('userId', data._id || data.userId);
-        await AsyncStorage.setItem('userName', data.name || data.user?.name || 'Traveler');
-        await AsyncStorage.setItem('userEmail', data.email || data.user?.email || '');
-        await AsyncStorage.setItem('userRole', data.role || 'user');
+        await AsyncStorage.setItem('userId', String(data._id || data.userId || ''));
+        await AsyncStorage.setItem('userName', String(data.name || data.user?.name || 'Traveler'));
+        await AsyncStorage.setItem('userEmail', String(data.email || data.user?.email || ''));
+        await AsyncStorage.setItem('userRole', String(data.role || 'user'));
         if (data.token) {
           await AsyncStorage.setItem('authToken', data.token);
         }
@@ -112,18 +154,16 @@ export default function LoginScreen() {
           router.replace('/(tabs)' as any);
         }
       } else {
-        Alert.alert('Google Sign-In Failed', data.message || 'Invalid credentials');
+        Toast.show({ type: 'error', text1: 'Google Sign-In Failed', text2: data.message || 'Invalid credentials' });
       }
     } catch (error) {
-      Alert.alert('Network Error', 'Check your connection');
+      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection' });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    promptAsync();
-  };
+
 
   return (
     <KeyboardAvoidingView
@@ -160,6 +200,25 @@ export default function LoginScreen() {
 
         {/* ── WHITE CARD FORM ── */}
         <View style={styles.card}>
+
+          {params.verifyEmail === 'true' && (
+            <View style={{ backgroundColor: '#EBF8FF', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: '#BEE3F8' }}>
+              <Text style={{ color: '#2B6CB0', fontSize: 14, textAlign: 'center', fontWeight: '500' }}>
+                Account created successfully! Please check your email to verify your account before logging in.
+              </Text>
+            </View>
+          )}
+
+          {pendingApprovalMsg ? (
+            <View style={{ backgroundColor: '#FEFCBF', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: '#F6E05E' }}>
+              <Text style={{ color: '#975A16', fontSize: 14, textAlign: 'center', fontWeight: 'bold', marginBottom: 4 }}>
+                Approval Pending
+              </Text>
+              <Text style={{ color: '#975A16', fontSize: 13, textAlign: 'center' }}>
+                {pendingApprovalMsg}
+              </Text>
+            </View>
+          ) : null}
 
           {/* Google Button */}
           <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn} activeOpacity={0.8}>
@@ -232,6 +291,24 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
+          {/* Resend Verification Email Button */}
+          {showResend && (
+            <TouchableOpacity
+              style={styles.resendButton}
+              onPress={handleResendEmail}
+              disabled={resendLoading}
+              activeOpacity={0.85}
+            >
+              {resendLoading ? (
+                <ActivityIndicator color="#000080" />
+              ) : (
+                <Text style={styles.resendButtonText}>
+                  Resend Verification Email
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+
           {/* Register redirect */}
           <TouchableOpacity
             style={styles.footerLink}
@@ -250,6 +327,8 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
+  resendButton: { marginTop: 15, paddingVertical: 12, backgroundColor: '#EDF2F7', borderRadius: 8, alignItems: 'center' },
+  resendButtonText: { color: '#000080', fontWeight: 'bold' },
 
   // ── Navy header ──
   header: {

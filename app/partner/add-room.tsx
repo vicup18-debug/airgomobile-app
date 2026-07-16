@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import Toast from 'react-native-toast-message';
 
 export default function AddRoomScreen() {
     const router = useRouter();
@@ -18,7 +19,7 @@ export default function AddRoomScreen() {
         // Request gallery permissions
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (permissionResult.granted === false) {
-            Alert.alert('Permission Required', 'You need to allow access to your photos to upload room images.');
+            Toast.show({ type: 'error', text1: 'Permission Required', text2: 'You need to allow access to your photos to upload room images.' });
             return;
         }
 
@@ -35,10 +36,7 @@ export default function AddRoomScreen() {
             // Note: Expo's allowsEditing sometimes resizes images on older phones, 
             // but in production with raw uploads, this strictly guards the dimensions.
             if (asset.width < 1080 || asset.height < 1080) { // Using 1080x1080 as a safe square/HD minimum check
-                Alert.alert(
-                    'Quality Assurance Failed',
-                    'This image resolution is too low. Airgo requires high-definition images (Minimum 1920x1080) to maintain platform quality.'
-                );
+                Toast.show({ type: 'error', text1: 'Quality Assurance Failed', text2: 'This image resolution is too low. Airgo requires high-definition images (Minimum 1920x1080) to maintain platform quality.' });
                 return;
             }
 
@@ -55,11 +53,8 @@ export default function AddRoomScreen() {
 
     const handleSubmit = () => {
         if (!isFormValid) return;
-        Alert.alert(
-            'Room Submitted',
-            'Your room has been submitted and is pending Superadmin QA approval.',
-            [{ text: 'OK', onPress: () => router.back() }]
-        );
+        Toast.show({ type: 'success', text1: 'Room Submitted', text2: 'Your room has been submitted and is pending Superadmin QA approval.' });
+        setTimeout(() => router.back(), 2000);
     };
 
     return (

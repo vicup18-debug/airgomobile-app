@@ -4,13 +4,15 @@
  */
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, Share, Clipboard
+  ActivityIndicator, RefreshControl, Share
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
+import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
 
 function maskEmail(email: string): string {
@@ -81,11 +83,11 @@ export default function AffiliateDashboard() {
   useEffect(() => { if (isFocused && userId) fetchData(); }, [isFocused, userId]);
   const onRefresh = () => { setRefreshing(true); fetchData(); };
 
-  const handleCopy = () => {
-    Clipboard.setString(referralLink);
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(referralLink);
     setCopied(true);
+    Toast.show({ type: 'success', text1: 'Copied!', text2: 'Your referral link has been copied to clipboard.' });
     setTimeout(() => setCopied(false), 2000);
-    Alert.alert('Copied!', 'Your referral link has been copied to clipboard.');
   };
 
   const handleShare = async () => {
@@ -234,7 +236,7 @@ export default function AffiliateDashboard() {
         {/* ── PAYOUT REQUEST ── */}
         <TouchableOpacity
           style={styles.payoutBtn}
-          onPress={() => Alert.alert('Payout Request', 'Payouts are processed on the 1st of every month. Your next payout will be automatically sent to your registered bank account.')}
+          onPress={() => Toast.show({ type: 'info', text1: 'Payout Request', text2: 'Payouts are processed on the 1st of every month. Your next payout will be automatically sent to your registered bank account.' })}
         >
           <Ionicons name="wallet-outline" size={20} color="#000080" />
           <Text style={styles.payoutBtnText}>Request Payout</Text>

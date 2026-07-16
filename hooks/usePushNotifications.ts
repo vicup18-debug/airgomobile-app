@@ -182,6 +182,10 @@ export function handleNotificationTap(rawData: any): void {
         case 'bid_received':
             router.push('/partner/dashboard' as any);
             break;
+            
+        case 'ride_request':
+            router.push('/driver/dashboard' as any);
+            break;
 
         // ── General booking status updates ───────────────────────────────
         case 'payment_confirmed':

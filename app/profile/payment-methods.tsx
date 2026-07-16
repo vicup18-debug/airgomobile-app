@@ -1,9 +1,33 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
-export default function PaymentMethodsScreen() {
+const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_e3f508dda06464163976ebde1d31f008ee8f524d';
+
+function PaymentMethodsContent() {
     const router = useRouter();
+    const { popup } = usePaystack();
+    const [userEmail, setUserEmail] = useState('');
+
+    useEffect(() => {
+        AsyncStorage.getItem('userEmail').then(email => {
+            if (email) setUserEmail(email);
+        });
+    }, []);
+
+    const handleAddPaymentMethod = () => {
+        popup.checkout({
+            email: userEmail || 'user@example.com',
+            amount: 5000,
+            reference: `token_${new Date().getTime()}`,
+            onCancel: () => Toast.show({ type: 'error', text1: 'Cancelled', text2: 'Payment method addition cancelled.' }),
+            onSuccess: () => Toast.show({ type: 'success', text1: 'Success', text2: 'Payment method added successfully!' }),
+        });
+    };
 
     return (
         <View style={styles.container}>
@@ -31,7 +55,7 @@ export default function PaymentMethodsScreen() {
                     <Ionicons name="checkmark-circle" size={24} color="#38A169" />
                 </View>
 
-                <TouchableOpacity style={styles.addCardBtn}>
+                <TouchableOpacity style={styles.addCardBtn} onPress={handleAddPaymentMethod}>
                     <Ionicons name="add-circle-outline" size={20} color="#004A99" style={{ marginRight: 8 }} />
                     <Text style={styles.addCardText}>Add New Payment Method</Text>
                 </TouchableOpacity>
@@ -42,6 +66,14 @@ export default function PaymentMethodsScreen() {
                 </View>
             </ScrollView>
         </View>
+    );
+}
+
+export default function PaymentMethodsScreen() {
+    return (
+        <PaystackProvider publicKey={PAYSTACK_PUBLIC_KEY}>
+            <PaymentMethodsContent />
+        </PaystackProvider>
     );
 }
 

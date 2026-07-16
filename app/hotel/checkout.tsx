@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
 
 export default function CheckoutScreen() {
@@ -19,8 +19,9 @@ export default function CheckoutScreen() {
     const basePrice = hotel?.pricePerNight || 85000; // Use database price if available
     const subtotal = basePrice * stayNights;
 
-    // CLIENT REQUEST: "Fees" at 10%
-    const fee = subtotal * 0.10;
+    // CLIENT REQUEST: 11% for 1-2 days, 15% for 3 or more days
+    const feeRate = stayNights >= 3 ? 0.15 : 0.11;
+    const fee = subtotal * feeRate;
     const totalDue = subtotal + fee;
 
     useEffect(() => {
@@ -49,7 +50,7 @@ export default function CheckoutScreen() {
         try {
             const userId = await AsyncStorage.getItem('userId');
             if (!userId) {
-                Alert.alert("Wait!", "You must be signed in to book a room.");
+                Toast.show({ type: 'error', text1: 'Wait!', text2: 'You must be signed in to book a room.' });
                 router.push('/auth/login' as any);
                 return;
             }
@@ -71,11 +72,11 @@ export default function CheckoutScreen() {
             });
 
             if (response.ok) {
-                Alert.alert("Payment Successful!", "Your room is officially booked.");
+                Toast.show({ type: 'success', text1: 'Payment Successful!', text2: 'Your room is officially booked.' });
                 router.replace('/(tabs)/bookings' as any);
             }
         } catch (error) {
-            Alert.alert("Error", "Could not process booking. Try again.");
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Could not process booking. Try again.' });
         } finally {
             setIsProcessing(false);
         }

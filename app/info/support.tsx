@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert, Linking, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Linking, Image } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
 
 interface FAQ {
@@ -43,7 +44,7 @@ export default function SupportScreen() {
 
     const handleSendMessage = async () => {
         if (!name || !email || !message) {
-            Alert.alert('Error', 'Please fill in all fields before sending.');
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Please fill in all fields before sending.' });
             return;
         }
         setIsSending(true);
@@ -55,13 +56,13 @@ export default function SupportScreen() {
             });
             const data = await response.json();
             if (response.ok) {
-                Alert.alert('Success', '✅ Support message sent successfully! Our concierge team will get back to you shortly.');
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Support message sent successfully! Our concierge team will get back to you shortly.' });
                 setName(''); setEmail(''); setMessage('');
             } else {
-                Alert.alert('Error', `⚠️ ${data.message || 'Failed to send message.'}`);
+                Toast.show({ type: 'error', text1: 'Error', text2: data.message || 'Failed to send message.' });
             }
         } catch (error) {
-            Alert.alert('Network Error', '⚠️ Please check your connection and try again.');
+            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection and try again.' });
         } finally {
             setIsSending(false);
         }

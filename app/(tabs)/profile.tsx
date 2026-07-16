@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, TextInput, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, TextInput, Modal, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -6,6 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from '../../constants/config';
+import Toast from 'react-native-toast-message';
+import CustomAlertModal from '../../components/ui/CustomAlertModal';
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -13,6 +15,7 @@ export default function ProfileScreen() {
     const [userName, setUserName] = useState('Airgo Traveler');
     const [userRole, setUserRole] = useState('user');
     const [userEmail, setUserEmail] = useState('');
+    const [profileImage, setProfileImage] = useState<string | null>(null);
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
     // Delete account modal state
@@ -21,15 +24,20 @@ export default function ProfileScreen() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState('');
 
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'info' as any, buttons: [] as any[] });
+
     // Fetch the actual user data whenever the screen is focused
     useEffect(() => {
         const fetchUserData = async () => {
             const name  = await AsyncStorage.getItem('userName');
             const role  = await AsyncStorage.getItem('userRole');
             const email = await AsyncStorage.getItem('userEmail');
+            const image = await AsyncStorage.getItem('profileImageUrl');
             if (name)  setUserName(name);
             if (role)  setUserRole(role);
             if (email) setUserEmail(email);
+            if (image) setProfileImage(`${API_URL.replace('/api', '')}${image}`);
         };
         if (isFocused) {
             fetchUserData();
@@ -37,37 +45,47 @@ export default function ProfileScreen() {
     }, [isFocused]);
 
     const handleSignOut = () => {
-        Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Sign Out',
-                style: 'destructive',
-                onPress: async () => {
-                    await AsyncStorage.clear();
-                    router.replace('/auth/login' as any);
+        setAlertConfig({
+            title: 'Sign Out',
+            message: 'Are you sure you want to sign out?',
+            type: 'warning',
+            buttons: [
+                { text: 'Cancel', style: 'cancel', onPress: () => setShowAlert(false) },
+                {
+                    text: 'Sign Out',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setShowAlert(false);
+                        await AsyncStorage.clear();
+                        router.replace('/auth/login' as any);
+                    }
                 }
-            }
-        ]);
+            ]
+        });
+        setShowAlert(true);
     };
 
     // Step 1: Show initial warning alert
     const handleDeleteAccountPress = () => {
-        Alert.alert(
-            '⚠️ Delete Account',
-            'This will permanently delete your Airgo account and all associated data. This action cannot be undone.\n\nAre you sure you want to continue?',
-            [
-                { text: 'Cancel', style: 'cancel' },
+        setAlertConfig({
+            title: 'Delete Account',
+            message: 'This will permanently delete your Airgo account and all associated data. This action cannot be undone.\n\nAre you sure you want to continue?',
+            type: 'error',
+            buttons: [
+                { text: 'Cancel', style: 'cancel', onPress: () => setShowAlert(false) },
                 {
                     text: 'Continue',
                     style: 'destructive',
                     onPress: () => {
+                        setShowAlert(false);
                         setDeletePassword('');
                         setDeleteError('');
                         setDeleteModalVisible(true);
                     }
                 }
             ]
-        );
+        });
+        setShowAlert(true);
     };
 
     // Step 2: Confirm with password and call API
@@ -99,11 +117,8 @@ export default function ProfileScreen() {
             // Success — clear session and redirect
             setDeleteModalVisible(false);
             await AsyncStorage.clear();
-            Alert.alert(
-                'Account Deleted',
-                'Your account and all associated data have been permanently deleted. We\'re sorry to see you go.',
-                [{ text: 'OK', onPress: () => router.replace('/auth/login' as any) }]
-            );
+            Toast.show({ type: 'success', text1: 'Account Deleted', text2: 'Your account and all associated data have been permanently deleted. We\'re sorry to see you go.' });
+            setTimeout(() => router.replace('/auth/login' as any), 3000);
         } catch (err: any) {
             setDeleteError(err.message || 'A network error occurred. Please check your connection.');
             setDeleteLoading(false);
@@ -141,12 +156,16 @@ export default function ProfileScreen() {
                 </View>
             </SafeAreaView>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: -50 }} contentContainerStyle={styles.content}>
 
                 {/* 🟢 USER IDENTITY CARD */}
                 <View style={styles.profileCard}>
                     <View style={styles.avatarContainer}>
-                        <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
+                        {profileImage ? (
+                            <Image source={{ uri: profileImage }} style={{ width: '100%', height: '100%', borderRadius: 40 }} />
+                        ) : (
+                            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
+                        )}
                     </View>
                     <Text style={styles.userName}>{userName}</Text>
                     <Text style={styles.userSubtitle}>Manage your account & settings</Text>
@@ -239,7 +258,7 @@ export default function ProfileScreen() {
                                 title="Become a Driver"
                                 subtitle="Join Airgo's driver network"
                                 color="#3182CE"
-                                onPress={() => router.push('/auth/partner-register' as any)}
+                                onPress={() => router.push('/auth/partner-register?type=shuttle' as any)}
                             />
                         </>
                     )}
@@ -326,6 +345,14 @@ export default function ProfileScreen() {
                 </View>
             </Modal>
 
+            <CustomAlertModal
+                visible={showAlert}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                buttons={alertConfig.buttons}
+                onClose={() => setShowAlert(false)}
+            />
         </View>
     );
 }
@@ -336,7 +363,7 @@ const styles = StyleSheet.create({
     header: { backgroundColor: '#000080', paddingTop: 20, paddingBottom: 80, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
     headerTitle: { color: '#FFF', fontSize: 22, fontWeight: '900' },
 
-    content: { paddingHorizontal: 20, paddingBottom: 40, marginTop: -50 },
+    content: { paddingHorizontal: 20, paddingBottom: 40 },
 
     profileCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 30, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 5, marginBottom: 30 },
     avatarContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F0F7FF', justifyContent: 'center', alignItems: 'center', marginBottom: 15, borderWidth: 2, borderColor: '#004A99' },

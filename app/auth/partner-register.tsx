@@ -4,44 +4,95 @@ import {
   ScrollView
 } from 'react-native';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
 
 export default function PartnerRegisterScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ type?: string }>();
+  const [partnerType, setPartnerType] = useState(params.type || 'hotel');
   const [name, setName] = useState('');
+  const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [businessAddress, setBusinessAddress] = useState('');
+  const [cacNumber, setCacNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [documentUri, setDocumentUri] = useState<string | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
   
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   const REGISTER_API_URL = `${API_URL}/auth/register`;
 
+  const pickDocument = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      setDocumentUri(result.assets[0].uri);
+    }
+  };
+
   const handleRegister = async () => {
     if (!agreed) return setErrorMsg("You must agree to the Terms & Conditions.");
     if (!phone) return setErrorMsg("Phone number is required.");
     if (password !== confirmPassword) return setErrorMsg("Passwords do not match.");
     if (password.length < 6) return setErrorMsg("Password must be at least 6 characters.");
+    if ((partnerType === 'hotel' || partnerType === 'apartment') && !cacNumber) return setErrorMsg("CAC Number is required.");
+    if (!documentUri) return setErrorMsg("Please upload your required verification document.");
 
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
     try {
+      let uploadedDocUrl = '';
+      if (documentUri) {
+        setUploadingDoc(true);
+        const formData = new FormData();
+        const filename = documentUri.split('/').pop() || 'upload.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image`;
+
+        formData.append('file', { uri: documentUri, name: filename, type } as any);
+        formData.append('upload_preset', 'airgo_fleet');
+
+        const uploadRes = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        setUploadingDoc(false);
+
+        if (uploadData.secure_url) {
+          uploadedDocUrl = uploadData.secure_url;
+        } else {
+          throw new Error('Failed to upload document to Cloudinary');
+        }
+      }
+
+      const isHotel = partnerType === 'hotel' || partnerType === 'apartment';
+      const payload = {
+        name, businessName, email, password, phone, role: 'partner', businessAddress, partnerType, cacNumber,
+        cacCertificateUrl: isHotel ? uploadedDocUrl : undefined,
+        driversLicenseUrl: !isHotel ? uploadedDocUrl : undefined
+      };
+
       const response = await fetch(REGISTER_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name, email, password, phone, role: 'partner'
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
@@ -53,7 +104,7 @@ export default function PartnerRegisterScreen() {
       setSuccessMsg("✅ Partner Account created successfully! Please check your email for verification. Redirecting...");
 
       setTimeout(() => {
-        router.push('/auth/login?verifyEmail=true' as any);
+        router.replace('/auth/login?verifyEmail=true' as any);
       }, 5000);
 
     } catch (err: any) {
@@ -86,11 +137,66 @@ export default function PartnerRegisterScreen() {
                 </View>
             ) : null}
 
-            <Text style={styles.label}>Business / Full Name</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} />
+            <Text style={styles.label}>Partner Type</Text>
+            <View style={[styles.segmentedControl, { flexWrap: 'wrap' }]}>
+                <TouchableOpacity 
+                    style={[styles.segmentBtn, partnerType === 'hotel' && styles.segmentBtnActive, { minWidth: '48%', marginBottom: 4 }]} 
+                    onPress={() => setPartnerType('hotel')}
+                >
+                    <Text style={[styles.segmentText, partnerType === 'hotel' && styles.segmentTextActive]}>Hotel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[styles.segmentBtn, partnerType === 'apartment' && styles.segmentBtnActive, { minWidth: '48%', marginBottom: 4 }]} 
+                    onPress={() => setPartnerType('apartment')}
+                >
+                    <Text style={[styles.segmentText, partnerType === 'apartment' && styles.segmentTextActive]}>Apartment</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[styles.segmentBtn, partnerType === 'car' && styles.segmentBtnActive, { minWidth: '48%' }]} 
+                    onPress={() => setPartnerType('car')}
+                >
+                    <Text style={[styles.segmentText, partnerType === 'car' && styles.segmentTextActive]}>Car Rental</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[styles.segmentBtn, partnerType === 'shuttle' && styles.segmentBtnActive, { minWidth: '48%' }]} 
+                    onPress={() => setPartnerType('shuttle')}
+                >
+                    <Text style={[styles.segmentText, partnerType === 'shuttle' && styles.segmentTextActive]}>Taxi / Escort</Text>
+                </TouchableOpacity>
+            </View>
+
+            {(partnerType === 'hotel' || partnerType === 'apartment') && (
+                <>
+                    <View style={styles.cacBanner}>
+                        <Ionicons name="information-circle" size={16} color="#B7791F" style={{marginRight: 6}} />
+                        <Text style={styles.cacBannerText}>CAC Registration is required to list properties.</Text>
+                    </View>
+                    <Text style={styles.label}>CAC Number</Text>
+                    <TextInput style={styles.input} value={cacNumber} onChangeText={setCacNumber} placeholder="e.g. RC123456" />
+                </>
+            )}
+
+            <Text style={styles.label}>
+              {partnerType === 'hotel' || partnerType === 'apartment' ? 'Upload CAC / Ownership Document *' : "Upload Driver's License *"}
+            </Text>
+            <TouchableOpacity style={styles.uploadBtn} onPress={pickDocument}>
+              <Ionicons name={documentUri ? "checkmark-circle" : "cloud-upload"} size={20} color={documentUri ? "#2F855A" : "#000080"} style={{marginRight: 8}} />
+              <Text style={[styles.uploadBtnText, documentUri && {color: '#2F855A'}]}>
+                {documentUri ? "Document Selected" : "Tap to Select Document (Image)"}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>Partner's Full Name *</Text>
+            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. John Doe" />
+
+            <Text style={styles.label}>Business Name *</Text>
+            <TextInput style={styles.input} value={businessName} onChangeText={setBusinessName} placeholder="e.g. Airgo Travels" />
 
             <Text style={styles.label}>Business Email Address</Text>
             <TextInput style={styles.input} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
+
+            <Text style={styles.label}>Business Address</Text>
+            <TextInput style={styles.input} value={businessAddress} onChangeText={setBusinessAddress} />
 
             <Text style={styles.label}>Phone Number</Text>
             <TextInput style={styles.input} keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
@@ -123,14 +229,14 @@ export default function PartnerRegisterScreen() {
             <TouchableOpacity 
                 style={[styles.submitBtn, (loading || !agreed) && styles.submitBtnDisabled]} 
                 onPress={handleRegister} 
-                disabled={loading || !agreed}
+                disabled={loading || uploadingDoc || !agreed}
             >
-                {loading ? <ActivityIndicator color="#000080" /> : <Text style={styles.submitBtnText}>Create Partner Account</Text>}
+                {loading || uploadingDoc ? <ActivityIndicator color="#000080" /> : <Text style={styles.submitBtnText}>Create Partner Account</Text>}
             </TouchableOpacity>
 
             <View style={styles.footerLinks}>
-                <Text style={styles.footerText}>Already have a partner account? <Text style={styles.footerLink} onPress={() => router.push('/auth/login' as any)}>Sign in</Text></Text>
-                <Text style={[styles.footerText, {marginTop: 10}]}>Looking for a ride or stay? <Text style={[styles.footerLink, {color: '#000080'}]} onPress={() => router.push('/auth/register' as any)}>Sign up as Client</Text></Text>
+                <Text style={styles.footerText}>Already have a partner account? <Text style={styles.footerLink} onPress={() => router.replace('/auth/login' as any)}>Sign in</Text></Text>
+                <Text style={[styles.footerText, {marginTop: 10}]}>Looking for a ride or stay? <Text style={[styles.footerLink, {color: '#000080'}]} onPress={() => router.replace('/auth/register' as any)}>Sign up as Client</Text></Text>
             </View>
         </View>
       </ScrollView>
@@ -154,8 +260,20 @@ const styles = StyleSheet.create({
   successBanner: { backgroundColor: '#F0FFF4', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#C6F6D5', marginBottom: 15 },
   successBannerText: { color: '#2F855A', fontSize: 13, fontWeight: 'bold' },
   
+  cacBanner: { flexDirection: 'row', backgroundColor: '#FEFCBF', padding: 12, borderRadius: 8, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: '#F6E05E' },
+  cacBannerText: { color: '#975A16', fontSize: 12, fontWeight: 'bold', flex: 1 },
+
   label: { fontSize: 11, fontWeight: 'bold', color: '#718096', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 },
   input: { backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#EDF2F7', borderRadius: 12, paddingHorizontal: 16, height: 50, fontSize: 15, color: '#1A202C', marginBottom: 16 },
+  
+  uploadBtn: { flexDirection: 'row', backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#EDF2F7', borderRadius: 12, paddingHorizontal: 16, height: 50, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  uploadBtnText: { fontSize: 14, fontWeight: 'bold', color: '#000080' },
+  
+  segmentedControl: { flexDirection: 'row', backgroundColor: '#F8F9FA', borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: '#EDF2F7' },
+  segmentBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  segmentBtnActive: { backgroundColor: '#000080', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  segmentText: { fontSize: 14, fontWeight: 'bold', color: '#718096' },
+  segmentTextActive: { color: '#FFF' },
   
   eyeBtn: { position: 'absolute', right: 16, top: 34 },
   eyeText: { fontSize: 10, fontWeight: 'bold', color: '#A0AEC0' },

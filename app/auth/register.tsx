@@ -7,12 +7,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -59,7 +56,7 @@ export default function RegisterScreen() {
       setSuccessMsg("✅ Account created successfully! Please check your email for a verification link to activate your account. Redirecting...");
 
       setTimeout(() => {
-        router.push('/auth/login?verifyEmail=true' as any);
+        router.replace('/auth/login?verifyEmail=true' as any);
       }, 5000);
 
     } catch (err: any) {
@@ -68,20 +65,25 @@ export default function RegisterScreen() {
     }
   };
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const idToken = response.authentication?.idToken || response.params?.id_token;
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      setErrorMsg('');
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken || response.idToken;
+      
       if (idToken) {
         handleBackendGoogleRegister(idToken);
+      } else {
+        setErrorMsg('Authentication Error: No ID token returned');
+        setLoading(false);
       }
-    } else if (response?.type === 'error') {
-      setErrorMsg(response.error?.message || 'Failed to authenticate with Google');
+    } catch (error: any) {
+      setLoading(false);
+      setErrorMsg(`Sign in failed: ${error.message || 'Could not connect to Google'}`);
     }
-  }, [response]);
+  };
 
   const handleBackendGoogleRegister = async (idToken: string) => {
     setLoading(true);
@@ -93,10 +95,10 @@ export default function RegisterScreen() {
       });
       const data = await res.json();
       if (res.ok) {
-        await AsyncStorage.setItem('userId', data._id || data.userId);
-        await AsyncStorage.setItem('userName', data.name || data.user?.name || 'Traveler');
-        await AsyncStorage.setItem('userEmail', data.email || data.user?.email || '');
-        await AsyncStorage.setItem('userRole', data.role || 'user');
+        await AsyncStorage.setItem('userId', String(data._id || data.userId || ''));
+        await AsyncStorage.setItem('userName', String(data.name || data.user?.name || 'Traveler'));
+        await AsyncStorage.setItem('userEmail', String(data.email || data.user?.email || ''));
+        await AsyncStorage.setItem('userRole', String(data.role || 'user'));
         if (data.token) {
           await AsyncStorage.setItem('authToken', data.token);
         }
@@ -147,7 +149,7 @@ export default function RegisterScreen() {
                 </View>
             ) : null}
 
-            <TouchableOpacity style={styles.googleButton} onPress={() => promptAsync()} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn} activeOpacity={0.8}>
               <Ionicons name="logo-google" size={20} color="#DB4437" style={{ marginRight: 10 }} />
               <Text style={styles.googleButtonText}>SIGN UP WITH GOOGLE</Text>
             </TouchableOpacity>
@@ -201,8 +203,8 @@ export default function RegisterScreen() {
             </TouchableOpacity>
 
             <View style={styles.footerLinks}>
-                <Text style={styles.footerText}>Already have an account? <Text style={styles.footerLink} onPress={() => router.push('/auth/login' as any)}>Sign in</Text></Text>
-                <Text style={[styles.footerText, {marginTop: 10}]}>Want to list your fleet? <Text style={[styles.footerLink, {color: '#FFB81C'}]} onPress={() => router.push('/auth/partner-register' as any)}>Become a Partner</Text></Text>
+                <Text style={styles.footerText}>Already have an account? <Text style={styles.footerLink} onPress={() => router.replace('/auth/login' as any)}>Sign in</Text></Text>
+                <Text style={[styles.footerText, {marginTop: 10}]}>Want to list your fleet? <Text style={[styles.footerLink, {color: '#FFB81C'}]} onPress={() => router.replace('/auth/partner-register' as any)}>Become a Partner</Text></Text>
             </View>
         </View>
       </ScrollView>

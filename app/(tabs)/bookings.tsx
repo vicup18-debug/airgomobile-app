@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 import { useIsFocused } from '@react-navigation/native';
 import { API_URL } from '../../constants/config';
 
@@ -50,7 +51,7 @@ function matchesTab(booking: any, tab: TabKey): boolean {
   const s = (booking.status || '').toLowerCase();
   if (tab === 'Active')    return s.includes('pending') || s.includes('escrow') || s.includes('paid') || s.includes('started') || s.includes('accepted');
   if (tab === 'Completed') return s.includes('completed') || s.includes('disbursed');
-  if (tab === 'Cancelled') return s.includes('cancelled') || s.includes('rejected');
+  if (tab === 'Cancelled') return s.includes('cancelled') || s.includes('rejected') || s.includes('archived');
   return true;
 }
 
@@ -69,8 +70,13 @@ export default function BookingsScreen() {
   const fetchBookings = async () => {
     try {
       const userId = await AsyncStorage.getItem('userId');
-      if (!userId) { setLoading(false); return; }
-      const res  = await fetch(`${API_URL}/bookings/user/${userId}`);
+      const token = await AsyncStorage.getItem('authToken');
+      if (!userId || !token) { setLoading(false); return; }
+      const res  = await fetch(`${API_URL}/bookings/user/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       setBookings(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -116,21 +122,24 @@ export default function BookingsScreen() {
           onPress: async () => {
             setCancelling(booking._id);
             try {
+              const token = await AsyncStorage.getItem('authToken');
               const res = await fetch(`${API_URL}/bookings/${booking._id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Cancelled' }),
+                method: 'DELETE',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
               });
               if (res.ok) {
                 setBookings(prev =>
                   prev.map(b => b._id === booking._id ? { ...b, status: 'Cancelled' } : b)
                 );
-                Alert.alert('Cancelled', 'Your booking has been cancelled and escrow released.');
+                Toast.show({ type: 'success', text1: 'Cancelled', text2: 'Your booking has been cancelled and escrow released.' });
               } else {
-                Alert.alert('Error', 'Could not cancel. Please try again.');
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Could not cancel. Please try again.' });
               }
             } catch {
-              Alert.alert('Network Error', 'Please check your connection and try again.');
+              Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection and try again.' });
             } finally {
               setCancelling(null);
             }

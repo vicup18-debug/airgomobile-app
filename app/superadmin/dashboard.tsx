@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, ActivityIndicator, Linking } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
 
 const { width } = Dimensions.get('window');
@@ -63,17 +64,17 @@ export default function SuperAdminDashboard() {
     // 🟢 NEW: ACTIONS
     const approvePartner = (id: string) => {
         setPendingPartners(prev => prev.filter(p => p.id !== id));
-        Alert.alert('Success', 'Hotel has passed Quality Assurance and is now live on Airgo.ng');
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Hotel has passed Quality Assurance and is now live on Airgo.ng' });
     };
 
     const declinePartner = (id: string) => {
         setPendingPartners(prev => prev.filter(p => p.id !== id));
-        Alert.alert('Declined', 'Hotel application rejected due to QA failure.');
+        Toast.show({ type: 'error', text1: 'Declined', text2: 'Hotel application rejected due to QA failure.' });
     };
 
     const authorizePayout = (id: string) => {
         setPendingDisbursements(prev => prev.filter(p => p.id !== id));
-        Alert.alert('Payout Authorized', 'Funds have been disbursed to the hotel partner.');
+        Toast.show({ type: 'success', text1: 'Payout Authorized', text2: 'Funds have been disbursed to the hotel partner.' });
     };
 
     const handleLogout = async () => {

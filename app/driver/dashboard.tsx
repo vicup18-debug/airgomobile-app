@@ -6,14 +6,16 @@
  */
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, Switch, Linking
+  ActivityIndicator, RefreshControl, Alert, Switch, Linking, AppState
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 import { useIsFocused } from '@react-navigation/native';
 import { API_URL } from '../../constants/config';
+import CustomAlertModal from '../../components/ui/CustomAlertModal';
 import { io } from 'socket.io-client';
 
 // ── STATUS ACTIVE CHECK ────────────────────────────────────────────────────
@@ -78,6 +80,9 @@ export default function DriverDashboard() {
   const [myBookings, setMyBookings]               = useState<any[]>([]);
   const [availableRequests, setAvailableRequests] = useState<any[]>([]);
 
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'info' as any, buttons: [] as any[] });
+
   // ── Load session ──────────────────────────────────────────────────────────
   useEffect(() => {
     const loadSession = async () => {
@@ -127,6 +132,17 @@ export default function DriverDashboard() {
 
   useEffect(() => { if (isFocused && userId) fetchData(); }, [isFocused, userId]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && userId) {
+        fetchData();
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [userId, fetchData]);
+
   const onRefresh = () => { setRefreshing(true); fetchData(); };
 
   // ── WebSocket Listener ────────────────────────────────────────────────────
@@ -145,11 +161,13 @@ export default function DriverDashboard() {
     socket.on('new_booking_request', (data) => {
       console.log('New ride request via WS:', data);
       fetchData(); // Refresh the list of available requests
-      Alert.alert(
-        'New Ride Request! 🚕',
-        'A new ride request is available in your area. Open your feed to claim it!',
-        [{ text: 'View Requests', onPress: () => fetchData() }]
-      );
+      setAlertConfig({
+        title: 'New Ride Request! 🚕',
+        message: 'A new ride request is available in your area. Open your feed to claim it!',
+        type: 'info',
+        buttons: [{ text: 'View Requests', onPress: () => { setShowAlert(false); fetchData(); } }]
+      });
+      setShowAlert(true);
     });
 
     return () => {
@@ -167,17 +185,19 @@ export default function DriverDashboard() {
   // ── Claim a ride ──────────────────────────────────────────────────────────
   const handleClaim = (booking: any) => {
     if (!isAvailable) {
-      Alert.alert('You are Offline', 'Switch to Available to accept rides.');
+      Toast.show({ type: 'error', text1: 'You are Offline', text2: 'Switch to Available to accept rides.' });
       return;
     }
-    Alert.alert(
-      'Claim This Ride?',
-      `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || '—'}\n\nAccept and begin this trip?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+    setAlertConfig({
+      title: 'Claim This Ride?',
+      message: `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || '-'}\n\nAccept and begin this trip?`,
+      type: 'warning',
+      buttons: [
+        { text: 'Cancel', style: 'cancel', onPress: () => setShowAlert(false) },
         {
-          text: 'Claim Ride 🚗',
+          text: 'Claim Ride 🚕',
           onPress: async () => {
+            setShowAlert(false);
             setClaimingId(booking._id);
             try {
               const res = await fetch(`${API_URL}/bookings/${booking._id}/claim`, {
@@ -186,33 +206,36 @@ export default function DriverDashboard() {
                 body: JSON.stringify({ driverId: userId }),
               });
               if (res.ok) {
-                Alert.alert('✅ Ride Claimed!', 'Head to the pickup location. Safe journey!');
+                Toast.show({ type: 'success', text1: '✅ Ride Claimed!', text2: 'Head to the pickup location. Safe journey!' });
                 fetchData();
               } else {
                 const err = await res.json().catch(() => ({}));
-                Alert.alert('Claim Failed', err.message || 'This ride may have already been claimed.');
+                Toast.show({ type: 'error', text1: 'Claim Failed', text2: err.message || 'This ride may have already been claimed.' });
               }
             } catch {
-              Alert.alert('Network Error', 'Please check your connection.');
+              Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection.' });
             } finally {
               setClaimingId(null);
             }
           }
         }
       ]
-    );
+    });
+    setShowAlert(true);
   };
 
   // ── Complete a trip ───────────────────────────────────────────────────────
   const handleComplete = (booking: any) => {
-    Alert.alert(
-      'Complete Trip?',
-      'Confirm that you have delivered the passenger to their destination.',
-      [
-        { text: 'Not Yet', style: 'cancel' },
+    setAlertConfig({
+      title: 'Complete Trip?',
+      message: 'Confirm that you have delivered the passenger to their destination.',
+      type: 'success',
+      buttons: [
+        { text: 'Not Yet', style: 'cancel', onPress: () => setShowAlert(false) },
         {
-          text: 'Complete Trip ✅',
+          text: 'Complete Trip ✓',
           onPress: async () => {
+            setShowAlert(false);
             setCompletingId(booking._id);
             try {
               const res = await fetch(`${API_URL}/bookings/${booking._id}`, {
@@ -221,21 +244,22 @@ export default function DriverDashboard() {
                 body: JSON.stringify({ status: 'Completed' }),
               });
               if (res.ok) {
-                Alert.alert('Trip Complete!', 'Great work! Your earnings are being processed.');
+                Toast.show({ type: 'success', text1: 'Trip Complete!', text2: 'Great work! Your earnings are being processed.' });
                 setActiveTrip(null);
                 fetchData();
               } else {
-                Alert.alert('Error', 'Could not mark as complete. Please try again.');
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Could not mark as complete. Please try again.' });
               }
             } catch {
-              Alert.alert('Network Error', 'Check your connection.');
+              Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection.' });
             } finally {
               setCompletingId(null);
             }
           }
         }
       ]
-    );
+    });
+    setShowAlert(true);
   };
 
   const monthly  = monthlyEarnings(myBookings);
@@ -417,6 +441,14 @@ export default function DriverDashboard() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      <CustomAlertModal
+        visible={showAlert}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        buttons={alertConfig.buttons}
+        onClose={() => setShowAlert(false)}
+      />
     </View>
   );
 }
