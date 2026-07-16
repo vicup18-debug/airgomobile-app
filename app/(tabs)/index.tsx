@@ -464,9 +464,14 @@ export default function HomeScreen() {
     setShowAlert(true);
   };
 
-  const handleTaxiSearch = () => {
+  const handleTaxiSearch = async () => {
     if (hasActiveTripLock) {
       showActiveTripAlert();
+      return;
+    }
+    const role = await AsyncStorage.getItem('userRole');
+    if (role === 'driver' || role === 'partner' || role === 'admin') {
+      Toast.show({ type: 'error', text1: 'Action Not Allowed', text2: 'Partners and Drivers cannot request rides.' });
       return;
     }
     router.push({

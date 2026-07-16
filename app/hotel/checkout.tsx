@@ -49,9 +49,17 @@ export default function CheckoutScreen() {
         setIsProcessing(true);
         try {
             const userId = await AsyncStorage.getItem('userId');
+            const userRole = await AsyncStorage.getItem('userRole');
+
             if (!userId) {
                 Toast.show({ type: 'error', text1: 'Wait!', text2: 'You must be signed in to book a room.' });
                 router.push('/auth/login' as any);
+                return;
+            }
+
+            if (userRole === 'driver' || userRole === 'partner' || userRole === 'admin') {
+                Toast.show({ type: 'error', text1: 'Action Not Allowed', text2: 'Partners and Drivers cannot make reservations.' });
+                setIsProcessing(false);
                 return;
             }
 
