@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,9 +7,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function PartnerDashboard() {
     const router = useRouter();
 
-    // 🟢 NEW: Partner Approval State (Default to false for new registrations)
-    // In production, fetch this from your backend user profile
     const [isApproved, setIsApproved] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        AsyncStorage.getItem('isApproved').then(val => {
+            if (val === 'true') {
+                setIsApproved(true);
+            }
+            setLoading(false);
+        });
+    }, []);
 
     const [stats, setStats] = useState({ activeRooms: 12, bookingsToday: 3, totalRevenue: 255000 });
 
@@ -17,6 +25,10 @@ export default function PartnerDashboard() {
         await AsyncStorage.clear();
         router.replace('/auth/login' as any);
     };
+
+    if (loading) {
+        return <View style={styles.container}><Text>Loading...</Text></View>;
+    }
 
     // 🟢 NEW: THE "UNDER REVIEW" SCREEN
     if (!isApproved) {

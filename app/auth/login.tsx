@@ -52,6 +52,7 @@ export default function LoginScreen() {
         await AsyncStorage.setItem('userName', String(data.name || data.user?.name || 'Traveler'));
         await AsyncStorage.setItem('userEmail', String(data.email || email || ''));
         await AsyncStorage.setItem('userRole', String(data.role || 'user'));
+        await AsyncStorage.setItem('isApproved', String(data.isApproved || 'false'));
         if (data.token) {
           await AsyncStorage.setItem('authToken', data.token);
         }

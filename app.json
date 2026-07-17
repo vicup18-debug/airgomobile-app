@@ -75,7 +75,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "d1401ce7-5030-4532-b042-603a78307757"
+        "projectId": "9ec7ab55-79ef-4f73-83db-90a09c862a33"
       }
     },
     "runtimeVersion": {
@@ -84,6 +84,6 @@
     "updates": {
       "url": "https://u.expo.dev/b2b91674-a429-4384-a27f-a4d45182b813"
     },
-    "owner": "vic2"
+    "owner": "viu2"
   }
 }
