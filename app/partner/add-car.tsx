@@ -10,8 +10,12 @@ export default function AddCarScreen() {
 
     const [carName, setCarName] = useState('');
     const [price, setPrice] = useState('');
-    const [description, setDescription] = useState('');
-    const [totalAllocated, setTotalAllocated] = useState('1');
+    const [type, setType] = useState('');
+    const [capacity, setCapacity] = useState('');
+    const [features, setFeatures] = useState('');
+    const [vehicleNumber, setVehicleNumber] = useState('');
+    const [location, setLocation] = useState('');
+    const [stateLocation, setStateLocation] = useState('');
     const [images, setImages] = useState<string[]>([]);
     
     // 🟢 DRIVER DETAILS
@@ -54,7 +58,7 @@ export default function AddCarScreen() {
     };
 
     // 🟢 VALIDATION
-    const isFormValid = carName && price && description && totalAllocated && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
+    const isFormValid = carName && price && type && capacity && features && vehicleNumber && location && stateLocation && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
 
     const handleSubmit = async () => {
         if (!isFormValid) return;
@@ -108,7 +112,7 @@ export default function AddCarScreen() {
                 {/* 🟢 CAR DETAILS FORM */}
                 <Text style={styles.sectionTitle}>Car Information</Text>
                 <View style={styles.formContainer}>
-                    <Text style={styles.inputLabel}>Car Model / Type</Text>
+                    <Text style={styles.inputLabel}>Name / Title</Text>
                     <TextInput
                         style={styles.inputBox}
                         placeholder="e.g. Mercedes-Benz G-Class"
@@ -117,7 +121,7 @@ export default function AddCarScreen() {
                         onChangeText={setCarName}
                     />
 
-                    <Text style={styles.inputLabel}>Price per Day (₦)</Text>
+                    <Text style={styles.inputLabel}>Retail Price (What the Customer Pays ₦)</Text>
                     <TextInput
                         style={styles.inputBox}
                         placeholder="e.g. 150000"
@@ -126,27 +130,60 @@ export default function AddCarScreen() {
                         value={price}
                         onChangeText={setPrice}
                     />
-                    
-                    <Text style={styles.inputLabel}>Airgo Car Pools (Allocated to platform)</Text>
+
+                    <Text style={styles.inputLabel}>Type (e.g. SUV, Sedan)</Text>
                     <TextInput
                         style={styles.inputBox}
-                        placeholder="e.g. 2"
+                        placeholder="e.g. SUV"
                         placeholderTextColor="#A0AEC0"
-                        keyboardType="numeric"
-                        value={totalAllocated}
-                        onChangeText={setTotalAllocated}
+                        value={type}
+                        onChangeText={setType}
                     />
 
-                    <Text style={styles.inputLabel}>Premium Features & Description</Text>
+                    <Text style={styles.inputLabel}>Capacity (Seats)</Text>
                     <TextInput
-                        style={[styles.inputBox, styles.textArea]}
-                        placeholder="Describe the luxury amenities..."
+                        style={styles.inputBox}
+                        placeholder="e.g. 4"
                         placeholderTextColor="#A0AEC0"
-                        multiline
-                        numberOfLines={4}
-                        textAlignVertical="top"
-                        value={description}
-                        onChangeText={setDescription}
+                        keyboardType="numeric"
+                        value={capacity}
+                        onChangeText={setCapacity}
+                    />
+
+                    <Text style={styles.inputLabel}>Features</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. Wi-Fi, Bluetooth"
+                        placeholderTextColor="#A0AEC0"
+                        value={features}
+                        onChangeText={setFeatures}
+                    />
+
+                    <Text style={styles.inputLabel}>Plate / Vehicle Number</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. ABJ-888-GW"
+                        placeholderTextColor="#A0AEC0"
+                        value={vehicleNumber}
+                        onChangeText={setVehicleNumber}
+                    />
+
+                    <Text style={styles.inputLabel}>Location (City/Area)</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. Maitama"
+                        placeholderTextColor="#A0AEC0"
+                        value={location}
+                        onChangeText={setLocation}
+                    />
+
+                    <Text style={styles.inputLabel}>State</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. Abuja"
+                        placeholderTextColor="#A0AEC0"
+                        value={stateLocation}
+                        onChangeText={setStateLocation}
                     />
                 </View>
 
