@@ -5,36 +5,45 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 
-export default function AddRoomScreen() {
+export default function AddCarScreen() {
     const router = useRouter();
 
-    const [roomName, setRoomName] = useState('');
+    const [carName, setCarName] = useState('');
     const [price, setPrice] = useState('');
-    const [totalAllocated, setTotalAllocated] = useState('1');
     const [description, setDescription] = useState('');
+    const [totalAllocated, setTotalAllocated] = useState('1');
     const [images, setImages] = useState<string[]>([]);
+    
+    // 🟢 DRIVER DETAILS
+    const [driverName, setDriverName] = useState('');
+    const [driverPhone, setDriverPhone] = useState('');
+    const [driverEmail, setDriverEmail] = useState('');
+    const [driverPassword, setDriverPassword] = useState('');
+
     const [agreedToQA, setAgreedToQA] = useState(false);
 
     // 🟢 QA RULE ENFORCEMENT: Image Picker Logic
     const handlePickImage = async () => {
-        // Request gallery permissions
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (permissionResult.granted === false) {
-            Toast.show({ type: 'error', text1: 'Permission Required', text2: 'You need to allow access to your photos to upload room images.' });
+            Toast.show({ type: 'error', text1: 'Permission Required', text2: 'You need to allow access to your photos to upload car images.' });
             return;
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true, // Let them crop it to look perfect
-            quality: 1, // Max quality
+            allowsEditing: true,
+            quality: 1,
         });
 
         if (!result.canceled) {
             const asset = result.assets[0];
 
-            // 🟢 QA RULE 1: Resolution Check (HD Minimum)
             // QA Rule Removed: We allow lower resolution images now
+            // if (asset.width < 1080 || asset.height < 1080) {
+            //     Toast.show({ type: 'error', text1: 'Quality Assurance Failed', text2: 'This image resolution is too low. Airgo requires high-definition images (Minimum 1920x1080) to maintain platform quality.' });
+            //     return;
+            // }
 
             setImages(prev => [...prev, asset.uri]);
         }
@@ -45,11 +54,11 @@ export default function AddRoomScreen() {
     };
 
     // 🟢 VALIDATION
-    const isFormValid = roomName && price && description && totalAllocated && images.length >= 5 && agreedToQA;
+    const isFormValid = carName && price && description && totalAllocated && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!isFormValid) return;
-        Toast.show({ type: 'success', text1: 'Room Submitted', text2: 'Your room has been submitted and is pending Superadmin QA approval.' });
+        Toast.show({ type: 'success', text1: 'Car Submitted', text2: 'Your car has been submitted and is pending Superadmin QA approval.' });
         setTimeout(() => router.back(), 2000);
     };
 
@@ -60,7 +69,7 @@ export default function AddRoomScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color="#FFF" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Add Premium Room</Text>
+                <Text style={styles.headerTitle}>Add Premium Car</Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -75,11 +84,11 @@ export default function AddRoomScreen() {
                     <Text style={styles.qaRule}>1. <Text style={styles.qaBold}>Quality:</Text> Must be clear and visible.</Text>
                     <Text style={styles.qaRule}>2. <Text style={styles.qaBold}>Composition:</Text> No text overlays or watermarks.</Text>
                     <Text style={styles.qaRule}>3. <Text style={styles.qaBold}>Lighting:</Text> Must be professionally lit; no dark or blurred photos.</Text>
-                    <Text style={styles.qaRule}>4. <Text style={styles.qaBold}>Quantity:</Text> Minimum of 5 high-quality images per room.</Text>
+                    <Text style={styles.qaRule}>4. <Text style={styles.qaBold}>Quantity:</Text> Minimum of 5 high-quality images per car.</Text>
                 </View>
 
                 {/* 🟢 IMAGE UPLOAD SECTION */}
-                <Text style={styles.sectionTitle}>Room Gallery ({images.length}/5 Min)</Text>
+                <Text style={styles.sectionTitle}>Car Gallery ({images.length}/5 Min)</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
                     {images.map((uri, index) => (
                         <View key={index} style={styles.imagePreviewContainer}>
@@ -96,19 +105,19 @@ export default function AddRoomScreen() {
                     </TouchableOpacity>
                 </ScrollView>
 
-                {/* 🟢 ROOM DETAILS FORM */}
-                <Text style={styles.sectionTitle}>Room Information</Text>
+                {/* 🟢 CAR DETAILS FORM */}
+                <Text style={styles.sectionTitle}>Car Information</Text>
                 <View style={styles.formContainer}>
-                    <Text style={styles.inputLabel}>Room Name / Type</Text>
+                    <Text style={styles.inputLabel}>Car Model / Type</Text>
                     <TextInput
                         style={styles.inputBox}
-                        placeholder="e.g. Executive Presidential Suite"
+                        placeholder="e.g. Mercedes-Benz G-Class"
                         placeholderTextColor="#A0AEC0"
-                        value={roomName}
-                        onChangeText={setRoomName}
+                        value={carName}
+                        onChangeText={setCarName}
                     />
 
-                    <Text style={styles.inputLabel}>Price per Night (₦)</Text>
+                    <Text style={styles.inputLabel}>Price per Day (₦)</Text>
                     <TextInput
                         style={styles.inputBox}
                         placeholder="e.g. 150000"
@@ -117,8 +126,8 @@ export default function AddRoomScreen() {
                         value={price}
                         onChangeText={setPrice}
                     />
-
-                    <Text style={styles.inputLabel}>Airgo Room Pools (Allocated to platform)</Text>
+                    
+                    <Text style={styles.inputLabel}>Airgo Car Pools (Allocated to platform)</Text>
                     <TextInput
                         style={styles.inputBox}
                         placeholder="e.g. 2"
@@ -141,6 +150,50 @@ export default function AddRoomScreen() {
                     />
                 </View>
 
+                {/* 🟢 DRIVER PROFILE ASSIGNMENT */}
+                <Text style={styles.sectionTitle}>Driver Profile Assignment</Text>
+                <View style={styles.formContainer}>
+                    <Text style={styles.inputLabel}>Driver Name *</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. John Doe"
+                        placeholderTextColor="#A0AEC0"
+                        value={driverName}
+                        onChangeText={setDriverName}
+                    />
+
+                    <Text style={styles.inputLabel}>Driver Phone *</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. +2348012345678"
+                        placeholderTextColor="#A0AEC0"
+                        keyboardType="phone-pad"
+                        value={driverPhone}
+                        onChangeText={setDriverPhone}
+                    />
+
+                    <Text style={styles.inputLabel}>Driver Email (Unique Username) *</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. john@airgo.ng"
+                        placeholderTextColor="#A0AEC0"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={driverEmail}
+                        onChangeText={setDriverEmail}
+                    />
+
+                    <Text style={styles.inputLabel}>Driver Login Password *</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="••••••••"
+                        placeholderTextColor="#A0AEC0"
+                        secureTextEntry
+                        value={driverPassword}
+                        onChangeText={setDriverPassword}
+                    />
+                </View>
+
                 {/* 🟢 QA COMPLIANCE CHECKBOX */}
                 <TouchableOpacity
                     style={[styles.checkboxContainer, agreedToQA && styles.checkboxActive]}
@@ -153,7 +206,7 @@ export default function AddRoomScreen() {
                         color={agreedToQA ? "#004A99" : "#A0AEC0"}
                     />
                     <Text style={styles.checkboxText}>
-                        I confirm that these images meet Airgo&apos;s strict QA standards. I understand my property will be suspended if low-quality images or watermarks are detected by the Superadmin.
+                        I confirm that these images meet Airgo&apos;s strict QA standards. I understand my car will be suspended if low-quality images or watermarks are detected by the Superadmin.
                     </Text>
                 </TouchableOpacity>
 

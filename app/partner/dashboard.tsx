@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../constants/config';
 
 export default function PartnerDashboard() {
     const router = useRouter();
@@ -10,16 +11,37 @@ export default function PartnerDashboard() {
     const [isApproved, setIsApproved] = useState(false);
     const [loading, setLoading] = useState(true);
 
+    const [stats, setStats] = useState({ activeItems: 0, bookingsToday: 0, totalRevenue: 0 });
+    const [partnerType, setPartnerType] = useState('hotel');
+
     useEffect(() => {
-        AsyncStorage.getItem('isApproved').then(val => {
+        const fetchDashboardData = async () => {
+            const val = await AsyncStorage.getItem('isApproved');
             if (val === 'true') {
                 setIsApproved(true);
             }
+            
+            const userId = await AsyncStorage.getItem('userId');
+            if (userId) {
+                try {
+                    const response = await fetch(`${API_URL}/user/partner/stats/${userId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setStats({
+                            activeItems: data.activeItems || 0,
+                            bookingsToday: data.bookingsToday || 0,
+                            totalRevenue: data.totalRevenue || 0
+                        });
+                        setPartnerType(data.partnerType || 'hotel');
+                    }
+                } catch (err) {
+                    console.error('Error fetching partner stats:', err);
+                }
+            }
             setLoading(false);
-        });
+        };
+        fetchDashboardData();
     }, []);
-
-    const [stats, setStats] = useState({ activeRooms: 12, bookingsToday: 3, totalRevenue: 255000 });
 
     const handleLogout = async () => {
         await AsyncStorage.clear();
@@ -27,7 +49,12 @@ export default function PartnerDashboard() {
     };
 
     if (loading) {
-        return <View style={styles.container}><Text>Loading...</Text></View>;
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#004A99" />
+                <Text style={{ marginTop: 10, color: '#718096' }}>Loading dashboard...</Text>
+            </View>
+        );
     }
 
     // 🟢 NEW: THE "UNDER REVIEW" SCREEN
@@ -73,9 +100,11 @@ export default function PartnerDashboard() {
                 {/* 🟢 ANALYTICS CARDS (Light Theme) */}
                 <View style={styles.statsGrid}>
                     <View style={styles.statCard}>
-                        <View style={[styles.iconBox, { backgroundColor: 'rgba(0, 74, 153, 0.1)' }]}><Ionicons name="bed" size={24} color="#004A99" /></View>
-                        <Text style={styles.statValue}>{stats.activeRooms}</Text>
-                        <Text style={styles.statLabel}>Active Rooms</Text>
+                        <View style={[styles.iconBox, { backgroundColor: 'rgba(0, 74, 153, 0.1)' }]}>
+                            <Ionicons name={partnerType === 'hotel' ? 'bed' : 'car'} size={24} color="#004A99" />
+                        </View>
+                        <Text style={styles.statValue}>{stats.activeItems}</Text>
+                        <Text style={styles.statLabel}>{partnerType === 'hotel' ? 'Active Rooms' : 'Active Cars'}</Text>
                     </View>
 
                     <View style={styles.statCard}>
@@ -98,11 +127,14 @@ export default function PartnerDashboard() {
                 {/* 🟢 QUICK ACTIONS */}
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
                 <View style={styles.actionGrid}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/partner/add-room' as any)}>
+                    <TouchableOpacity 
+                        style={styles.actionButton} 
+                        onPress={() => router.push((partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? '/partner/add-car' as any : '/partner/add-room' as any)}
+                    >
                         <View style={styles.actionIconContainer}>
                             <Ionicons name="add" size={28} color="#004A99" />
                         </View>
-                        <Text style={styles.actionText}>Add New Room</Text>
+                        <Text style={styles.actionText}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Add New Car' : 'Add New Room'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionButton}>
@@ -126,7 +158,7 @@ export default function PartnerDashboard() {
                     <View style={styles.activityRow}>
                         <View style={styles.activityDot} />
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.activityText}>New booking: Deluxe Suite</Text>
+                            <Text style={styles.activityText}>New booking: {(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Executive SUV' : 'Deluxe Suite'}</Text>
                             <Text style={styles.activityTime}>10 mins ago • Ref: #A89F2</Text>
                         </View>
                         <Text style={styles.activityPrice}>+₦120,000</Text>
@@ -135,7 +167,7 @@ export default function PartnerDashboard() {
                     <View style={styles.activityRow}>
                         <View style={[styles.activityDot, { backgroundColor: '#FFB81C' }]} />
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.activityText}>Room status updated: Presidential</Text>
+                            <Text style={styles.activityText}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Car status updated: Toyota Camry' : 'Room status updated: Presidential'}</Text>
                             <Text style={styles.activityTime}>2 hours ago • Marked as Maintenance</Text>
                         </View>
                     </View>

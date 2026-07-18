@@ -4,13 +4,13 @@
     "slug": "airgo-app",
     "version": "1.0.7",
     "orientation": "portrait",
-    "icon": "./assets/images/logo1.png",
+    "icon": "./assets/images/icon-mark.png",
     "scheme": "airgo",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/logo1.png",
+      "image": "./assets/images/icon-mark.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000080"
+      "backgroundColor": "#FFFFFF"
     },
     "newArchEnabled": true,
     "ios": {
@@ -27,9 +27,9 @@
         }
       },
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon-mark.png",
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/adaptive-foreground.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "monochromeImage": "./assets/images/icon-mark.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -46,9 +46,9 @@
           "image": "./assets/images/logo1.png",
           "imageWidth": 250,
           "resizeMode": "contain",
-          "backgroundColor": "#000080",
+          "backgroundColor": "#FFFFFF",
           "dark": {
-            "backgroundColor": "#000080",
+            "backgroundColor": "#FFFFFF",
             "image": "./assets/images/logo1.png"
           }
         }
