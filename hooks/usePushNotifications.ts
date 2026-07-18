@@ -94,14 +94,16 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
     }
 
     if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('airgo-alerts', {
-            name: 'Airgo Alerts',
+        await Notifications.setNotificationChannelAsync('airgo-urgent-alerts', {
+            name: 'Airgo Urgent Alerts',
             importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
+            vibrationPattern: [0, 500, 500, 500],
             lightColor: '#000080',
             sound: 'default',
             enableVibrate: true,
             showBadge: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: true,
         });
     }
 
