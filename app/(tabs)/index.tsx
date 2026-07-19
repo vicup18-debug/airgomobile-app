@@ -475,7 +475,7 @@ export default function HomeScreen() {
       return;
     }
     router.push({
-      pathname: '/taxi-escrow' as any,
+      pathname: '/taxi-bidding' as any,
       params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime },
     });
   };
@@ -748,7 +748,7 @@ export default function HomeScreen() {
                       return;
                     }
                     router.push({
-                      pathname: '/taxi-escrow' as any,
+                      pathname: '/taxi-bidding' as any,
                       params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime },
                     });
                   }}

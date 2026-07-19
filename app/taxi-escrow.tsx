@@ -46,7 +46,7 @@ function extractCity(address: string): string {
 
 function TaxiEscrowContent() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ from: string; to: string; dateTime: string }>();
+  const params = useLocalSearchParams<{ from: string; to: string; dateTime: string; bookingId?: string }>();
   const { popup } = usePaystack();
 
   const [phase, setPhase] = useState<'creating' | 'payment' | 'verifying' | 'success' | 'error'>('creating');
@@ -103,6 +103,18 @@ function TaxiEscrowContent() {
       }
 
       setUserEmail(email);
+
+      if (params.bookingId) {
+        const token = await AsyncStorage.getItem('authToken');
+        const fetchRes = await fetch(`${API_URL}/bookings/${params.bookingId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const fetchData = await fetchRes.json();
+        if (!fetchRes.ok) throw new Error(fetchData.message || 'Failed to fetch booking');
+        setBooking(fetchData.booking || fetchData);
+        setPhase('payment');
+        return;
+      }
 
       let finalPrice = 15000;
       let calculatedDistance = 0;
