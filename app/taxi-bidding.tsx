@@ -180,6 +180,26 @@ export default function TaxiBiddingScreen() {
     }
   };
 
+  const handleCancelRequest = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!rideRequestId || !token) return;
+      const res = await fetch(`${API_URL}/ride-requests/${rideRequestId}/cancel`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+         Toast.show({ type: 'success', text1: 'Cancelled', text2: 'Ride request cancelled.' });
+         if (socket) socket.disconnect();
+         router.replace('/(tabs)');
+      } else {
+         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to cancel request.' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Network error occurred.' });
+    }
+  };
+
   if (phase === 'creating') {
     return (
       <SafeAreaView style={styles.centered}>
@@ -221,6 +241,9 @@ export default function TaxiBiddingScreen() {
             <ActivityIndicator size="large" color="#000080" />
          </View>
          <Text style={styles.radarText}>Waiting for driver bids...</Text>
+         <TouchableOpacity style={styles.cancelRequestBtn} onPress={handleCancelRequest}>
+            <Text style={styles.cancelRequestBtnText}>Cancel Request</Text>
+         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.bidsContainer}>
@@ -298,5 +321,7 @@ const styles = StyleSheet.create({
   btnPrimaryText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
   counterBox: { backgroundColor: '#F8F9FA', padding: 12, borderRadius: 10, marginTop: 8 },
   counterInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 10 },
-  counterActions: { flexDirection: 'row', gap: 10 }
+  counterActions: { flexDirection: 'row', gap: 10 },
+  cancelRequestBtn: { marginTop: 16, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#FFF0F0', borderRadius: 8, borderWidth: 1, borderColor: '#FEB2B2' },
+  cancelRequestBtnText: { color: '#E53E3E', fontWeight: 'bold', fontSize: 14 }
 });
