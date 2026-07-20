@@ -90,9 +90,14 @@ export default function PartnerDashboard() {
                     />
                     <Text style={styles.hotelName}>Partner Portal</Text>
                 </View>
-                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                    <Ionicons name="log-out-outline" size={20} color="#004A99" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity style={[styles.logoutBtn, { marginRight: 10 }]} onPress={() => router.push('/profile/personal-info' as any)}>
+                        <Ionicons name="person-outline" size={20} color="#004A99" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                        <Ionicons name="log-out-outline" size={20} color="#004A99" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -137,12 +142,21 @@ export default function PartnerDashboard() {
                         <Text style={styles.actionText}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Add New Car' : 'Add New Room'}</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.actionButton}>
-                        <View style={styles.actionIconContainer}>
-                            <Ionicons name="images" size={24} color="#004A99" />
-                        </View>
-                        <Text style={styles.actionText}>Manage Photos</Text>
-                    </TouchableOpacity>
+                    {(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? (
+                        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/partner/fleet' as any)}>
+                            <View style={styles.actionIconContainer}>
+                                <Ionicons name="car-sport" size={24} color="#004A99" />
+                            </View>
+                            <Text style={styles.actionText}>Manage Fleet</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity style={styles.actionButton}>
+                            <View style={styles.actionIconContainer}>
+                                <Ionicons name="images" size={24} color="#004A99" />
+                            </View>
+                            <Text style={styles.actionText}>Manage Photos</Text>
+                        </TouchableOpacity>
+                    )}
 
                     <TouchableOpacity style={styles.actionButton}>
                         <View style={styles.actionIconContainer}>

@@ -4,10 +4,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../constants/config';
 
 export default function AddCarScreen() {
     const router = useRouter();
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [carName, setCarName] = useState('');
     const [price, setPrice] = useState('');
     const [type, setType] = useState('');
@@ -60,10 +63,84 @@ export default function AddCarScreen() {
     // 🟢 VALIDATION
     const isFormValid = carName && price && type && capacity && features && vehicleNumber && location && stateLocation && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
 
+    const handleUploadToCloudinary = async (imageUri: string) => {
+        const formData = new FormData();
+        const filename = imageUri.split('/').pop() || 'upload.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image`;
+
+        formData.append('file', { uri: imageUri, name: filename, type } as any);
+        formData.append('upload_preset', 'airgo_fleet');
+
+        const res = await fetch('https://api.cloudinary.com/v1_1/dng57feyj/image/upload', {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        const data = await res.json();
+        if (data.secure_url) {
+            return data.secure_url;
+        } else {
+            throw new Error('Cloudinary upload failed');
+        }
+    };
+
     const handleSubmit = async () => {
-        if (!isFormValid) return;
-        Toast.show({ type: 'success', text1: 'Car Submitted', text2: 'Your car has been submitted and is pending Superadmin QA approval.' });
-        setTimeout(() => router.back(), 2000);
+        if (!isFormValid || isSubmitting) return;
+        setIsSubmitting(true);
+        Toast.show({ type: 'info', text1: 'Uploading...', text2: 'Please wait while we upload your images and data.' });
+
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            const partnerId = await AsyncStorage.getItem('userId');
+
+            // Upload all images to Cloudinary
+            const uploadedImageUrls = await Promise.all(images.map(uri => handleUploadToCloudinary(uri)));
+            
+            const payload = {
+                name: carName,
+                retailPrice: Number(price),
+                type,
+                capacity: Number(capacity),
+                features,
+                vehicleNumber,
+                location,
+                state: stateLocation,
+                driverName,
+                driverEmail,
+                driverPhone,
+                driverPassword,
+                images: uploadedImageUrls,
+                image: uploadedImageUrls[0],
+                previewImage: uploadedImageUrls[0],
+                totalAllocated: 1,
+                partnerId: partnerId,
+                vehicleCategory: 'car'
+            };
+
+            const response = await fetch(`${API_URL}/cars`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                Toast.show({ type: 'success', text1: 'Car Submitted', text2: 'Your car has been submitted and is pending Superadmin QA approval.' });
+                setTimeout(() => router.back(), 2000);
+            } else {
+                const data = await response.json();
+                Toast.show({ type: 'error', text1: 'Submission Failed', text2: data.message || 'Something went wrong.' });
+            }
+        } catch (error) {
+            console.error(error);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to upload and submit.' });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -249,11 +326,11 @@ export default function AddCarScreen() {
 
                 {/* 🟢 SUBMIT BUTTON */}
                 <TouchableOpacity
-                    style={[styles.submitBtn, isFormValid ? styles.submitBtnActive : styles.submitBtnDisabled]}
+                    style={[styles.submitBtn, (isFormValid && !isSubmitting) ? styles.submitBtnActive : styles.submitBtnDisabled]}
                     onPress={handleSubmit}
-                    disabled={!isFormValid}
+                    disabled={!isFormValid || isSubmitting}
                 >
-                    <Text style={styles.submitBtnText}>Submit for QA Review</Text>
+                    <Text style={styles.submitBtnText}>{isSubmitting ? 'Uploading...' : 'Submit for QA Review'}</Text>
                 </TouchableOpacity>
 
             </ScrollView>

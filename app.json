@@ -8,7 +8,7 @@
     "scheme": "airgo",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/icon-mark.png",
+      "image": "./assets/images/splash-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -43,13 +43,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo1.png",
+          "image": "./assets/images/splash-logo.png",
           "imageWidth": 250,
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF",
           "dark": {
             "backgroundColor": "#FFFFFF",
-            "image": "./assets/images/logo1.png"
+            "image": "./assets/images/splash-logo.png"
           }
         }
       ],
@@ -75,13 +75,10 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9ec7ab55-79ef-4f73-83db-90a09c862a33"
+        "projectId": "b8a8d7d6-0d6b-44f2-8127-050a9fb5c921"
       }
     },
     "runtimeVersion": "1.0.7",
-    "updates": {
-      "url": "https://u.expo.dev/9ec7ab55-79ef-4f73-83db-90a09c862a33"
-    },
-    "owner": "viu2"
+    "owner": "another1"
   }
 }
