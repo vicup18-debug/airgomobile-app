@@ -78,7 +78,7 @@ export default function AnimatedSplashScreen({ onAnimationFinish }: Props) {
 
       {/* Main Logo */}
       <Animated.View style={[styles.logoWrap, { opacity: fadeAnim, transform: [{ scale: scaleAnim }, { translateY: logoFloatAnim }] }]}>
-        <Image source={require('../../assets/images/logo1.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../assets/images/splash-logo.png')} style={styles.logo} resizeMode="contain" />
       </Animated.View>
 
       {/* Loading Bar & Text */}

@@ -90,7 +90,7 @@ function BrandedLoadingScreen() {
       {/* Floating Logo */}
       <Animated.View style={[splashStyles.logoContainer, { transform: [{ translateY: floatAnim }] }]}>
         <Image
-          source={require('../../assets/images/logo1.png')}
+          source={require('../../assets/images/logo.png')}
           style={splashStyles.logo}
           resizeMode="contain"
         />

@@ -185,7 +185,7 @@ export default function SuperAdminDashboard() {
             <View style={styles.header}>
                 <View>
                     <Image
-                        source={require('../../assets/images/logo1.png')}
+                        source={require('../../assets/images/logo.png')}
                         style={styles.dashboardLogo}
                         resizeMode="contain"
                     />

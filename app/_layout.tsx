@@ -15,7 +15,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   // Catch in case this is called multiple times or on web
 });
 
-import LottieSplash from '../components/LottieSplash';
+import AnimatedSplash from '../components/AnimatedSplash';
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
@@ -40,7 +40,7 @@ export default function RootLayout() {
   return (
     <>
       {!splashAnimationComplete && (
-        <LottieSplash onComplete={() => setSplashAnimationComplete(true)} />
+        <AnimatedSplash onComplete={() => setSplashAnimationComplete(true)} />
       )}
       <Stack screenOptions={{ headerShown: false }}>
         {/* Tell the root app that (tabs) is the main entry point */}
