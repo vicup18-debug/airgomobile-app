@@ -2,7 +2,7 @@
   "expo": {
     "name": "Airgo",
     "slug": "airgo-app",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/images/icon-mark.png",
     "scheme": "airgo",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "ng.airgo.app",
-      "versionCode": 32,
+      "versionCode": 34,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7i70u3_DN4ksi0V6LILlkCCK-Y7Gq8qo"
