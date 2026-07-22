@@ -10,6 +10,18 @@ const { width } = Dimensions.get('window');
 
 export default function SuperAdminDashboard() {
     const router = useRouter();
+    const [activeTab, setActiveTab] = useState('overview');
+
+    const TABS = [
+        { id: 'overview', label: 'Global Overview' },
+        { id: 'bookings', label: 'Bookings Manager' },
+        { id: 'escrow', label: 'Escrow Ledger' },
+        { id: 'approvals', label: 'Partner Approvals' },
+        { id: 'fleet', label: 'Manage Fleet' },
+        { id: 'rooms', label: 'Room Matrix' },
+        { id: 'affiliates', label: 'Affiliates Hub' },
+        { id: 'chats', label: 'Chat Monitor' }
+    ];
 
     // 🟢 LIVE STATS from staging backend
     const [liveStats, setLiveStats] = useState({ total: 0, activeEscrow: 0, totalRevenue: 0, loading: true });
@@ -17,7 +29,9 @@ export default function SuperAdminDashboard() {
     useEffect(() => {
         const fetchLiveStats = async () => {
             try {
-                const res = await fetch(`${API_URL}/bookings`);
+                const token = await AsyncStorage.getItem('authToken');
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const res = await fetch(`${API_URL}/bookings`, { headers });
                 if (res.ok) {
                     const data: any[] = await res.json();
                     const bookings = Array.isArray(data) ? data : [];
@@ -42,39 +56,122 @@ export default function SuperAdminDashboard() {
         fetchLiveStats();
     }, []);
 
-    // 🟢 MOCK PLATFORM DATA
+    // 🟢 MOCK PLATFORM DATA (NOW LIVE)
     const [platformStats, setPlatformStats] = useState({
-        totalRevenue: 45250000,
-        totalUsers: 12450,
-        totalPartners: 84,
-        activeBookings: 1204,
-        growth: "+14.5%"
+        totalRevenue: 0,
+        totalUsers: 0,
+        totalPartners: 0,
+        activeBookings: 0,
+        growth: "+0%"
     });
 
+    useEffect(() => {
+        const fetchPlatformStats = async () => {
+            try {
+                const res = await fetch(`${API_URL}/user/superadmin/stats`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setPlatformStats({
+                        totalRevenue: data.totalRevenue || 0,
+                        totalUsers: data.totalUsers || 0,
+                        totalPartners: data.totalPartners || 0,
+                        activeBookings: data.activeBookings || 0,
+                        growth: data.growth || "+0%"
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching platform stats:", err);
+            }
+        };
+        fetchPlatformStats();
+    }, []);
+
     // 🟢 NEW: LIVE QUEUES FOR QA & DISBURSEMENTS
-    const [pendingPartners, setPendingPartners] = useState([
-        { id: '1', name: 'Grand Royal Hotel', location: 'Lagos', docs: 'Verified' },
-        { id: '2', name: 'Sunset Shortlets', location: 'Abuja', docs: 'Pending' }
-    ]);
+    const [pendingPartners, setPendingPartners] = useState<any[]>([]);
+    const [bookings, setBookings] = useState<any[]>([]);
+    const [cars, setCars] = useState<any[]>([]);
+    const [rooms, setRooms] = useState<any[]>([]);
+    const [affiliates, setAffiliates] = useState<any[]>([]);
+    const [chats, setChats] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchPartners = async () => {
+            try {
+                const res = await fetch(`${API_URL}/auth/partners`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        setPendingPartners(data.filter(p => !p.isApproved));
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching partners:", err);
+            }
+        };
+
+        const fetchAdditionalData = async () => {
+            try {
+                const token = await AsyncStorage.getItem('authToken');
+                const headers = { 'Authorization': `Bearer ${token}` };
+
+                const [bRes, cRes, rRes, aRes, chRes] = await Promise.all([
+                    fetch(`${API_URL}/bookings`, { headers }).catch(() => ({ ok: false, json: () => [] })),
+                    fetch(`${API_URL}/cars`, { headers }).catch(() => ({ ok: false, json: () => [] })),
+                    fetch(`${API_URL}/rooms`, { headers }).catch(() => ({ ok: false, json: () => [] })),
+                    fetch(`${API_URL}/affiliates`, { headers }).catch(() => ({ ok: false, json: () => [] })),
+                    fetch(`${API_URL}/chats/active`, { headers }).catch(() => ({ ok: false, json: () => [] }))
+                ]);
+                
+                if (bRes.ok) setBookings(await bRes.json());
+                if (cRes.ok) setCars(await cRes.json());
+                if (rRes.ok) setRooms(await rRes.json());
+                if (aRes.ok) setAffiliates(await aRes.json());
+                if (chRes.ok) setChats(await chRes.json());
+            } catch (err) {
+                console.error("Error fetching admin data:", err);
+            }
+        };
+
+        fetchPartners();
+        fetchAdditionalData();
+    }, []);
 
     const [pendingDisbursements, setPendingDisbursements] = useState([
         { id: 'D1', hotel: 'Eko Hotels', amount: '₦450,000', bookingRef: '#BK990', status: 'Awaiting Authorization' }
     ]);
 
     // 🟢 NEW: ACTIONS
-    const approvePartner = (id: string) => {
-        setPendingPartners(prev => prev.filter(p => p.id !== id));
-        Toast.show({ type: 'success', text1: 'Success', text2: 'Hotel has passed Quality Assurance and is now live on Airgo.ng' });
+    const approvePartner = async (id: string) => {
+        try {
+            const res = await fetch(`${API_URL}/auth/approve-partner/${id}`, { method: 'PUT' });
+            if (res.ok) {
+                setPendingPartners(prev => prev.filter(p => p._id !== id));
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Partner/Driver has been approved and is now live.' });
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to approve.' });
+            }
+        } catch (err) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Network error.' });
+        }
     };
 
-    const declinePartner = (id: string) => {
-        setPendingPartners(prev => prev.filter(p => p.id !== id));
-        Toast.show({ type: 'error', text1: 'Declined', text2: 'Hotel application rejected due to QA failure.' });
+    const declinePartner = async (id: string) => {
+        try {
+            const res = await fetch(`${API_URL}/auth/delete-partner/${id}`, { method: 'PUT' });
+            if (res.ok) {
+                setPendingPartners(prev => prev.filter(p => p._id !== id));
+                Toast.show({ type: 'error', text1: 'Declined', text2: 'Application rejected.' });
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to decline.' });
+            }
+        } catch (err) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Network error.' });
+        }
     };
 
     const authorizePayout = (id: string) => {
         setPendingDisbursements(prev => prev.filter(p => p.id !== id));
-        Toast.show({ type: 'success', text1: 'Payout Authorized', text2: 'Funds have been disbursed to the hotel partner.' });
+        Toast.show({ type: 'success', text1: 'Payout Authorized', text2: 'Funds have been disbursed.' });
     };
 
     const handleLogout = async () => {
@@ -99,10 +196,30 @@ export default function SuperAdminDashboard() {
                 </TouchableOpacity>
             </View>
 
+            {/* 🟢 HORIZONTAL TAB MENU */}
+            <View style={styles.tabContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
+                    {TABS.map(tab => (
+                        <TouchableOpacity 
+                            key={tab.id} 
+                            style={[styles.tabButton, activeTab === tab.id && styles.activeTabButton]}
+                            onPress={() => setActiveTab(tab.id)}
+                        >
+                            <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>{tab.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                {/* 🟢 LIVE STATS BAR */}
-                <Text style={styles.sectionLabel}>Live Platform Stats</Text>
+                {/* ========================================= */}
+                {/* 🟢 1. OVERVIEW TAB */}
+                {/* ========================================= */}
+                {activeTab === 'overview' && (
+                    <View>
+                        {/* 🟢 LIVE STATS BAR */}
+                        <Text style={styles.sectionLabel}>Live Platform Stats</Text>
                 {liveStats.loading ? (
                     <ActivityIndicator color="#FFB81C" style={{ marginBottom: 20 }} />
                 ) : (
@@ -187,32 +304,46 @@ export default function SuperAdminDashboard() {
                         <View style={styles.barWrapper}><View style={[styles.bar, { height: '85%' }]} /><Text style={styles.barLabel}>Sun</Text></View>
                     </View>
                 </View>
+                    </View>
+                )}
 
-                {/* 🟢 NEW: PARTNER VERIFICATION QA QUEUE */}
-                {pendingPartners.length > 0 && (
+                {/* ========================================= */}
+                {/* 🟢 4. APPROVALS TAB */}
+                {/* ========================================= */}
+                {activeTab === 'approvals' && (
+                    <View>
+                        {/* 🟢 PARTNER VERIFICATION QA QUEUE */}
+                        {pendingPartners.length > 0 ? (
                     <>
                         <Text style={styles.sectionTitle}>Partner Verification Queue</Text>
                         {pendingPartners.map(partner => (
-                            <View key={partner.id} style={styles.reviewCard}>
+                            <View key={partner._id} style={styles.reviewCard}>
                                 <View>
-                                    <Text style={styles.hotelName}>{partner.name}</Text>
-                                    <Text style={styles.hotelLoc}>{partner.location} • Docs: {partner.docs}</Text>
+                                    <Text style={styles.hotelName}>{partner.businessName || partner.name}</Text>
+                                    <Text style={styles.hotelLoc}>{partner.role === 'driver' ? 'Driver' : 'Partner'} • Docs: {partner.idDocumentUrl ? 'Uploaded' : 'Pending'}</Text>
                                 </View>
                                 <View style={styles.actionRow}>
-                                    <TouchableOpacity onPress={() => approvePartner(partner.id)} style={styles.approveBtn}>
+                                    <TouchableOpacity onPress={() => approvePartner(partner._id)} style={styles.approveBtn}>
                                         <Text style={styles.actionBtnText}>Approve</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => declinePartner(partner.id)} style={styles.declineBtn}>
+                                    <TouchableOpacity onPress={() => declinePartner(partner._id)} style={styles.declineBtn}>
                                         <Text style={styles.actionBtnText}>Decline</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
                         ))}
                     </>
+                ) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No pending approvals.</Text>}
+                    </View>
                 )}
 
-                {/* 🟢 NEW: DISBURSEMENT AUTHORIZATIONS */}
-                {pendingDisbursements.length > 0 && (
+                {/* ========================================= */}
+                {/* 🟢 3. ESCROW LEDGER TAB */}
+                {/* ========================================= */}
+                {activeTab === 'escrow' && (
+                    <View>
+                        {/* 🟢 DISBURSEMENT AUTHORIZATIONS */}
+                        {pendingDisbursements.length > 0 ? (
                     <>
                         <Text style={styles.sectionTitle}>Payout Disbursements</Text>
                         {pendingDisbursements.map(payout => (
@@ -228,31 +359,112 @@ export default function SuperAdminDashboard() {
                             </View>
                         ))}
                     </>
+                ) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No pending disbursements.</Text>}
+                    </View>
+                )}
+
+                {/* ========================================= */}
+                {/* 🟢 5. BOOKINGS TAB */}
+                {/* ========================================= */}
+                {activeTab === 'bookings' && (
+                    <View>
+                        <Text style={styles.sectionTitle}>Bookings Manager</Text>
+                        {bookings.length > 0 ? bookings.map((b: any, i) => (
+                            <View key={i} style={styles.reviewCard}>
+                                <Text style={styles.hotelName}>{b.bookingId || `#BK-${b._id?.substring(0,6)}`}</Text>
+                                <Text style={styles.hotelLoc}>{b.hotelName || b.carModel} • {b.status}</Text>
+                            </View>
+                        )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No bookings found.</Text>}
+                    </View>
+                )}
+
+                {/* ========================================= */}
+                {/* 🟢 6. FLEET TAB */}
+                {/* ========================================= */}
+                {activeTab === 'fleet' && (
+                    <View>
+                        <Text style={styles.sectionTitle}>Manage Fleet</Text>
+                        {cars.length > 0 ? cars.map((c: any, i) => (
+                            <View key={i} style={styles.reviewCard}>
+                                <Text style={styles.hotelName}>{c.make} {c.model} ({c.year})</Text>
+                                <Text style={styles.hotelLoc}>Type: {c.type} • Status: {c.isApproved ? 'Live' : 'Pending'}</Text>
+                            </View>
+                        )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No cars found.</Text>}
+                    </View>
+                )}
+
+                {/* ========================================= */}
+                {/* 🟢 7. ROOMS TAB */}
+                {/* ========================================= */}
+                {activeTab === 'rooms' && (
+                    <View>
+                        <Text style={styles.sectionTitle}>Manage Room Matrix</Text>
+                        {rooms.length > 0 ? rooms.map((r: any, i) => (
+                            <View key={i} style={styles.reviewCard}>
+                                <Text style={styles.hotelName}>{r.roomType || r.name}</Text>
+                                <Text style={styles.hotelLoc}>Capacity: {r.guests} • Status: {r.isApproved ? 'Live' : 'Pending'}</Text>
+                            </View>
+                        )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No rooms found.</Text>}
+                    </View>
+                )}
+
+                {/* ========================================= */}
+                {/* 🟢 8. AFFILIATES TAB */}
+                {/* ========================================= */}
+                {activeTab === 'affiliates' && (
+                    <View>
+                        <Text style={styles.sectionTitle}>Affiliates Hub</Text>
+                        {affiliates.length > 0 ? affiliates.map((a: any, i) => (
+                            <View key={i} style={styles.reviewCard}>
+                                <Text style={styles.hotelName}>{a.name}</Text>
+                                <Text style={styles.hotelLoc}>Referrals: {a.referrals || 0} • Status: {a.status}</Text>
+                            </View>
+                        )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No affiliates found.</Text>}
+                    </View>
+                )}
+
+                {/* ========================================= */}
+                {/* 🟢 9. CHATS TAB */}
+                {/* ========================================= */}
+                {activeTab === 'chats' && (
+                    <View>
+                        <Text style={styles.sectionTitle}>Chat Monitor</Text>
+                        {chats.length > 0 ? chats.map((c: any, i) => (
+                            <View key={i} style={styles.reviewCard}>
+                                <Text style={styles.hotelName}>Chat #{c._id?.substring(0,8)}</Text>
+                                <Text style={styles.hotelLoc}>Messages: {c.messages?.length || 0}</Text>
+                            </View>
+                        )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No active chats.</Text>}
+                    </View>
                 )}
 
                 {/* 🟢 PLATFORM CONTROLS */}
-                <Text style={styles.sectionTitle}>Platform Management</Text>
-                <View style={styles.managementGrid}>
-                    <TouchableOpacity style={styles.manageButton}>
-                        <View style={[styles.manageIcon, { backgroundColor: '#EBF8FF' }]}><Ionicons name="checkmark-circle" size={24} color="#3182CE" /></View>
-                        <Text style={styles.manageText}>Verify Partners</Text>
-                    </TouchableOpacity>
+                {activeTab === 'overview' && (
+                    <>
+                        <Text style={styles.sectionTitle}>Platform Management</Text>
+                        <View style={styles.managementGrid}>
+                            <TouchableOpacity style={styles.manageButton} onPress={() => setActiveTab('approvals')}>
+                                <View style={[styles.manageIcon, { backgroundColor: '#EBF8FF' }]}><Ionicons name="checkmark-circle" size={24} color="#3182CE" /></View>
+                                <Text style={styles.manageText}>Verify Partners</Text>
+                            </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.manageButton}>
-                        <View style={[styles.manageIcon, { backgroundColor: '#FEFCBF' }]}><Ionicons name="cash" size={24} color="#D69E2E" /></View>
-                        <Text style={styles.manageText}>Payouts</Text>
-                    </TouchableOpacity>
+                            <TouchableOpacity style={styles.manageButton} onPress={() => setActiveTab('escrow')}>
+                                <View style={[styles.manageIcon, { backgroundColor: '#FEFCBF' }]}><Ionicons name="cash" size={24} color="#D69E2E" /></View>
+                                <Text style={styles.manageText}>Payouts</Text>
+                            </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.manageButton}>
-                        <View style={[styles.manageIcon, { backgroundColor: '#FED7D7' }]}><Ionicons name="alert-circle" size={24} color="#E53E3E" /></View>
-                        <Text style={styles.manageText}>Disputes</Text>
-                    </TouchableOpacity>
+                            <TouchableOpacity style={styles.manageButton} onPress={() => Toast.show({ type: 'info', text1: 'Disputes', text2: 'Please use the Web Admin Panel for dispute resolution.' })}>
+                                <View style={[styles.manageIcon, { backgroundColor: '#FED7D7' }]}><Ionicons name="alert-circle" size={24} color="#E53E3E" /></View>
+                                <Text style={styles.manageText}>Disputes</Text>
+                            </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.manageButton}>
-                        <View style={[styles.manageIcon, { backgroundColor: '#E2E8F0' }]}><Ionicons name="settings" size={24} color="#4A5568" /></View>
-                        <Text style={styles.manageText}>Settings</Text>
-                    </TouchableOpacity>
-                </View>
+                            <TouchableOpacity style={styles.manageButton} onPress={() => Toast.show({ type: 'info', text1: 'Settings', text2: 'Global settings are managed in the Web Admin Panel.' })}>
+                                <View style={[styles.manageIcon, { backgroundColor: '#E2E8F0' }]}><Ionicons name="settings" size={24} color="#4A5568" /></View>
+                                <Text style={styles.manageText}>Settings</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                )}
 
             </ScrollView>
         </View>
@@ -262,12 +474,24 @@ export default function SuperAdminDashboard() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F9FA' },
 
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 25, backgroundColor: '#004A99' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 15, backgroundColor: '#000080' },
     dashboardLogo: { width: 120, height: 40, marginBottom: 5 },
     adminTag: { color: '#FFB81C', fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
     logoutBtn: { padding: 10, backgroundColor: '#FFF', borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 3 },
+    
+    // Tabs
+    tabContainer: { backgroundColor: '#000080', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+    tabScroll: { paddingHorizontal: 15, paddingBottom: 10 },
+    tabButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, marginRight: 10, backgroundColor: 'rgba(255,255,255,0.1)' },
+    activeTabButton: { backgroundColor: '#FFB81C' },
+    tabText: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600' },
+    activeTabText: { color: '#000080', fontWeight: 'bold' },
 
-    content: { padding: 20, paddingBottom: 60 },
+    placeholderContainer: { padding: 50, alignItems: 'center', justifyContent: 'center' },
+    placeholderText: { fontSize: 18, fontWeight: 'bold', color: '#2D3748', marginTop: 15 },
+    placeholderSub: { fontSize: 14, color: '#718096', textAlign: 'center', marginTop: 5 },
+
+    content: { padding: 20, paddingBottom: 100 },
 
     masterCard: { backgroundColor: '#1A202C', padding: 25, borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15, elevation: 8, marginBottom: 25 },
     masterCardTitle: { color: '#A0AEC0', fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 8 },

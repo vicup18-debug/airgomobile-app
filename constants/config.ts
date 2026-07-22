@@ -3,7 +3,7 @@
  */
 
 // If testing on a physical device, replace 'localhost' with your local machine's IP (e.g., '192.168.1.50')
-const DEV_BACKEND = 'http://10.255.99.149:5000/api';
+const DEV_BACKEND = 'http://10.145.163.149:5000/api';
 const PROD_BACKEND = 'https://airgo-backend.onrender.com/api';
 
 // Automatically toggle backend URL based on development/production mode

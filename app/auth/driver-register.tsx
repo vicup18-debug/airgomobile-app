@@ -1,35 +1,26 @@
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView
+  KeyboardAvoidingView, Platform, ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 
-/*
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
-  // offlineAccess: true,
-});
-*/
-
-const GoogleSignin = {
-  configure: () => {},
-  hasPlayServices: async () => true,
-  signIn: async () => ({ data: { idToken: null }, idToken: null })
-};
-
-export default function RegisterScreen() {
+export default function DriverRegisterScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [partnerId, setPartnerId] = useState('');
+  const [partners, setPartners] = useState<any[]>([]);
+  
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,9 +30,30 @@ export default function RegisterScreen() {
   const [successMsg, setSuccessMsg] = useState('');
 
   const REGISTER_API_URL = `${API_URL}/auth/register`;
+  const PARTNERS_API_URL = `${API_URL}/auth/partners`;
+
+  useEffect(() => {
+    const fetchPartners = async () => {
+      try {
+        const res = await fetch(PARTNERS_API_URL);
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          // Filter to only Fleet/Shuttle partners (car or shuttle)
+          const validPartners = data.filter((p: any) => 
+            p.role === 'partner' && (p.partnerType === 'car' || p.partnerType === 'shuttle') && p.isApproved
+          );
+          setPartners(validPartners);
+        }
+      } catch (err) {
+        console.error("Error fetching partners", err);
+      }
+    };
+    fetchPartners();
+  }, []);
 
   const handleRegister = async () => {
     if (!agreed) return setErrorMsg("You must agree to the Terms & Conditions.");
+    if (!partnerId) return setErrorMsg("You must select a Fleet Partner.");
     if (!phone) return setErrorMsg("Phone number is required.");
     if (password !== confirmPassword) return setErrorMsg("Passwords do not match.");
     if (password.length < 6) return setErrorMsg("Password must be at least 6 characters.");
@@ -55,7 +67,7 @@ export default function RegisterScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name, email, password, phone, role: 'client'
+          name, email, password, phone, role: 'driver', partnerId
         })
       });
 
@@ -65,7 +77,7 @@ export default function RegisterScreen() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccessMsg("✅ Account created successfully! Please check your email for a verification link to activate your account. Redirecting...");
+      setSuccessMsg("✅ Driver account created successfully! Please check your email to verify your account, and wait for your Fleet Manager to approve you.");
 
       setTimeout(() => {
         router.replace('/auth/login?verifyEmail=true' as any);
@@ -73,66 +85,6 @@ export default function RegisterScreen() {
 
     } catch (err: any) {
       setErrorMsg(`⚠️ ${err.message}`);
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      setLoading(true);
-      setErrorMsg('');
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      const idToken = response.data?.idToken || response.idToken;
-      
-      if (idToken) {
-        handleBackendGoogleRegister(idToken);
-      } else {
-        setErrorMsg('Authentication Error: No ID token returned');
-        setLoading(false);
-      }
-    } catch (error: any) {
-      setLoading(false);
-      setErrorMsg(`Sign in failed: ${error.message || 'Could not connect to Google'}`);
-    }
-  };
-
-  const handleBackendGoogleRegister = async (idToken: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: idToken })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        await AsyncStorage.setItem('userId', String(data._id || data.userId || ''));
-        await AsyncStorage.setItem('userName', String(data.name || data.user?.name || 'Traveler'));
-        await AsyncStorage.setItem('userEmail', String(data.email || data.user?.email || ''));
-        await AsyncStorage.setItem('userRole', String(data.role || 'user'));
-        if (data.token) {
-          await AsyncStorage.setItem('authToken', data.token);
-        }
-
-        syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
-
-        setSuccessMsg("✅ Signed in with Google successfully! Redirecting...");
-        setTimeout(() => {
-          if (data.role === 'superadmin') {
-            router.replace('/superadmin/dashboard' as any);
-          } else if (data.role === 'partner') {
-            router.replace('/partner/dashboard' as any);
-          } else {
-            router.replace('/(tabs)' as any);
-          }
-        }, 1500);
-      } else {
-        setErrorMsg(data.message || 'Google Sign-Up Failed');
-      }
-    } catch (error) {
-      setErrorMsg('Network Error: Check your connection');
-    } finally {
       setLoading(false);
     }
   };
@@ -145,7 +97,7 @@ export default function RegisterScreen() {
             <TouchableOpacity onPress={() => router.push('/(tabs)' as any)}>
                 <Text style={styles.logoText}>Airgo<Text style={styles.logoDot}>.ng</Text></Text>
             </TouchableOpacity>
-            <Text style={styles.subtitle}>Create a Client Account</Text>
+            <Text style={styles.subtitle}>Driver Registration</Text>
         </View>
 
         <View style={styles.card}>
@@ -161,19 +113,33 @@ export default function RegisterScreen() {
                 </View>
             ) : null}
 
-            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn} activeOpacity={0.8}>
-              <Ionicons name="logo-google" size={20} color="#DB4437" style={{ marginRight: 10 }} />
-              <Text style={styles.googleButtonText}>SIGN UP WITH GOOGLE</Text>
-            </TouchableOpacity>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or sign up with email</Text>
-              <View style={styles.dividerLine} />
+            <Text style={styles.label}>Select Your Fleet Partner *</Text>
+            <View style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16}}>
+                {partners.length === 0 ? (
+                    <Text style={{fontSize: 13, color: '#A0AEC0', fontStyle: 'italic'}}>Loading partners...</Text>
+                ) : (
+                    partners.map(p => (
+                        <TouchableOpacity
+                            key={p._id}
+                            style={[
+                                styles.partnerChip,
+                                partnerId === p._id && styles.partnerChipActive
+                            ]}
+                            onPress={() => setPartnerId(p._id)}
+                        >
+                            <Text style={[
+                                styles.partnerChipText,
+                                partnerId === p._id && styles.partnerChipTextActive
+                            ]}>
+                                {p.businessName || p.name}
+                            </Text>
+                        </TouchableOpacity>
+                    ))
+                )}
             </View>
 
             <Text style={styles.label}>Full Name</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} />
+            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. John Doe" />
 
             <Text style={styles.label}>Email Address</Text>
             <TextInput style={styles.input} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
@@ -217,6 +183,7 @@ export default function RegisterScreen() {
             <View style={styles.footerLinks}>
                 <Text style={styles.footerText}>Already have an account? <Text style={styles.footerLink} onPress={() => router.replace('/auth/login' as any)}>Sign in</Text></Text>
                 <Text style={[styles.footerText, {marginTop: 10}]}>Want to list your fleet? <Text style={[styles.footerLink, {color: '#FFB81C'}]} onPress={() => router.replace('/auth/partner-register' as any)}>Become a Partner</Text></Text>
+                <Text style={[styles.footerText, {marginTop: 10}]}>Want to drive for a fleet? <Text style={[styles.footerLink, {color: '#000080'}]} onPress={() => router.replace('/auth/driver-register' as any)}>Sign up as Driver</Text></Text>
             </View>
         </View>
       </ScrollView>
@@ -258,6 +225,29 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: '#000080', borderColor: '#000080' },
   termsText: { flex: 1, fontSize: 12, color: '#4A5568', lineHeight: 18 },
   linkText: { color: '#000080', fontWeight: 'bold' },
+  
+  partnerChip: {
+    backgroundColor: '#EDF2F7',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  partnerChipActive: {
+    backgroundColor: '#000080',
+    borderColor: '#000080'
+  },
+  partnerChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4A5568'
+  },
+  partnerChipTextActive: {
+    color: '#FFF'
+  },
   
   submitBtn: { backgroundColor: '#000080', padding: 16, borderRadius: 12, alignItems: 'center', shadowColor: '#000080', shadowOpacity: 0.3, shadowRadius: 10, elevation: 4 },
   submitBtnDisabled: { backgroundColor: '#A0AEC0', shadowOpacity: 0, elevation: 0 },

@@ -9,12 +9,20 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 import { API_URL } from '../../constants/config';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
+/*
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
   // offlineAccess: true,
 });
+*/
+
+const GoogleSignin = {
+  configure: () => {},
+  hasPlayServices: async () => true,
+  signIn: async () => ({ data: { idToken: null }, idToken: null })
+};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -61,10 +69,12 @@ export default function LoginScreen() {
           console.warn('FCM post-login sync failed:', e)
         );
 
-        if (data.role === 'superadmin') {
+        if (data.role === 'superadmin' || data.role === 'admin') {
           router.replace('/superadmin/dashboard' as any);
         } else if (data.role === 'partner') {
           router.replace('/partner/dashboard' as any);
+        } else if (data.role === 'driver') {
+          router.replace('/driver/dashboard' as any);
         } else {
           router.replace('/(tabs)' as any);
         }
@@ -151,6 +161,8 @@ export default function LoginScreen() {
           router.replace('/superadmin/dashboard' as any);
         } else if (data.role === 'partner') {
           router.replace('/partner/dashboard' as any);
+        } else if (data.role === 'driver') {
+          router.replace('/driver/dashboard' as any);
         } else {
           router.replace('/(tabs)' as any);
         }
@@ -320,6 +332,8 @@ export default function LoginScreen() {
               <Text style={styles.footerLinkText}>Sign up</Text>
             </Text>
           </TouchableOpacity>
+
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
