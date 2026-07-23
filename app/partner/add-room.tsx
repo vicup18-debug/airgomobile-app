@@ -80,10 +80,10 @@ export default function AddRoomScreen() {
             
             // Get user data for hotel name if possible
             const userDataStr = await AsyncStorage.getItem('userData');
-            let hotelName = '';
+            let hotelName = 'My Premium Hotel';
             if (userDataStr) {
                 const userData = JSON.parse(userDataStr);
-                hotelName = userData.businessName || userData.name || '';
+                hotelName = userData.businessName || userData.name || 'My Premium Hotel';
             }
 
             // Upload all images to Cloudinary
@@ -115,7 +115,7 @@ export default function AddRoomScreen() {
                 setTimeout(() => router.back(), 2000);
             } else {
                 const data = await response.json();
-                Toast.show({ type: 'error', text1: 'Submission Failed', text2: data.message || 'Something went wrong.' });
+                Toast.show({ type: 'error', text1: 'Submission Failed', text2: data.error || data.message || 'Something went wrong.' });
             }
         } catch (error) {
             console.error(error);
