@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon-mark.png",
     "scheme": "airgo",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/splash-logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -20,7 +15,7 @@
     },
     "android": {
       "package": "ng.airgo.app",
-      "versionCode": 49,
+      "versionCode": 50,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7i70u3_DN4ksi0V6LILlkCCK-Y7Gq8qo"
@@ -28,8 +23,7 @@
       },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon-mark.png",
-        "backgroundColor": "#FFFFFF",
-        "monochromeImage": "./assets/images/icon-mark.png"
+        "backgroundColor": "#004A99"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -46,9 +40,9 @@
           "image": "./assets/images/splash-logo.png",
           "imageWidth": 250,
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF",
+          "backgroundColor": "#004A99",
           "dark": {
-            "backgroundColor": "#FFFFFF",
+            "backgroundColor": "#004A99",
             "image": "./assets/images/splash-logo.png"
           }
         }

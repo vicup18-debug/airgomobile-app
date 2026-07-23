@@ -4,10 +4,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../constants/config';
 
 export default function AddRoomScreen() {
     const router = useRouter();
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [roomName, setRoomName] = useState('');
     const [price, setPrice] = useState('');
     const [totalAllocated, setTotalAllocated] = useState('1');
@@ -32,10 +35,6 @@ export default function AddRoomScreen() {
 
         if (!result.canceled) {
             const asset = result.assets[0];
-
-            // 🟢 QA RULE 1: Resolution Check (HD Minimum)
-            // QA Rule Removed: We allow lower resolution images now
-
             setImages(prev => [...prev, asset.uri]);
         }
     };
@@ -47,10 +46,83 @@ export default function AddRoomScreen() {
     // 🟢 VALIDATION
     const isFormValid = roomName && price && description && totalAllocated && images.length >= 5 && agreedToQA;
 
-    const handleSubmit = () => {
-        if (!isFormValid) return;
-        Toast.show({ type: 'success', text1: 'Room Submitted', text2: 'Your room has been submitted and is pending Superadmin QA approval.' });
-        setTimeout(() => router.back(), 2000);
+    const handleUploadToCloudinary = async (imageUri: string) => {
+        const formData = new FormData();
+        const filename = imageUri.split('/').pop() || 'upload.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+        formData.append('file', { uri: imageUri, name: filename, type } as any);
+        formData.append('upload_preset', 'airgo_fleet');
+
+        const res = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        const data = await res.json();
+        if (data.secure_url) {
+            return data.secure_url;
+        } else {
+            throw new Error('Cloudinary upload failed');
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!isFormValid || isSubmitting) return;
+        setIsSubmitting(true);
+        Toast.show({ type: 'info', text1: 'Uploading...', text2: 'Please wait while we upload your images and data.' });
+
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            const partnerId = await AsyncStorage.getItem('userId');
+            
+            // Get user data for hotel name if possible
+            const userDataStr = await AsyncStorage.getItem('userData');
+            let hotelName = '';
+            if (userDataStr) {
+                const userData = JSON.parse(userDataStr);
+                hotelName = userData.businessName || userData.name || '';
+            }
+
+            // Upload all images to Cloudinary
+            const uploadedImageUrls = await Promise.all(images.map(uri => handleUploadToCloudinary(uri)));
+            
+            const payload = {
+                partnerId: partnerId,
+                hotelName: hotelName,
+                name: roomName,
+                netPrice: Number(price),
+                totalAllocated: Number(totalAllocated),
+                description: description,
+                image: uploadedImageUrls[0],
+                images: uploadedImageUrls,
+                previewImage: uploadedImageUrls[0]
+            };
+
+            const response = await fetch(`${API_URL}/rooms`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                Toast.show({ type: 'success', text1: 'Room Submitted', text2: 'Your room has been submitted and is pending Superadmin QA approval.' });
+                setTimeout(() => router.back(), 2000);
+            } else {
+                const data = await response.json();
+                Toast.show({ type: 'error', text1: 'Submission Failed', text2: data.message || 'Something went wrong.' });
+            }
+        } catch (error) {
+            console.error(error);
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to upload and submit.' });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

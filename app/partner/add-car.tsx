@@ -67,12 +67,12 @@ export default function AddCarScreen() {
         const formData = new FormData();
         const filename = imageUri.split('/').pop() || 'upload.jpg';
         const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image`;
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
 
         formData.append('file', { uri: imageUri, name: filename, type } as any);
         formData.append('upload_preset', 'airgo_fleet');
 
-        const res = await fetch('https://api.cloudinary.com/v1_1/dng57feyj/image/upload', {
+        const res = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
             method: 'POST',
             body: formData,
             headers: { 'Content-Type': 'multipart/form-data' }
