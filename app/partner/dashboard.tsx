@@ -169,22 +169,7 @@ export default function PartnerDashboard() {
                 {/* 🟢 RECENT ACTIVITY */}
                 <Text style={styles.sectionTitle}>Recent Activity</Text>
                 <View style={styles.activityCard}>
-                    <View style={styles.activityRow}>
-                        <View style={styles.activityDot} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.activityText}>New booking: {(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Executive SUV' : 'Deluxe Suite'}</Text>
-                            <Text style={styles.activityTime}>10 mins ago • Ref: #A89F2</Text>
-                        </View>
-                        <Text style={styles.activityPrice}>+₦120,000</Text>
-                    </View>
-                    <View style={styles.divider} />
-                    <View style={styles.activityRow}>
-                        <View style={[styles.activityDot, { backgroundColor: '#FFB81C' }]} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.activityText}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Car status updated: Toyota Camry' : 'Room status updated: Presidential'}</Text>
-                            <Text style={styles.activityTime}>2 hours ago • Marked as Maintenance</Text>
-                        </View>
-                    </View>
+                    <Text style={{textAlign: 'center', color: '#718096', paddingVertical: 10}}>No recent activity to display.</Text>
                 </View>
 
             </ScrollView>

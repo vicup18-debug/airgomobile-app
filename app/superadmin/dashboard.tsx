@@ -276,7 +276,7 @@ export default function SuperAdminDashboard() {
                     <Text style={styles.masterCardValue}>₦{Math.max(platformStats.totalRevenue, liveStats.totalRevenue).toLocaleString()}</Text>
                     <View style={styles.growthBadge}>
                         <Ionicons name="trending-up" size={16} color="#38A169" />
-                        <Text style={styles.growthText}>{platformStats.growth !== "+0%" ? platformStats.growth : "+12%"} this month</Text>
+                        <Text style={styles.growthText}>{platformStats.growth} this month</Text>
                     </View>
                 </View>
 
@@ -313,13 +313,13 @@ export default function SuperAdminDashboard() {
                 <Text style={styles.sectionTitle}>Revenue Analytics</Text>
                 <View style={styles.chartContainer}>
                     <View style={styles.chartBars}>
-                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '40%' }]} /><Text style={styles.barLabel}>Mon</Text></View>
-                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '60%' }]} /><Text style={styles.barLabel}>Tue</Text></View>
-                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '50%' }]} /><Text style={styles.barLabel}>Wed</Text></View>
-                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '80%' }]} /><Text style={styles.barLabel}>Thu</Text></View>
-                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '70%' }]} /><Text style={styles.barLabel}>Fri</Text></View>
-                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '95%', backgroundColor: '#FFB81C' }]} /><Text style={styles.barLabel}>Sat</Text></View>
-                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '85%' }]} /><Text style={styles.barLabel}>Sun</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '0%' }]} /><Text style={styles.barLabel}>Mon</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '0%' }]} /><Text style={styles.barLabel}>Tue</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '0%' }]} /><Text style={styles.barLabel}>Wed</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '0%' }]} /><Text style={styles.barLabel}>Thu</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '0%' }]} /><Text style={styles.barLabel}>Fri</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '0%', backgroundColor: '#FFB81C' }]} /><Text style={styles.barLabel}>Sat</Text></View>
+                        <View style={styles.barWrapper}><View style={[styles.bar, { height: '0%' }]} /><Text style={styles.barLabel}>Sun</Text></View>
                     </View>
                 </View>
                     </View>
