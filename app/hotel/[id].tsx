@@ -29,8 +29,17 @@ export default function HotelDetailsScreen() {
         return <View style={styles.center}><ActivityIndicator size="large" color="#004A99" /></View>;
     }
 
-    // 🟢 MOCK ROOMS IF NONE IN DB (For the Demo)
-    const availableRooms = hotel?.rooms || [
+    // 🟢 FORMAT DB ROOMS TO MATCH UI REQUIREMENTS (Or fallback to Mock)
+    const dbRooms = Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
+        id: r._id,
+        name: r.name,
+        price: r.pricePerNight || r.netPrice || 0,
+        capacity: r.description || "2 Adults",
+        available: r.totalAllocated || 0,
+        amenities: typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()) : (r.amenities || ["Free WiFi"])
+    })) : null;
+
+    const availableRooms = dbRooms || [
         { id: 1, name: "Standard Room", price: 85000, capacity: "2 Adults", available: 5, amenities: ["Free WiFi", "AC"] },
         { id: 2, name: "Deluxe Suite", price: 120000, capacity: "2 Adults, 1 Child", available: 2, amenities: ["Free WiFi", "AC", "Balcony"] },
         { id: 3, name: "Presidential Villa", price: 350000, capacity: "4 Adults", available: 0, amenities: ["Pool", "Butler", "Ocean View"] }
