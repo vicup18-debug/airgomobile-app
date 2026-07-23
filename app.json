@@ -23,7 +23,7 @@
       },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#004A99"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -37,13 +37,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-logo.png",
-          "imageWidth": 250,
+          "image": "./assets/images/splash.png",
+          "imageWidth": 449,
           "resizeMode": "contain",
-          "backgroundColor": "#004A99",
+          "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#004A99",
-            "image": "./assets/images/splash-logo.png"
+            "backgroundColor": "#ffffff",
+            "image": "./assets/images/splash.png"
           }
         }
       ],
