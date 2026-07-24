@@ -8,12 +8,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import Constants from 'expo-constants';
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
-  // offlineAccess: true,
-});
+let GoogleSignin: any = null;
+if (Constants.appOwnership !== 'expo') {
+  try {
+    GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
+    });
+  } catch (e) {
+    console.warn('GoogleSignin module not found', e);
+  }
+}
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -70,6 +77,10 @@ export default function RegisterScreen() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!GoogleSignin) {
+      setErrorMsg('Google Sign-In is not supported in Expo Go. Please use a standalone build.');
+      return;
+    }
     try {
       setLoading(true);
       setErrorMsg('');
