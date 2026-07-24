@@ -63,7 +63,7 @@ export default function HotelDetailsScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Image Header */}
                 <View style={styles.imageHeader}>
-                    <Image source={{ uri: hotel?.images?.[0] || 'https://images.unsplash.com/photo-1542314831-c6a4d27ce66f' }} style={styles.mainImage} />
+                    <Image source={{ uri: hotel?.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80' }} style={styles.mainImage} />
                     <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                         <Ionicons name="arrow-back" size={24} color="#FFF" />
                     </TouchableOpacity>
