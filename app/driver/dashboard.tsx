@@ -156,6 +156,10 @@ export default function DriverDashboard() {
 
     socket.on('connect', () => {
       console.log('Driver connected to WebSocket:', socket.id);
+      if (userId) {
+        socket.emit('join_driver', { driverId: userId });
+      }
+      socket.emit('join_drivers', {}); // Join general drivers room
     });
 
     socket.on('new_booking_request', (data) => {

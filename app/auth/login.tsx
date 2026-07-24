@@ -9,20 +9,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 import { API_URL } from '../../constants/config';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-/*
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
   // offlineAccess: true,
 });
-*/
-
-const GoogleSignin = {
-  configure: () => {},
-  hasPlayServices: async () => true,
-  signIn: async () => ({ data: { idToken: null }, idToken: null })
-};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -61,6 +53,7 @@ export default function LoginScreen() {
         await AsyncStorage.setItem('userEmail', String(data.email || email || ''));
         await AsyncStorage.setItem('userRole', String(data.role || 'user'));
         await AsyncStorage.setItem('isApproved', String(data.isApproved || 'false'));
+        await AsyncStorage.setItem('userData', JSON.stringify(data));
         if (data.token) {
           await AsyncStorage.setItem('authToken', data.token);
         }
@@ -123,6 +116,12 @@ export default function LoginScreen() {
       setLoading(true);
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
+      
+      if (response.type === 'cancelled') {
+        setLoading(false);
+        return;
+      }
+      
       const idToken = response.data?.idToken || response.idToken;
       
       if (idToken) {
@@ -151,6 +150,7 @@ export default function LoginScreen() {
         await AsyncStorage.setItem('userName', String(data.name || data.user?.name || 'Traveler'));
         await AsyncStorage.setItem('userEmail', String(data.email || data.user?.email || ''));
         await AsyncStorage.setItem('userRole', String(data.role || 'user'));
+        await AsyncStorage.setItem('userData', JSON.stringify(data));
         if (data.token) {
           await AsyncStorage.setItem('authToken', data.token);
         }

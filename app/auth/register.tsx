@@ -6,22 +6,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-/*
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '426051101549-nsa4ivjki5eo0muc1efn7tbp0p1qrpe1.apps.googleusercontent.com',
   // offlineAccess: true,
 });
-*/
-
-const GoogleSignin = {
-  configure: () => {},
-  hasPlayServices: async () => true,
-  signIn: async () => ({ data: { idToken: null }, idToken: null })
-};
 
 export default function RegisterScreen() {
   const router = useRouter();

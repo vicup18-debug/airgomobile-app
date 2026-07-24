@@ -150,11 +150,11 @@ export default function PartnerDashboard() {
                             <Text style={styles.actionText}>Manage Fleet</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity style={styles.actionButton}>
+                        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/partner/rooms' as any)}>
                             <View style={styles.actionIconContainer}>
-                                <Ionicons name="images" size={24} color="#004A99" />
+                                <Ionicons name="bed" size={24} color="#004A99" />
                             </View>
-                            <Text style={styles.actionText}>Manage Photos</Text>
+                            <Text style={styles.actionText}>Manage Rooms</Text>
                         </TouchableOpacity>
                     )}
 

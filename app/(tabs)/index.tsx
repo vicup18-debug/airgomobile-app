@@ -839,7 +839,7 @@ export default function HomeScreen() {
                     />
                     <View style={styles.destOverlay}>
                       <Text style={styles.destName} numberOfLines={1}>
-                        Hotels in {item.location?.city}
+                        Hotels in {item.hotelAddress || item.location?.city || 'Nigeria'}
                       </Text>
                       <Text style={styles.destCount}>2,642 hotels</Text>
                     </View>
@@ -901,9 +901,9 @@ export default function HomeScreen() {
                         </View>
                         <View style={styles.propertyInfo}>
                           <Text style={styles.propertyType}>{item.partnerType || 'Hotel'}</Text>
-                          <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
+                          <Text style={styles.propertyName} numberOfLines={1}>{item.hotelName || item.name}</Text>
                           <Text style={styles.propertyLocation} numberOfLines={1}>
-                            <Ionicons name="location-outline" size={11} color="#718096" /> {item.location?.city || 'Nigeria'}
+                            <Ionicons name="location-outline" size={11} color="#718096" /> {item.hotelAddress || item.location?.city || 'Nigeria'}
                           </Text>
                           <View style={styles.propertyFooter}>
                             <Text style={styles.propertyPrice}>
@@ -949,14 +949,14 @@ export default function HomeScreen() {
                     />
                     <View style={styles.listCardInfo}>
                       <View style={styles.listCardHeader}>
-                        <Text style={styles.listCardName} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.listCardName} numberOfLines={1}>{item.hotelName || item.name}</Text>
                         <Text style={styles.listCardPrice}>
                           ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
                         </Text>
                       </View>
                       <Text style={styles.listCardLocation}>
                         <Ionicons name="location-outline" size={14} color="#718096" />{' '}
-                        {item.location?.city || 'Nigeria'}
+                        {item.hotelAddress || item.location?.city || 'Nigeria'}
                       </Text>
                       <View style={styles.escrowRow}>
                         <Ionicons name="shield-checkmark" size={12} color="#000080" />
