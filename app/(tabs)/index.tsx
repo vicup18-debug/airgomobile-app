@@ -196,6 +196,16 @@ function isHotelAvailable(hotel: any, checkIn: string, checkOut: string): boolea
   return true;
 }
 
+function getHotelState(hotel: any): string {
+  if (hotel?.location && typeof hotel.location === 'string') {
+    const parts = hotel.location.split(',');
+    return parts[parts.length - 1].trim();
+  }
+  if (hotel?.location?.state) return hotel.location.state;
+  if (hotel?.location?.city) return hotel.location.city;
+  return hotel?.hotelAddress || 'Nigeria';
+}
+
 export default function HomeScreen() {
   const [hotels, setHotels]           = useState<any[]>([]);
   const [loading, setLoading]         = useState(false);
@@ -208,7 +218,9 @@ export default function HomeScreen() {
 
   const filteredHotels = hotels.filter((hotel: any) => {
     const query = searchQuery.toLowerCase();
-    const matchesQuery = hotel.name?.toLowerCase().includes(query) || hotel.location?.city?.toLowerCase().includes(query);
+    const locString = typeof hotel.location === 'string' ? hotel.location.toLowerCase() : '';
+    const stateString = getHotelState(hotel).toLowerCase();
+    const matchesQuery = hotel.name?.toLowerCase().includes(query) || locString.includes(query) || stateString.includes(query);
     const hType = (hotel.partnerType || 'hotel').toLowerCase();
     const matchesType = stayType === 'any' || hType === stayType;
     return matchesQuery && matchesType;
@@ -818,14 +830,14 @@ export default function HomeScreen() {
           )}
 
           {/* ── SUGGESTED DESTINATIONS ── */}
-          {activeTab === 'stays' && !searchQuery && hotels.length > 0 && (
+          {activeTab === 'stays' && !searchQuery && filteredHotels.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Suggested Destinations</Text>
 <Text style={styles.sectionSub}>Most popular travel destinations in Nigeria</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {hotels.slice(0, 4).map((item, index) => (
+                {filteredHotels.slice(0, 4).map((item, index) => (
                   <TouchableOpacity
                     key={`pop-${item._id}`}
                     style={styles.destCard}
@@ -839,7 +851,7 @@ export default function HomeScreen() {
                     />
                     <View style={styles.destOverlay}>
                       <Text style={styles.destName} numberOfLines={1}>
-                        Hotels in {item.hotelAddress || item.location?.city || 'Nigeria'}
+                        Hotels in {getHotelState(item)}
                       </Text>
                       <Text style={styles.destCount}>2,642 hotels</Text>
                     </View>
@@ -857,7 +869,7 @@ export default function HomeScreen() {
                 <Text style={styles.sectionSub}>Discover handpicked luxury accommodations</Text>
               </View>
 
-              {hotels.length === 0 ? (
+              {filteredHotels.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                   <Ionicons name="business" size={48} color="#CBD5E0" />
                   <Text style={{ marginTop: 12, fontSize: 16, color: '#4A5568', fontWeight: 'bold' }}>No properties available yet</Text>
@@ -865,7 +877,7 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.dealsGrid}>
-                  {hotels.slice(0, 6).map((item, index) => {
+                  {filteredHotels.slice(0, 6).map((item, index) => {
                     const available = isHotelAvailable(item, startDate, endDate);
                     return (
                       <TouchableOpacity
@@ -903,7 +915,7 @@ export default function HomeScreen() {
                           <Text style={styles.propertyType}>{item.partnerType || 'Hotel'}</Text>
                           <Text style={styles.propertyName} numberOfLines={1}>{item.hotelName || item.name}</Text>
                           <Text style={styles.propertyLocation} numberOfLines={1}>
-                            <Ionicons name="location-outline" size={11} color="#718096" /> {item.hotelAddress || item.location?.city || 'Nigeria'}
+                            <Ionicons name="location-outline" size={11} color="#718096" /> {getHotelState(item)}
                           </Text>
                           <View style={styles.propertyFooter}>
                             <Text style={styles.propertyPrice}>
@@ -956,7 +968,7 @@ export default function HomeScreen() {
                       </View>
                       <Text style={styles.listCardLocation}>
                         <Ionicons name="location-outline" size={14} color="#718096" />{' '}
-                        {item.hotelAddress || item.location?.city || 'Nigeria'}
+                        {getHotelState(item)}
                       </Text>
                       <View style={styles.escrowRow}>
                         <Ionicons name="shield-checkmark" size={12} color="#000080" />

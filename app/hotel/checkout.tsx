@@ -4,15 +4,20 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import { API_URL } from '../../constants/config';
 
-export default function CheckoutScreen() {
+const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_e3f508dda06464163976ebde1d31f008ee8f524d';
+
+function CheckoutContent() {
     // 🟢 ALL HOOKS MUST BE AT THE TOP
     const { id, nights = "2" } = useLocalSearchParams();
     const router = useRouter();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [isProcessing, setIsProcessing] = useState(false); // Moved up!
+    const [isProcessing, setIsProcessing] = useState(false);
+    
+    const { popup } = usePaystack();
 
     // The Math Logic
     const stayNights = parseInt(nights as string);
@@ -50,10 +55,12 @@ export default function CheckoutScreen() {
         try {
             const userId = await AsyncStorage.getItem('userId');
             const userRole = await AsyncStorage.getItem('userRole');
+            const userEmail = await AsyncStorage.getItem('userEmail');
 
             if (!userId) {
                 Toast.show({ type: 'error', text1: 'Wait!', text2: 'You must be signed in to book a room.' });
                 router.push('/auth/login' as any);
+                setIsProcessing(false);
                 return;
             }
 
@@ -63,6 +70,7 @@ export default function CheckoutScreen() {
                 return;
             }
 
+            // Create booking with Pending status first
             const response = await fetch(`${API_URL}/bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -75,17 +83,64 @@ export default function CheckoutScreen() {
                     },
                     checkIn: new Date(),
                     totalPrice: totalDue,
-                    status: 'Confirmed'
+                    status: 'Pending'
                 })
             });
 
-            if (response.ok) {
-                Toast.show({ type: 'success', text1: 'Payment Successful!', text2: 'Your room is officially booked.' });
-                router.replace('/(tabs)/bookings' as any);
+            if (!response.ok) {
+                throw new Error("Failed to initialize booking.");
             }
+            
+            const data = await response.json();
+            const bookingId = data.booking?._id || data._id;
+
+            // Trigger Paystack Popup
+            popup.checkout({
+                email: userEmail || 'guest@airgo.ng',
+                amount: Math.round(totalDue * 100), // Paystack expects kobo
+                reference: bookingId,
+                metadata: {
+                    custom_fields: [
+                        { display_name: 'Booking ID', variable_name: 'bookingId', value: bookingId },
+                        { display_name: 'Service', variable_name: 'service', value: 'Hotel Booking' }
+                    ],
+                },
+                onCancel: () => {
+                    Toast.show({ type: 'info', text1: 'Payment Cancelled', text2: 'You cancelled the payment process.' });
+                    setIsProcessing(false);
+                },
+                onSuccess: async (res) => {
+                    // Update Booking to Paid
+                    try {
+                        const token = await AsyncStorage.getItem('authToken');
+                        const updateRes = await fetch(`${API_URL}/bookings/${bookingId}`, {
+                            method: 'PATCH',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}` 
+                            },
+                            body: JSON.stringify({
+                                status: 'Paid',
+                                paymentReference: res.reference || bookingId
+                            })
+                        });
+
+                        if (updateRes.ok) {
+                            Toast.show({ type: 'success', text1: 'Payment Successful!', text2: 'Your room is officially booked.' });
+                            router.replace('/(tabs)/bookings' as any);
+                        } else {
+                            const errData = await updateRes.json();
+                            Toast.show({ type: 'error', text1: 'Verification Failed', text2: errData.message || 'Please contact support.' });
+                            setIsProcessing(false);
+                        }
+                    } catch (e) {
+                        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to verify payment.' });
+                        setIsProcessing(false);
+                    }
+                },
+            });
         } catch (error) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Could not process booking. Try again.' });
-        } finally {
             setIsProcessing(false);
         }
     };
@@ -139,6 +194,14 @@ export default function CheckoutScreen() {
                 </TouchableOpacity>
             </View>
         </View>
+    );
+}
+
+export default function CheckoutScreen() {
+    return (
+        <PaystackProvider publicKey={PAYSTACK_PUBLIC_KEY}>
+            <CheckoutContent />
+        </PaystackProvider>
     );
 }
 

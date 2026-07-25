@@ -3,3 +3,5 @@ node_modules/
 expo-env.d.ts
 dist/
 build/
+/android
+/ios

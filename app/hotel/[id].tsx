@@ -4,6 +4,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
 
+function getHotelState(hotel: any): string {
+  if (hotel?.location && typeof hotel.location === 'string') {
+    const parts = hotel.location.split(',');
+    return parts[parts.length - 1].trim();
+  }
+  if (hotel?.location?.state) return hotel.location.state;
+  if (hotel?.location?.city) return hotel.location.city;
+  return hotel?.hotelAddress || 'Nigeria';
+}
+
 export default function HotelDetailsScreen() {
     const { id, nights = "2" } = useLocalSearchParams();
     const router = useRouter();
@@ -78,7 +88,7 @@ export default function HotelDetailsScreen() {
                             <Text style={styles.ratingText}>4.8</Text>
                         </View>
                     </View>
-                    <Text style={styles.locationText}><Ionicons name="location" size={14} /> {hotel?.location?.city || "Nigeria"}, {hotel?.location?.state}</Text>
+                    <Text style={styles.locationText}><Ionicons name="location" size={14} /> {getHotelState(hotel)}</Text>
                     <Text style={styles.descriptionText} numberOfLines={3}>
                         {hotel?.description || "Experience luxury and comfort in the heart of the city. Enjoy premium amenities and world-class service tailored to your every need."}
                     </Text>
