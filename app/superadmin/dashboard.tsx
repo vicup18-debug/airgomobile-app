@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
+import { io } from 'socket.io-client';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +26,27 @@ export default function SuperAdminDashboard() {
 
     // 🟢 LIVE STATS from staging backend
     const [liveStats, setLiveStats] = useState({ total: 0, activeEscrow: 0, totalRevenue: 0, loading: true });
+
+    useEffect(() => {
+        const socket = io(API_URL.replace('/api', ''), {
+            transports: ['websocket', 'polling']
+        });
+        
+        socket.on('new_room_approval_request', (data: any) => {
+            const type = data.partnerType === 'apartment' ? 'Apartment' : 'Room';
+            Toast.show({
+                type: 'info',
+                text1: `🔔 New ${type} Approval Request`,
+                text2: `A new ${type.toLowerCase()} '${data.name}' was added and requires approval.`,
+                visibilityTime: 6000,
+            });
+            // We could re-fetch rooms here if we had a dedicated function for it
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
     useEffect(() => {
         const fetchLiveStats = async () => {
