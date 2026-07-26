@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Dimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Calendar } from 'react-native-calendars';
 import { API_URL } from '../../constants/config';
 
 function getHotelState(hotel: any): string {
@@ -15,11 +16,62 @@ function getHotelState(hotel: any): string {
 }
 
 export default function HotelDetailsScreen() {
-    const { id, nights = "2" } = useLocalSearchParams();
+    const { id, startDate, endDate, guests } = useLocalSearchParams();
     const router = useRouter();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+    const handleScroll = (event: any) => {
+        const slideSize = event.nativeEvent.layoutMeasurement.width;
+        const index = event.nativeEvent.contentOffset.x / slideSize;
+        const roundIndex = Math.round(index);
+        if (activeImageIndex !== roundIndex) {
+            setActiveImageIndex(roundIndex);
+        }
+    };
+
+    const [showCalendarModal, setShowCalendarModal] = useState(false);
+    const [localStartDate, setLocalStartDate] = useState(startDate as string || '');
+    const [localEndDate, setLocalEndDate] = useState(endDate as string || '');
+
+    const onDayPress = (day: any) => {
+        const dateStr = day.dateString;
+        if (!localStartDate || (localStartDate && localEndDate)) {
+            setLocalStartDate(dateStr);
+            setLocalEndDate('');
+        } else {
+            if (new Date(dateStr) < new Date(localStartDate)) {
+                setLocalStartDate(dateStr);
+                setLocalEndDate('');
+            } else {
+                setLocalEndDate(dateStr);
+            }
+        }
+    };
+
+    const markedDates = (() => {
+        const marked: any = {};
+        if (localStartDate) {
+            marked[localStartDate] = { startingDay: true, color: '#000080', textColor: 'white', selected: true };
+        }
+        if (localEndDate) {
+            marked[localEndDate] = { endingDay: true, color: '#000080', textColor: 'white', selected: true };
+            if (localStartDate) {
+                const start = new Date(localStartDate);
+                const end = new Date(localEndDate);
+                let current = new Date(start);
+                current.setDate(current.getDate() + 1);
+                while (current < end) {
+                    const dateStr = current.toISOString().split('T')[0];
+                    marked[dateStr] = { color: '#EBF4FF', textColor: '#000080', selected: true };
+                    current.setDate(current.getDate() + 1);
+                }
+            }
+        }
+        return marked;
+    })();
 
     useEffect(() => {
         if (!id) return;
@@ -39,21 +91,29 @@ export default function HotelDetailsScreen() {
         return <View style={styles.center}><ActivityIndicator size="large" color="#004A99" /></View>;
     }
 
-    // 🟢 FORMAT DB ROOMS TO MATCH UI REQUIREMENTS (Or fallback to Mock)
-    const dbRooms = Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
+    // 🟢 DYNAMIC ROOM AVAILABILITY LOGIC
+    const getAvailableRoomsCount = (room: any) => {
+        if (!room.totalAllocated) return 0;
+        if (!localStartDate || !localEndDate || !Array.isArray(room.bookedDates)) return room.totalAllocated;
+        
+        let maxBooked = 0;
+        room.bookedDates.forEach((bd: any) => {
+            if (bd.date >= localStartDate && bd.date < localEndDate) {
+                if (bd.count > maxBooked) maxBooked = bd.count;
+            }
+        });
+        
+        return Math.max(0, room.totalAllocated - maxBooked);
+    };
+
+    const availableRooms = Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
         id: r._id,
         name: r.name,
         price: r.pricePerNight || r.netPrice || 0,
         capacity: r.description || "2 Adults",
-        available: r.totalAllocated || 0,
+        available: getAvailableRoomsCount(r),
         amenities: typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()) : (r.amenities || ["Free WiFi"])
-    })) : null;
-
-    const availableRooms = dbRooms || [
-        { id: 1, name: "Standard Room", price: 85000, capacity: "2 Adults", available: 5, amenities: ["Free WiFi", "AC"] },
-        { id: 2, name: "Deluxe Suite", price: 120000, capacity: "2 Adults, 1 Child", available: 2, amenities: ["Free WiFi", "AC", "Balcony"] },
-        { id: 3, name: "Presidential Villa", price: 350000, capacity: "4 Adults", available: 0, amenities: ["Pool", "Butler", "Ocean View"] }
-    ];
+    })) : [];
 
     // 🟢 NEW: Calculate selected room details for the Escrow Policy
     const selectedRoomDetails = availableRooms.find((r: any) => r.id === selectedRoom);
@@ -64,8 +124,14 @@ export default function HotelDetailsScreen() {
             alert("Please select a room to continue.");
             return;
         }
-        // Proceed to checkout page, passing the room info
-        router.push(`/hotel/checkout?id=${id}&roomId=${selectedRoom}&nights=${nights}`);
+        if (!localStartDate || !localEndDate) {
+            setShowCalendarModal(true);
+            return;
+        }
+        const diff = new Date(localEndDate).getTime() - new Date(localStartDate).getTime();
+        const calculatedNights = Math.max(1, Math.round(diff / (1000 * 3600 * 24)));
+        // Proceed to checkout page, passing the room info and dates
+        router.push(`/hotel/checkout?id=${id}&roomId=${selectedRoom}&nights=${calculatedNights}&startDate=${localStartDate}&endDate=${localEndDate}&guests=${guests || 1}`);
     };
 
     return (
@@ -73,7 +139,35 @@ export default function HotelDetailsScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Image Header */}
                 <View style={styles.imageHeader}>
-                    <Image source={{ uri: hotel?.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80' }} style={styles.mainImage} />
+                    {hotel?.images && hotel.images.length > 0 ? (
+                        <ScrollView
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            onScroll={handleScroll}
+                            scrollEventThrottle={16}
+                            style={{ flex: 1 }}
+                        >
+                            {hotel.images.map((img: string, idx: number) => (
+                                <Image
+                                    key={idx}
+                                    source={{ uri: img }}
+                                    style={{ width: Dimensions.get('window').width, height: 300 }}
+                                />
+                            ))}
+                        </ScrollView>
+                    ) : (
+                        <Image source={{ uri: hotel?.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80' }} style={styles.mainImage} />
+                    )}
+
+                    {hotel?.images && hotel.images.length > 1 && (
+                        <View style={styles.paginationContainer}>
+                            {hotel.images.map((_: any, i: number) => (
+                                <View key={i} style={[styles.paginationDot, activeImageIndex === i && styles.paginationDotActive]} />
+                            ))}
+                        </View>
+                    )}
+
                     <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                         <Ionicons name="arrow-back" size={24} color="#FFF" />
                     </TouchableOpacity>
@@ -97,6 +191,10 @@ export default function HotelDetailsScreen() {
                 {/* 🟢 ROOM AVAILABILITY LIST */}
                 <View style={styles.roomsSection}>
                     <Text style={styles.sectionTitle}>Select a Room</Text>
+                    
+                    {availableRooms.length === 0 && (
+                        <Text style={{ color: '#718096', fontSize: 16, marginTop: 10 }}>No rooms available at this hotel currently.</Text>
+                    )}
 
                     {availableRooms.map((room: any) => {
                         const isSoldOut = room.available === 0;
@@ -151,9 +249,35 @@ export default function HotelDetailsScreen() {
                 )}
 
                 <TouchableOpacity style={[styles.continueButton, selectedRoom === null && { opacity: 0.5 }]} onPress={handleContinue}>
-                    <Text style={styles.continueText}>Continue to Payment</Text>
+                    <Text style={styles.continueText}>
+                        {(!localStartDate || !localEndDate) ? "Select Dates to Continue" : "Continue to Payment"}
+                    </Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Calendar Modal */}
+            <Modal visible={showCalendarModal} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Dates</Text>
+                            <TouchableOpacity onPress={() => setShowCalendarModal(false)}>
+                                <Ionicons name="close-circle" size={30} color="#CBD5E0" />
+                            </TouchableOpacity>
+                        </View>
+                        <Calendar
+                            minDate={new Date().toISOString().split('T')[0]}
+                            markingType="period"
+                            markedDates={markedDates}
+                            onDayPress={onDayPress}
+                            theme={{ todayTextColor: '#000080', arrowColor: '#000080', selectedDayBackgroundColor: '#000080' }}
+                        />
+                        <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowCalendarModal(false)}>
+                            <Text style={styles.modalApplyText}>Confirm Dates</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -164,6 +288,9 @@ const styles = StyleSheet.create({
     imageHeader: { position: 'relative', width: '100%', height: 300 },
     mainImage: { width: '100%', height: '100%' },
     backButton: { position: 'absolute', top: 50, left: 20, backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 20 },
+    paginationContainer: { position: 'absolute', bottom: 45, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+    paginationDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)', marginHorizontal: 4 },
+    paginationDotActive: { backgroundColor: '#FFF', width: 10, height: 10, borderRadius: 5 },
 
     infoSection: { padding: 20, backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, marginTop: -30 },
     titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
@@ -199,5 +326,12 @@ const styles = StyleSheet.create({
     protectionText: { color: '#744210', fontSize: 12, lineHeight: 18 },
 
     continueButton: { backgroundColor: '#FFB81C', paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
-    continueText: { color: '#004A99', fontSize: 18, fontWeight: '900' }
+    continueText: { color: '#004A99', fontSize: 18, fontWeight: '900' },
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 25, paddingBottom: 44 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+    modalTitle: { fontSize: 22, fontWeight: '900', color: '#1A202C' },
+    modalApplyButton: { backgroundColor: '#000080', padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 14 },
+    modalApplyText: { color: '#FFF', fontSize: 16, fontWeight: '900' }
 });

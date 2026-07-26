@@ -455,12 +455,13 @@ export default function HomeScreen() {
   };
 
   const navigateToHotel = (hotelId: string) => {
-    let calculatedNights = 2;
+    let calculatedNights = 0;
     if (startDate && endDate) {
       const diff = new Date(endDate).getTime() - new Date(startDate).getTime();
       calculatedNights = Math.max(1, Math.round(diff / (1000 * 3600 * 24)));
     }
-    router.push(`/hotel/${hotelId}?nights=${calculatedNights}`);
+    
+    router.push(`/hotel/${hotelId}?nights=${calculatedNights}&startDate=${startDate}&endDate=${endDate}&guests=${guests.adults}`);
   };
 
   const showActiveTripAlert = () => {

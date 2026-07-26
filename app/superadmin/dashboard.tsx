@@ -117,7 +117,7 @@ export default function SuperAdminDashboard() {
                 const [bRes, cRes, rRes, aRes, chRes] = await Promise.all([
                     fetch(`${API_URL}/bookings`, { headers }).catch(() => ({ ok: false, json: () => [] })),
                     fetch(`${API_URL}/cars`, { headers }).catch(() => ({ ok: false, json: () => [] })),
-                    fetch(`${API_URL}/rooms`, { headers }).catch(() => ({ ok: false, json: () => [] })),
+                    fetch(`${API_URL}/rooms/all-admin`, { headers }).catch(() => ({ ok: false, json: () => [] })),
                     fetch(`${API_URL}/affiliates`, { headers }).catch(() => ({ ok: false, json: () => [] })),
                     fetch(`${API_URL}/chats/active`, { headers }).catch(() => ({ ok: false, json: () => [] }))
                 ]);
@@ -142,6 +142,42 @@ export default function SuperAdminDashboard() {
     );
 
     // 🟢 NEW: ACTIONS
+    const approveRoom = async (id: string) => {
+        try {
+            const token = await AsyncStorage.getItem('authToken');
+            const res = await fetch(`${API_URL}/rooms/${id}/approve`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setRooms(prev => prev.map(r => r._id === id ? { ...r, isApproved: true } : r));
+                Toast.show({ type: 'success', text1: 'Success', text2: 'Room has been approved and is now live.' });
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to approve room.' });
+            }
+        } catch (err) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Network error.' });
+        }
+    };
+
+    const rejectRoom = async (id: string) => {
+        try {
+            const token = await AsyncStorage.getItem('authToken');
+            const res = await fetch(`${API_URL}/rooms/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                setRooms(prev => prev.filter(r => r._id !== id));
+                Toast.show({ type: 'error', text1: 'Rejected', text2: 'Room application rejected and deleted.' });
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to reject room.' });
+            }
+        } catch (err) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Network error.' });
+        }
+    };
+
     const approvePartner = async (id: string) => {
         try {
             const res = await fetch(`${API_URL}/auth/approve-partner/${id}`, { method: 'PUT' });
@@ -331,27 +367,54 @@ export default function SuperAdminDashboard() {
                 {activeTab === 'approvals' && (
                     <View>
                         {/* 🟢 PARTNER VERIFICATION QA QUEUE */}
-                        {pendingPartners.length > 0 ? (
-                    <>
-                        <Text style={styles.sectionTitle}>Partner Verification Queue</Text>
-                        {pendingPartners.map(partner => (
-                            <View key={partner._id} style={styles.reviewCard}>
-                                <View>
-                                    <Text style={styles.hotelName}>{partner.businessName || partner.name}</Text>
-                                    <Text style={styles.hotelLoc}>{partner.role === 'driver' ? 'Driver' : 'Partner'} • Docs: {partner.idDocumentUrl ? 'Uploaded' : 'Pending'}</Text>
-                                </View>
-                                <View style={styles.actionRow}>
-                                    <TouchableOpacity onPress={() => approvePartner(partner._id)} style={styles.approveBtn}>
-                                        <Text style={styles.actionBtnText}>Approve</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => declinePartner(partner._id)} style={styles.declineBtn}>
-                                        <Text style={styles.actionBtnText}>Decline</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        ))}
-                    </>
-                ) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No pending approvals.</Text>}
+                        {pendingPartners.length > 0 && (
+                            <>
+                                <Text style={styles.sectionTitle}>Partner Verification Queue</Text>
+                                {pendingPartners.map(partner => (
+                                    <View key={partner._id} style={styles.reviewCard}>
+                                        <View>
+                                            <Text style={styles.hotelName}>{partner.businessName || partner.name}</Text>
+                                            <Text style={styles.hotelLoc}>{partner.role === 'driver' ? 'Driver' : 'Partner'} • Docs: {partner.idDocumentUrl ? 'Uploaded' : 'Pending'}</Text>
+                                        </View>
+                                        <View style={styles.actionRow}>
+                                            <TouchableOpacity onPress={() => approvePartner(partner._id)} style={styles.approveBtn}>
+                                                <Text style={styles.actionBtnText}>Approve</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => declinePartner(partner._id)} style={styles.declineBtn}>
+                                                <Text style={styles.actionBtnText}>Decline</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                            </>
+                        )}
+                        
+                        {/* 🟢 ROOMS VERIFICATION QA QUEUE */}
+                        {rooms.filter(r => !r.isApproved).length > 0 && (
+                            <>
+                                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Room / Apartment Verification Queue</Text>
+                                {rooms.filter(r => !r.isApproved).map(room => (
+                                    <View key={room._id} style={styles.reviewCard}>
+                                        <View>
+                                            <Text style={styles.hotelName}>{room.roomType || room.name}</Text>
+                                            <Text style={styles.hotelLoc}>Capacity: {room.guests} • Partner ID: {room.partnerId}</Text>
+                                        </View>
+                                        <View style={styles.actionRow}>
+                                            <TouchableOpacity onPress={() => approveRoom(room._id)} style={styles.approveBtn}>
+                                                <Text style={styles.actionBtnText}>Approve</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => rejectRoom(room._id)} style={styles.declineBtn}>
+                                                <Text style={styles.actionBtnText}>Reject</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                            </>
+                        )}
+
+                        {pendingPartners.length === 0 && rooms.filter(r => !r.isApproved).length === 0 && (
+                            <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No pending approvals.</Text>
+                        )}
                     </View>
                 )}
 

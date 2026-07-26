@@ -11,7 +11,7 @@ const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_e3f
 
 function CheckoutContent() {
     // 🟢 ALL HOOKS MUST BE AT THE TOP
-    const { id, nights = "2" } = useLocalSearchParams();
+    const { id, nights = "2", startDate, endDate, guests: paramGuests } = useLocalSearchParams();
     const router = useRouter();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -70,20 +70,30 @@ function CheckoutContent() {
                 return;
             }
 
-            // Create booking with Pending status first
+            const checkInDate = startDate ? new Date(startDate as string) : new Date();
+            const checkOutDate = endDate ? new Date(endDate as string) : new Date();
+            if (!endDate) {
+                checkOutDate.setDate(checkOutDate.getDate() + stayNights);
+            }
+
+            const guestsCount = paramGuests ? parseInt(paramGuests as string, 10) : 1;
+
+            // Create booking with Pending Escrow status first
             const response = await fetch(`${API_URL}/bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: userId,
-                    hotel: {
-                        name: hotel.name,
-                        location: { city: hotel.location?.city },
-                        images: hotel.images
-                    },
-                    checkIn: new Date(),
+                    itemId: hotel._id,
+                    itemName: hotel.name,
+                    itemType: 'hotel',
+                    partnerId: hotel.partnerId,
+                    checkIn: checkInDate.toISOString(),
+                    checkOut: checkOutDate.toISOString(),
+                    guests: guestsCount,
                     totalPrice: totalDue,
-                    status: 'Pending'
+                    status: 'Pending Escrow',
+                    city: hotel.location?.city || ''
                 })
             });
 
