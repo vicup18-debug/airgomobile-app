@@ -75,7 +75,7 @@ export default function AddRoomScreen() {
         Toast.show({ type: 'info', text1: 'Uploading...', text2: 'Please wait while we upload your images and data.' });
 
         try {
-            const token = await AsyncStorage.getItem('userToken');
+            const token = await AsyncStorage.getItem('authToken');
             const partnerId = await AsyncStorage.getItem('userId');
             
             // Get user data for hotel name if possible

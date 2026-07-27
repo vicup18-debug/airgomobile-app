@@ -26,7 +26,7 @@ export default function FleetScreen() {
     const fetchCars = async () => {
         setLoading(true);
         try {
-            const token = await AsyncStorage.getItem('userToken');
+            const token = await AsyncStorage.getItem('authToken');
             const partnerId = await AsyncStorage.getItem('userId');
             
             const response = await fetch(`${API_URL}/cars`, {
@@ -57,7 +57,7 @@ export default function FleetScreen() {
         if (!editingCar) return;
         setIsSaving(true);
         try {
-            const token = await AsyncStorage.getItem('userToken');
+            const token = await AsyncStorage.getItem('authToken');
             
             const payload = {
                 driverName,

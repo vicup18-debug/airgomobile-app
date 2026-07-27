@@ -270,6 +270,22 @@ export default function DriverDashboard() {
   const monthly  = monthlyEarnings(myBookings);
   const allTime  = allTimeEarnings(myBookings);
 
+  const handleLogout = async () => {
+    Alert.alert("Logout", "Are you sure you want to securely sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await AsyncStorage.removeItem('airgo_token');
+          await AsyncStorage.removeItem('airgo_user');
+          Toast.show({ type: 'success', text1: 'Logged out successfully' });
+          router.replace('/login');
+        }
+      }
+    ]);
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -292,9 +308,14 @@ export default function DriverDashboard() {
           <Text style={styles.headerTitle}>Driver Console</Text>
           <Text style={styles.headerSub}>Welcome back, {driverName}</Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={() => { setRefreshing(true); fetchData(); }}>
-          <Ionicons name="refresh-outline" size={22} color="#FFB81C" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => { setRefreshing(true); fetchData(); }}>
+            <Ionicons name="refresh-outline" size={22} color="#FFB81C" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.refreshBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={22} color="#FF5A5F" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── AVAILABILITY TOGGLE ── */}
