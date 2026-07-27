@@ -29,9 +29,11 @@ export default function CustomAlertModal({
 }: CustomAlertModalProps) {
   const scaleValue = React.useRef(new Animated.Value(0)).current;
   const opacityValue = React.useRef(new Animated.Value(0)).current;
+  const [internalVisible, setInternalVisible] = React.useState(visible);
 
   React.useEffect(() => {
     if (visible) {
+      setInternalVisible(true);
       Animated.parallel([
         Animated.timing(opacityValue, {
           toValue: 1,
@@ -57,11 +59,11 @@ export default function CustomAlertModal({
           duration: 150,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        setInternalVisible(false);
+      });
     }
   }, [visible]);
-
-  if (!visible) return null;
 
   const getIcon = () => {
     switch (type) {
@@ -90,7 +92,7 @@ export default function CustomAlertModal({
   const activeButtons = buttons.length > 0 ? buttons : defaultButtons;
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
+    <Modal transparent visible={internalVisible} animationType="none" onRequestClose={onClose}>
       <Animated.View style={[styles.overlay, { opacity: opacityValue }]}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
         

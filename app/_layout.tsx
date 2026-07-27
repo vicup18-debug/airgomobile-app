@@ -15,11 +15,11 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   // Catch in case this is called multiple times or on web
 });
 
-import AnimatedSplash from '../components/AnimatedSplash';
-
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
-  const [splashAnimationComplete, setSplashAnimationComplete] = useState(false);
+
+  // Initialise push notification listeners
+  usePushNotifications();
 
   useEffect(() => {
     // Simulate any required asset loading or initial API calls here
@@ -31,7 +31,9 @@ export default function RootLayout() {
         console.warn(e);
       } finally {
         setAppReady(true);
-        // AnimatedSplash handles hiding the native splash, so we don't need to do it here
+        // Check for notifications if app was launched from a dead state
+        checkColdStartNotification();
+        SplashScreen.hideAsync();
       }
     };
     prepareApp();
@@ -39,9 +41,6 @@ export default function RootLayout() {
 
   return (
     <>
-      {!splashAnimationComplete && (
-        <AnimatedSplash onComplete={() => setSplashAnimationComplete(true)} />
-      )}
       <Stack screenOptions={{ headerShown: false }}>
         {/* Tell the root app that (tabs) is the main entry point */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

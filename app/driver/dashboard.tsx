@@ -110,10 +110,11 @@ export default function DriverDashboard() {
       // My bookings (trips I've claimed)
       if (myRes.status === 'fulfilled' && myRes.value.ok) {
         const data: any[] = await myRes.value.json();
-        setMyBookings(Array.isArray(data) ? data : []);
-        const active = data.find(b =>
+        const isArr = Array.isArray(data);
+        setMyBookings(isArr ? data : []);
+        const active = isArr ? data.find(b =>
           ACTIVE_STATUSES.some(s => (b.status || '').includes(s)) && b.driverId === id
-        );
+        ) : null;
         setActiveTrip(active || null);
       }
 
