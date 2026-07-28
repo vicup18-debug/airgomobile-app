@@ -280,7 +280,7 @@ export default function DriverDashboard() {
           await AsyncStorage.removeItem('airgo_token');
           await AsyncStorage.removeItem('airgo_user');
           Toast.show({ type: 'success', text1: 'Logged out successfully' });
-          router.replace('/login');
+          router.replace('/auth/login' as any);
         }
       }
     ]);

@@ -12,6 +12,9 @@ export default function AddRoomScreen() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [roomName, setRoomName] = useState('');
+    const [city, setCity] = useState('');
+    const [state, setState] = useState('');
+    const [country, setCountry] = useState('Nigeria');
     const [price, setPrice] = useState('');
     const [totalAllocated, setTotalAllocated] = useState('1');
     const [description, setDescription] = useState('');
@@ -89,9 +92,12 @@ export default function AddRoomScreen() {
             // Upload all images to Cloudinary
             const uploadedImageUrls = await Promise.all(images.map(uri => handleUploadToCloudinary(uri)));
             
+            const fullAddress = `${city.trim()}, ${state.trim()}, ${country.trim()}`;
+            
             const payload = {
                 partnerId: partnerId,
                 hotelName: hotelName,
+                hotelAddress: fullAddress,
                 name: roomName,
                 netPrice: Number(price),
                 totalAllocated: Number(totalAllocated),
@@ -178,6 +184,33 @@ export default function AddRoomScreen() {
                         placeholderTextColor="#A0AEC0"
                         value={roomName}
                         onChangeText={setRoomName}
+                    />
+
+                    <Text style={styles.inputLabel}>City</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. Ikeja"
+                        placeholderTextColor="#A0AEC0"
+                        value={city}
+                        onChangeText={setCity}
+                    />
+                    
+                    <Text style={styles.inputLabel}>State</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. Lagos"
+                        placeholderTextColor="#A0AEC0"
+                        value={state}
+                        onChangeText={setState}
+                    />
+                    
+                    <Text style={styles.inputLabel}>Country</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="e.g. Nigeria"
+                        placeholderTextColor="#A0AEC0"
+                        value={country}
+                        onChangeText={setCountry}
                     />
 
                     <Text style={styles.inputLabel}>Price per Night (₦)</Text>
