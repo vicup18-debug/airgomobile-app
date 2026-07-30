@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "ng.airgo.app",
-      "versionCode": 63,
+      "versionCode": 64,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7i70u3_DN4ksi0V6LILlkCCK-Y7Gq8qo"
@@ -68,7 +68,9 @@
     },
     "extra": {
       "router": {},
-      "eas": {}
+      "eas": {
+        "projectId": "5c420a60-765c-4cba-a474-cfd7f75fb41d"
+      }
     },
     "runtimeVersion": "1.0.7"
   }

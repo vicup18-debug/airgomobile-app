@@ -106,10 +106,10 @@ export default function PartnerDashboard() {
                 <View style={styles.statsGrid}>
                     <View style={styles.statCard}>
                         <View style={[styles.iconBox, { backgroundColor: 'rgba(0, 74, 153, 0.1)' }]}>
-                            <Ionicons name={partnerType === 'hotel' ? 'bed' : 'car'} size={24} color="#004A99" />
+                            <Ionicons name={(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'car' : 'bed'} size={24} color="#004A99" />
                         </View>
                         <Text style={styles.statValue}>{stats.activeItems}</Text>
-                        <Text style={styles.statLabel}>{partnerType === 'hotel' ? 'Active Rooms' : 'Active Cars'}</Text>
+                        <Text style={styles.statLabel}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Active Cars' : 'Active Rooms'}</Text>
                     </View>
 
                     <View style={styles.statCard}>

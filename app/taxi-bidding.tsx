@@ -9,7 +9,7 @@ import { API_URL } from '../constants/config';
 
 export default function TaxiBiddingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ from: string; to: string; dateTime: string }>();
+  const params = useLocalSearchParams<{ from: string; to: string; dateTime: string; suggestedPrice?: string }>();
 
   const [phase, setPhase] = useState<'creating' | 'bidding' | 'error'>('creating');
   const [errorMessage, setErrorMessage] = useState('');
@@ -112,6 +112,13 @@ export default function TaxiBiddingScreen() {
         }
       } catch (e) {
         console.warn('Geocoding/Distance calculation failed', e);
+      }
+
+      if (params.suggestedPrice) {
+        const parsedPrice = Number(params.suggestedPrice.replace(/[^0-9]/g, ''));
+        if (!isNaN(parsedPrice) && parsedPrice > 0) {
+          finalPrice = parsedPrice;
+        }
       }
 
       const payload = {

@@ -197,13 +197,23 @@ function isHotelAvailable(hotel: any, checkIn: string, checkOut: string): boolea
 }
 
 function getHotelState(hotel: any): string {
-  if (hotel?.location && typeof hotel.location === 'string') {
-    const parts = hotel.location.split(',');
-    return parts[parts.length - 1].trim();
+  if (hotel?.location && typeof hotel.location === 'object') {
+    const city = hotel.location.city || '';
+    const state = hotel.location.state || '';
+    const country = hotel.location.country || 'Nigeria';
+    const parts = [city, state, country].filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
   }
-  if (hotel?.location?.state) return hotel.location.state;
-  if (hotel?.location?.city) return hotel.location.city;
-  return hotel?.hotelAddress || 'Nigeria';
+  
+  const locStr = hotel?.location || hotel?.hotelAddress;
+  if (locStr && typeof locStr === 'string') {
+    // Simply clean up the string and return it as City, State, Country
+    const parts = locStr.split(',').map((p: string) => p.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join(', ');
+    }
+  }
+  return 'Nigeria';
 }
 
 export default function HomeScreen() {
@@ -217,13 +227,30 @@ export default function HomeScreen() {
   const [stayType, setStayType]       = useState<'any' | 'hotel' | 'apartment'>('any');
 
   const filteredHotels = hotels.filter((hotel: any) => {
-    const query = searchQuery.toLowerCase();
+    const searchWords = searchQuery ? searchQuery.toLowerCase().split(/[\s,]+/).filter(Boolean) : [];
     const locString = typeof hotel.location === 'string' ? hotel.location.toLowerCase() : '';
     const stateString = getHotelState(hotel).toLowerCase();
-    const matchesQuery = hotel.name?.toLowerCase().includes(query) || locString.includes(query) || stateString.includes(query);
+    const nameString = hotel.name ? hotel.name.toLowerCase() : '';
+    
+    if (searchWords.length === 0) {
+      const hType = (hotel.partnerType || 'hotel').toLowerCase();
+      return stayType === 'any' || hType === stayType;
+    }
+
+    const matchesName = searchWords.every(word => nameString.includes(word));
+    
+    const ignoreWords = ['state', 'local', 'government', 'lga', 'nigeria', 'country', 'area', 'council'];
+    const significantWords = searchWords.filter(w => !ignoreWords.includes(w) && isNaN(Number(w)) && w.length > 2);
+    const wordsToMatch = significantWords.length > 0 ? significantWords : searchWords;
+    
+    const matchesLocation = wordsToMatch.some(word => 
+      locString.includes(word) || stateString.includes(word)
+    );
+    
     const hType = (hotel.partnerType || 'hotel').toLowerCase();
     const matchesType = stayType === 'any' || hType === stayType;
-    return matchesQuery && matchesType;
+    
+    return (matchesName || matchesLocation) && matchesType;
   });
 
   const [guests, setGuests]             = useState({ rooms: 1, adults: 2, children: 0 });
@@ -235,6 +262,7 @@ export default function HomeScreen() {
   const [taxiFrom, setTaxiFrom]         = useState('');
   const [taxiTo, setTaxiTo]             = useState('');
   const [taxiDateTime, setTaxiDateTime] = useState('');
+  const [taxiPrice, setTaxiPrice]       = useState('');
   const [showTaxiDateModal, setShowTaxiDateModal] = useState(false);
   const [hasActiveTripLock, setHasActiveTripLock] = useState(false);
 
@@ -489,7 +517,7 @@ export default function HomeScreen() {
     }
     router.push({
       pathname: '/taxi-bidding' as any,
-      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime },
+      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime, suggestedPrice: taxiPrice },
     });
   };
 
@@ -705,6 +733,20 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={styles.consoleDivider} />
+
+                <View style={styles.taxiInputRow}>
+                    <Ionicons name="cash-outline" size={18} color="#38A169" style={styles.taxiIcon} />
+                    <TextInput 
+                        style={styles.taxiInput}
+                        placeholder="Offer your fare (optional)..."
+                        placeholderTextColor="#A0AEC0"
+                        keyboardType="numeric"
+                        value={taxiPrice}
+                        onChangeText={setTaxiPrice}
+                    />
+                </View>
+
+                <View style={styles.consoleDivider} />
                 <TouchableOpacity style={styles.taxiInputRow} onPress={() => {
                   if (Platform.OS === 'android') {
                     DateTimePickerAndroid.open({
@@ -762,7 +804,7 @@ export default function HomeScreen() {
                     }
                     router.push({
                       pathname: '/taxi-bidding' as any,
-                      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime },
+                      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime, suggestedPrice: taxiPrice },
                     });
                   }}
                   disabled={!lockCheckDone}

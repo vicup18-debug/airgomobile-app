@@ -6,13 +6,20 @@ import { Calendar } from 'react-native-calendars';
 import { API_URL } from '../../constants/config';
 
 function getHotelState(hotel: any): string {
-  if (hotel?.location && typeof hotel.location === 'string') {
-    const parts = hotel.location.split(',');
-    return parts[parts.length - 1].trim();
+  if (hotel?.location && typeof hotel.location === 'object') {
+    const city = hotel.location.city || '';
+    const state = hotel.location.state || '';
+    const country = hotel.location.country || 'Nigeria';
+    const parts = [city, state, country].filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
   }
-  if (hotel?.location?.state) return hotel.location.state;
-  if (hotel?.location?.city) return hotel.location.city;
-  return hotel?.hotelAddress || 'Nigeria';
+  
+  const locStr = hotel?.location || hotel?.hotelAddress;
+  if (locStr && typeof locStr === 'string') {
+    const parts = locStr.split(',').map((p: string) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
+  }
+  return 'Nigeria';
 }
 
 export default function HotelDetailsScreen() {

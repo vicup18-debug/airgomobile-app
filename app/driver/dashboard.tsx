@@ -170,7 +170,7 @@ export default function DriverDashboard() {
         title: 'New Ride Request! 🚕',
         message: 'A new ride request is available in your area. Open your feed to claim it!',
         type: 'info',
-        buttons: [{ text: 'View Requests', onPress: () => { setShowAlert(false); fetchData(); } }]
+        buttons: [{ text: 'View Details', onPress: () => { setShowAlert(false); handleClaim(data); } }]
       });
       setShowAlert(true);
     });
