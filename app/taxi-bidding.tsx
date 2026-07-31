@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   btnPrimary: { flex: 1, backgroundColor: '#000080', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   btnPrimaryText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
   counterBox: { backgroundColor: '#F8F9FA', padding: 12, borderRadius: 10, marginTop: 8 },
-  counterInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 10 },
+  counterInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#CBD5E0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#1A202C', marginBottom: 10 },
   counterActions: { flexDirection: 'row', gap: 10 },
   cancelRequestBtn: { marginTop: 16, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#FFF0F0', borderRadius: 8, borderWidth: 1, borderColor: '#FEB2B2' },
   cancelRequestBtnText: { color: '#E53E3E', fontWeight: 'bold', fontSize: 14 }

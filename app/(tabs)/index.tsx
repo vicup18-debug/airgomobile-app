@@ -197,6 +197,11 @@ function isHotelAvailable(hotel: any, checkIn: string, checkOut: string): boolea
 }
 
 function getHotelState(hotel: any): string {
+  if (hotel?.city || hotel?.state) {
+    const parts = [hotel.city, hotel.state, hotel.country || 'Nigeria'].filter(Boolean);
+    return parts.join(', ');
+  }
+  
   if (hotel?.location && typeof hotel.location === 'object') {
     const city = hotel.location.city || '';
     const state = hotel.location.state || '';

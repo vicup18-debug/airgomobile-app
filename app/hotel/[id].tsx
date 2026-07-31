@@ -5,7 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { API_URL } from '../../constants/config';
 
-function getHotelState(hotel: any): string {
+const getHotelState = (hotel: any) => {
+  if (hotel?.city || hotel?.state) {
+    const parts = [hotel.city, hotel.state, hotel.country || 'Nigeria'].filter(Boolean);
+    return parts.join(', ');
+  }
+
   if (hotel?.location && typeof hotel.location === 'object') {
     const city = hotel.location.city || '';
     const state = hotel.location.state || '';
@@ -20,7 +25,7 @@ function getHotelState(hotel: any): string {
     if (parts.length > 0) return parts.join(', ');
   }
   return 'Nigeria';
-}
+};
 
 export default function HotelDetailsScreen() {
     const { id, startDate, endDate, guests } = useLocalSearchParams();

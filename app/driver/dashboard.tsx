@@ -20,7 +20,7 @@ import { io } from 'socket.io-client';
 
 // ── STATUS ACTIVE CHECK ────────────────────────────────────────────────────
 const ACTIVE_STATUSES = ['Trip Started', 'Paid - Escrow Secured', 'Escrow Active', 'Accepted'];
-const COMPLETED_STATUSES = ['Completed', 'Disbursed', 'Payment Disbursed'];
+const COMPLETED_STATUSES = ['Completed', 'Completed & Disbursed', 'Disbursed', 'Payment Disbursed', 'Paid Out'];
 
 function formatPrice(raw: any): string {
   if (!raw) return '₦0';
@@ -42,7 +42,7 @@ function monthlyEarnings(bookings: any[]): number {
   return bookings
     .filter(b => {
       const s = b.status || '';
-      if (!COMPLETED_STATUSES.some(cs => s.includes(cs))) return false;
+      if (!COMPLETED_STATUSES.includes(s)) return false;
       const d = new Date(b.createdAt || b.checkIn);
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     })
@@ -55,7 +55,7 @@ function monthlyEarnings(bookings: any[]): number {
 
 function allTimeEarnings(bookings: any[]): number {
   return bookings
-    .filter(b => COMPLETED_STATUSES.some(cs => (b.status || '').includes(cs)))
+    .filter(b => COMPLETED_STATUSES.includes(b.status || ''))
     .reduce((sum, b) => {
       const p = typeof b.totalPrice === 'string'
         ? parseInt(b.totalPrice.replace(/\D/g, ''), 10) : Number(b.totalPrice || 0);
@@ -170,7 +170,10 @@ export default function DriverDashboard() {
         title: 'New Ride Request! 🚕',
         message: 'A new ride request is available in your area. Open your feed to claim it!',
         type: 'info',
-        buttons: [{ text: 'View Details', onPress: () => { setShowAlert(false); handleClaim(data); } }]
+        buttons: [{ text: 'View Details', onPress: () => { 
+          setShowAlert(false); 
+          setTimeout(() => handleClaim(data), 350); 
+        } }]
       });
       setShowAlert(true);
     });
@@ -205,7 +208,12 @@ export default function DriverDashboard() {
             setShowAlert(false);
             setClaimingId(booking._id);
             try {
-              const res = await fetch(`${API_URL}/bookings/${booking._id}/claim`, {
+              const isRideReq = !!booking.offeredPrice || !!booking.fromAddress;
+              const endpoint = isRideReq 
+                ? `${API_URL}/ride-requests/${booking._id}/accept`
+                : `${API_URL}/bookings/${booking._id}/claim`;
+
+              const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ driverId: userId }),
@@ -359,9 +367,15 @@ export default function DriverDashboard() {
               </Text>
               <Text style={styles.earningLabel}>All Time</Text>
             </View>
+            <View style={styles.earningDivider} />
+            <View style={styles.earningBox}>
+              <Text style={styles.earningAmount}>
+                {myBookings.filter(b => COMPLETED_STATUSES.includes(b.status || '')).length}
+              </Text>
+              <Text style={styles.earningLabel}>Trips</Text>
+            </View>
           </View>
         </View>
-
         {/* ── ACTIVE TRIP ── */}
         <Text style={styles.sectionTitle}>Active Trip</Text>
         {activeTrip ? (

@@ -118,7 +118,7 @@ export default function CustomAlertModal({
                     isCancel && styles.cancelButton,
                     isDestructive && styles.destructiveButton,
                     !isCancel && !isDestructive && styles.primaryButton,
-                    activeButtons.length > 1 ? { flex: 1, marginHorizontal: 6 } : { minWidth: '100%' }
+                    activeButtons.length > 1 ? { flex: 1, marginHorizontal: 6, minWidth: 'auto' } : { minWidth: '100%' }
                   ]}
                 >
                   <Text style={[
