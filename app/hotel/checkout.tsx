@@ -7,7 +7,7 @@ import Toast from 'react-native-toast-message';
 import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import { API_URL } from '../../constants/config';
 
-const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_e3f508dda06464163976ebde1d31f008ee8f524d';
+const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_61cbd3f05babdb54ab6c8f95ce8144fc8f786eeb';
 
 function CheckoutContent() {
     // 🟢 ALL HOOKS MUST BE AT THE TOP

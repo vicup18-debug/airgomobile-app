@@ -343,27 +343,51 @@ export default function HomeScreen() {
           return;
         }
 
-        const reverse = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
-        });
-        if (reverse && reverse.length > 0) {
-          const place = reverse[0];
-          const readableLocation = `${place.street || place.name || ''} ${place.city || place.subregion || ''}`.trim();
-          
+        let readableLocation = '';
+        
+        try {
+          const reverse = await Location.reverseGeocodeAsync({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+          });
+          if (reverse && reverse.length > 0) {
+            const place = reverse[0];
+            const candidate = `${place.street || place.name || ''} ${place.city || place.subregion || ''}`.trim();
+            if (candidate.length > 3) readableLocation = candidate;
+          }
+        } catch (e) {
+          console.warn('Native reverse geocode failed', e);
+        }
+
+        if (!readableLocation) {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.coords.latitude}&lon=${location.coords.longitude}`, {
+              headers: { 'User-Agent': 'AirgoHotelBookingApp/1.0', 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data && data.address) {
+              const { road, suburb, neighbourhood, city, town, village, state } = data.address;
+              readableLocation = `${road || neighbourhood || suburb || ''} ${city || town || village || state || ''}`.trim();
+            }
+          } catch (osmError) {
+            console.warn('OSM reverse geocode failed', osmError);
+          }
+        }
+
+        if (readableLocation && readableLocation.trim().length > 0) {
           if (target === 'stays') {
-            setSearchQuery(place.city || place.subregion || readableLocation);
+            setSearchQuery(readableLocation);
           } else {
             setTaxiFrom(readableLocation);
           }
         } else {
           Toast.show({ type: 'error', text1: 'Error', text2: 'Could not resolve your city/street from coordinates. Please type it manually.' });
         }
-      } catch (revError) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Could not resolve your city/street from coordinates. Please type it manually.' });
+      } catch (error) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Unable to process location. Please try again.' });
       }
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Unable to detect location. Please try again.' });
+    } catch (outerError) {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Unable to access location services.' });
     }
   };
 

@@ -16,7 +16,7 @@ import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import Toast from 'react-native-toast-message';
 import { API_URL } from '../constants/config';
 
-const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_e3f508dda06464163976ebde1d31f008ee8f524d';
+const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_61cbd3f05babdb54ab6c8f95ce8144fc8f786eeb';
 const AIRGO_PLATFORM_EMAIL = 'escrow@airgo.ng';
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 10;

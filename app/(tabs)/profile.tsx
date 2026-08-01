@@ -177,6 +177,14 @@ export default function ProfileScreen() {
                     <MenuItem icon="person-outline" title="Personal Information" color="#004A99" onPress={() => router.push('/profile/personal-info' as any)} />
                     <View style={styles.divider} />
                     <MenuItem icon="card-outline" title="Payment Methods" color="#004A99" onPress={() => router.push('/profile/payment-methods' as any)} />
+                    
+                    {(userRole === 'driver' || userRole === 'partner' || userRole === 'affiliate' || userRole === 'superadmin' || userRole === 'admin') && (
+                        <>
+                            <View style={styles.divider} />
+                            <MenuItem icon="cash-outline" title="Payout Bank Details" subtitle="Verified withdrawal account" color="#38A169" onPress={() => router.push('/profile/payout-details' as any)} />
+                        </>
+                    )}
+
                     <View style={styles.divider} />
                     <MenuItem
                         icon="notifications-outline"
