@@ -92,6 +92,14 @@ export default function HotelDetailsScreen() {
             .then(data => {
                 setHotel(data);
                 setLoading(false);
+                // 🟢 NEW: Auto-select room for apartments so the user doesn't have to
+                if (data?.partnerType === 'apartment') {
+                    if (data.rooms && data.rooms.length > 0) {
+                        setSelectedRoom(data.rooms[0]._id);
+                    } else {
+                        setSelectedRoom('apartment-base-room' as any);
+                    }
+                }
             })
             .catch(err => {
                 console.error(err);
@@ -118,14 +126,21 @@ export default function HotelDetailsScreen() {
         return Math.max(0, room.totalAllocated - maxBooked);
     };
 
-    const availableRooms = Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
+    const availableRooms = hotel?.partnerType === 'apartment' ? [{
+        id: (hotel.rooms && hotel.rooms.length > 0) ? hotel.rooms[0]._id : 'apartment-base-room',
+        name: hotel.hotelName || hotel.name,
+        price: hotel.pricePerNight || (hotel.rooms && hotel.rooms.length > 0 ? (hotel.rooms[0].pricePerNight || hotel.rooms[0].netPrice) : 0),
+        capacity: "Entire Apartment",
+        available: 1,
+        amenities: []
+    }] : (Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
         id: r._id,
         name: r.name,
         price: r.pricePerNight || r.netPrice || 0,
         capacity: r.description || "2 Adults",
         available: getAvailableRoomsCount(r),
         amenities: typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()) : (r.amenities || ["Free WiFi"])
-    })) : [];
+    })) : []);
 
     // 🟢 NEW: Calculate selected room details for the Escrow Policy
     const selectedRoomDetails = availableRooms.find((r: any) => r.id === selectedRoom);
@@ -201,45 +216,47 @@ export default function HotelDetailsScreen() {
                 </View>
 
                 {/* 🟢 ROOM AVAILABILITY LIST */}
-                <View style={styles.roomsSection}>
-                    <Text style={styles.sectionTitle}>Select a Room</Text>
-                    
-                    {availableRooms.length === 0 && (
-                        <Text style={{ color: '#718096', fontSize: 16, marginTop: 10 }}>No rooms available at this hotel currently.</Text>
-                    )}
+                {hotel?.partnerType !== 'apartment' && (
+                    <View style={styles.roomsSection}>
+                        <Text style={styles.sectionTitle}>Select a Room</Text>
+                        
+                        {availableRooms.length === 0 && (
+                            <Text style={{ color: '#718096', fontSize: 16, marginTop: 10 }}>No rooms available at this hotel currently.</Text>
+                        )}
 
-                    {availableRooms.map((room: any) => {
-                        const isSoldOut = room.available === 0;
-                        const isSelected = selectedRoom === room.id;
+                        {availableRooms.map((room: any) => {
+                            const isSoldOut = room.available === 0;
+                            const isSelected = selectedRoom === room.id;
 
-                        return (
-                            <TouchableOpacity
-                                key={room.id}
-                                style={[styles.roomCard, isSelected && styles.roomCardSelected, isSoldOut && styles.roomCardSoldOut]}
-                                disabled={isSoldOut}
-                                onPress={() => setSelectedRoom(room.id)}
-                            >
-                                <View style={styles.roomHeader}>
-                                    <Text style={styles.roomName}>{room.name}</Text>
-                                    <Text style={styles.roomPrice}>₦{room.price.toLocaleString()}<Text style={styles.priceSub}>/night</Text></Text>
-                                </View>
+                            return (
+                                <TouchableOpacity
+                                    key={room.id}
+                                    style={[styles.roomCard, isSelected && styles.roomCardSelected, isSoldOut && styles.roomCardSoldOut]}
+                                    disabled={isSoldOut}
+                                    onPress={() => setSelectedRoom(room.id)}
+                                >
+                                    <View style={styles.roomHeader}>
+                                        <Text style={styles.roomName}>{room.name}</Text>
+                                        <Text style={styles.roomPrice}>₦{room.price.toLocaleString()}<Text style={styles.priceSub}>/night</Text></Text>
+                                    </View>
 
-                                <Text style={styles.roomCapacity}><Ionicons name="people" size={14} /> {room.capacity}</Text>
+                                    <Text style={styles.roomCapacity}><Ionicons name="people" size={14} /> {room.capacity}</Text>
 
-                                <View style={styles.roomFooter}>
-                                    <Text style={styles.amenities}>{room.amenities.join(' • ')}</Text>
-                                    {isSoldOut ? (
-                                        <Text style={styles.soldOutText}>Sold Out</Text>
-                                    ) : (
-                                        <Text style={room.available <= 2 ? styles.scarceText : styles.availableText}>
-                                            {room.available} left
-                                        </Text>
-                                    )}
-                                </View>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
+                                    <View style={styles.roomFooter}>
+                                        <Text style={styles.amenities}>{room.amenities.join(' • ')}</Text>
+                                        {isSoldOut ? (
+                                            <Text style={styles.soldOutText}>Sold Out</Text>
+                                        ) : (
+                                            <Text style={room.available <= 2 ? styles.scarceText : styles.availableText}>
+                                                {room.available} left
+                                            </Text>
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                )}
                 {/* Extra padding so scroll doesn't hide behind the taller bottom bar */}
                 <View style={{ height: selectedRoom ? 180 : 100 }} />
             </ScrollView>

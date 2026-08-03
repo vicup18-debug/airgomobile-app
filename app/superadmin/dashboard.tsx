@@ -160,7 +160,7 @@ export default function SuperAdminDashboard() {
 
     // 🟢 DYNAMIC ESCROW DISBURSEMENTS (Derived from live bookings)
     const pendingDisbursements = bookings.filter(b => 
-        ['Paid', 'Approved for Disbursement'].includes(b.status)
+        ['Paid', 'Paid - Escrow Secured', 'Approved for Disbursement'].includes(b.status)
     );
 
     // 🟢 NEW: ACTIONS
@@ -476,8 +476,19 @@ export default function SuperAdminDashboard() {
                         <Text style={styles.sectionTitle}>Bookings Manager</Text>
                         {bookings.length > 0 ? bookings.map((b: any, i) => (
                             <View key={i} style={styles.reviewCard}>
-                                <Text style={styles.hotelName}>{b.bookingId || `#BK-${b._id?.substring(0,6)}`}</Text>
-                                <Text style={styles.hotelLoc}>{b.hotelName || b.carModel} • {b.status}</Text>
+                                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+                                    <Text style={[styles.hotelName, {marginBottom: 0}]}>{b.bookingId || `#BK-${b._id?.substring(0,6)}`}</Text>
+                                    <View style={{backgroundColor: b.status === 'Paid' || b.status === 'Paid - Escrow Secured' ? '#D1FAE5' : b.status === 'Cancelled' ? '#FEE2E2' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12}}>
+                                        <Text style={{color: b.status === 'Paid' || b.status === 'Paid - Escrow Secured' ? '#065F46' : b.status === 'Cancelled' ? '#991B1B' : '#92400E', fontSize: 10, fontWeight: 'bold'}}>{b.status}</Text>
+                                    </View>
+                                </View>
+                                <Text style={{fontWeight: 'bold', color: '#111827', fontSize: 14, marginBottom: 4}}>{b.hotelName || b.carModel || 'N/A'} <Text style={{fontWeight: 'normal', color: '#6B7280', fontSize: 12}}>({b.itemType === 'car' ? 'Car' : 'Hotel/Apt'})</Text></Text>
+                                <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>👤 {b.clientName || 'N/A'} • 📞 {b.clientPhone || 'N/A'}</Text>
+                                <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>✉️ {b.clientEmail || 'N/A'}</Text>
+                                <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 6}}>📅 {b.startDate || 'N/A'} to {b.endDate || 'N/A'}</Text>
+                                <Text style={{fontWeight: '900', color: '#000080', fontSize: 15, textAlign: 'right', marginTop: 4}}>
+                                    {typeof b.totalPrice === 'string' && b.totalPrice.includes('₦') ? b.totalPrice : `₦${b.totalPrice}`}
+                                </Text>
                             </View>
                         )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No bookings found.</Text>}
                     </View>
@@ -491,8 +502,17 @@ export default function SuperAdminDashboard() {
                         <Text style={styles.sectionTitle}>Manage Fleet</Text>
                         {cars.length > 0 ? cars.map((c: any, i) => (
                             <View key={i} style={styles.reviewCard}>
-                                <Text style={styles.hotelName}>{c.make} {c.model} ({c.year})</Text>
-                                <Text style={styles.hotelLoc}>Type: {c.type} • Status: {c.isApproved ? 'Live' : 'Pending'}</Text>
+                                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+                                    <Text style={[styles.hotelName, {marginBottom: 0, flex: 1}]} numberOfLines={1}>{c.name || `${c.make || ''} ${c.model || ''}`.trim()}</Text>
+                                    <View style={{backgroundColor: c.isApproved ? '#D1FAE5' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginLeft: 8}}>
+                                        <Text style={{color: c.isApproved ? '#065F46' : '#92400E', fontSize: 10, fontWeight: 'bold'}}>{c.isApproved ? 'Live' : 'Pending'}</Text>
+                                    </View>
+                                </View>
+                                <Text style={{fontSize: 13, color: '#4B5563', marginBottom: 2}}>Type: <Text style={{fontWeight: 'bold', color: '#111827'}}>{c.type || 'N/A'}</Text></Text>
+                                <Text style={{fontSize: 13, color: '#4B5563', marginBottom: 2}}>Partner ID: <Text style={{fontWeight: 'bold', color: '#111827'}}>{c.partnerId?.substring(0, 8) || 'N/A'}</Text></Text>
+                                <Text style={{fontWeight: '900', color: '#000080', fontSize: 14, textAlign: 'right', marginTop: 4}}>
+                                    ₦{(c.price || 0).toLocaleString()} / day
+                                </Text>
                             </View>
                         )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No cars found.</Text>}
                     </View>
@@ -506,8 +526,17 @@ export default function SuperAdminDashboard() {
                         <Text style={styles.sectionTitle}>Manage Room Matrix</Text>
                         {rooms.length > 0 ? rooms.map((r: any, i) => (
                             <View key={i} style={styles.reviewCard}>
-                                <Text style={styles.hotelName}>{r.roomType || r.name}</Text>
-                                <Text style={styles.hotelLoc}>Capacity: {r.guests} • Status: {r.isApproved ? 'Live' : 'Pending'}</Text>
+                                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+                                    <Text style={[styles.hotelName, {marginBottom: 0, flex: 1}]} numberOfLines={1}>{r.hotelName || 'Property'} - {r.roomType || r.name}</Text>
+                                    <View style={{backgroundColor: r.isApproved ? '#D1FAE5' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginLeft: 8}}>
+                                        <Text style={{color: r.isApproved ? '#065F46' : '#92400E', fontSize: 10, fontWeight: 'bold'}}>{r.isApproved ? 'Live' : 'Pending'}</Text>
+                                    </View>
+                                </View>
+                                <Text style={{fontSize: 13, color: '#4B5563', marginBottom: 2}}>Capacity: <Text style={{fontWeight: 'bold', color: '#111827'}}>{r.guests || 1} Guests</Text></Text>
+                                <Text style={{fontSize: 13, color: '#4B5563', marginBottom: 2}}>Partner ID: <Text style={{fontWeight: 'bold', color: '#111827'}}>{r.partnerId?.substring(0, 8) || 'N/A'}</Text></Text>
+                                <Text style={{fontWeight: '900', color: '#000080', fontSize: 14, textAlign: 'right', marginTop: 4}}>
+                                    ₦{(r.pricePerNight || 0).toLocaleString()} / night
+                                </Text>
                             </View>
                         )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No rooms found.</Text>}
                     </View>
@@ -521,8 +550,17 @@ export default function SuperAdminDashboard() {
                         <Text style={styles.sectionTitle}>Affiliates Hub</Text>
                         {affiliates.length > 0 ? affiliates.map((a: any, i) => (
                             <View key={i} style={styles.reviewCard}>
-                                <Text style={styles.hotelName}>{a.name}</Text>
-                                <Text style={styles.hotelLoc}>Referrals: {a.referrals || 0} • Status: {a.status}</Text>
+                                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+                                    <Text style={[styles.hotelName, {marginBottom: 0}]}>{a.name || 'Affiliate'}</Text>
+                                    <View style={{backgroundColor: a.status === 'Active' || !a.status ? '#D1FAE5' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12}}>
+                                        <Text style={{color: a.status === 'Active' || !a.status ? '#065F46' : '#92400E', fontSize: 10, fontWeight: 'bold'}}>{a.status || 'Active'}</Text>
+                                    </View>
+                                </View>
+                                <Text style={{fontSize: 13, color: '#4B5563', marginBottom: 2}}>Email: <Text style={{fontWeight: 'bold', color: '#111827'}}>{a.email || 'N/A'}</Text></Text>
+                                <Text style={{fontSize: 13, color: '#4B5563', marginBottom: 2}}>Phone: <Text style={{fontWeight: 'bold', color: '#111827'}}>{a.phone || 'N/A'}</Text></Text>
+                                <Text style={{fontWeight: '900', color: '#000080', fontSize: 14, textAlign: 'right', marginTop: 4}}>
+                                    Total Referrals: {a.referrals || 0}
+                                </Text>
                             </View>
                         )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No affiliates found.</Text>}
                     </View>

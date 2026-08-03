@@ -109,7 +109,7 @@ export default function PartnerDashboard() {
                             <Ionicons name={(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'car' : 'bed'} size={24} color="#004A99" />
                         </View>
                         <Text style={styles.statValue}>{stats.activeItems}</Text>
-                        <Text style={styles.statLabel}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Active Cars' : 'Active Rooms'}</Text>
+                        <Text style={styles.statLabel}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Active Cars' : (partnerType === 'apartment' ? 'Active Apartment' : 'Active Rooms')}</Text>
                     </View>
 
                     <View style={styles.statCard}>
@@ -129,42 +129,59 @@ export default function PartnerDashboard() {
                     </View>
                 </View>
 
-                {/* 🟢 QUICK ACTIONS */}
-                <Text style={styles.sectionTitle}>Quick Actions</Text>
-                <View style={styles.actionGrid}>
-                    <TouchableOpacity 
-                        style={styles.actionButton} 
-                        onPress={() => router.push((partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? '/partner/add-car' as any : '/partner/add-room' as any)}
-                    >
-                        <View style={styles.actionIconContainer}>
-                            <Ionicons name="add" size={28} color="#004A99" />
-                        </View>
-                        <Text style={styles.actionText}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Add New Car' : 'Add New Room'}</Text>
-                    </TouchableOpacity>
-
-                    {(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? (
-                        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/partner/fleet' as any)}>
-                            <View style={styles.actionIconContainer}>
-                                <Ionicons name="car-sport" size={24} color="#004A99" />
+                {partnerType === 'apartment' ? (
+                    <>
+                        <Text style={styles.sectionTitle}>Apartment Status</Text>
+                        <View style={[styles.activityCard, { marginBottom: 30 }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                                <Ionicons name="checkmark-circle" size={24} color="#38A169" style={{ marginRight: 10 }} />
+                                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1A202C' }}>Live & Active</Text>
                             </View>
-                            <Text style={styles.actionText}>Manage Fleet</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/partner/rooms' as any)}>
-                            <View style={styles.actionIconContainer}>
-                                <Ionicons name="bed" size={24} color="#004A99" />
-                            </View>
-                            <Text style={styles.actionText}>Manage Rooms</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    <TouchableOpacity style={styles.actionButton}>
-                        <View style={styles.actionIconContainer}>
-                            <Ionicons name="list" size={24} color="#004A99" />
+                            <Text style={{ color: '#718096', fontSize: 13, lineHeight: 20 }}>
+                                Your apartment is actively listed on Airgo and available for bookings. Apartment listings cannot be edited directly from the mobile app.
+                            </Text>
                         </View>
-                        <Text style={styles.actionText}>All Bookings</Text>
-                    </TouchableOpacity>
-                </View>
+                    </>
+                ) : (
+                    <>
+                        {/* 🟢 QUICK ACTIONS */}
+                        <Text style={styles.sectionTitle}>Quick Actions</Text>
+                        <View style={styles.actionGrid}>
+                            <TouchableOpacity 
+                                style={styles.actionButton} 
+                                onPress={() => router.push((partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? '/partner/add-car' as any : '/partner/add-room' as any)}
+                            >
+                                <View style={styles.actionIconContainer}>
+                                    <Ionicons name="add" size={28} color="#004A99" />
+                                </View>
+                                <Text style={styles.actionText}>{(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? 'Add New Car' : 'Add New Room'}</Text>
+                            </TouchableOpacity>
+
+                            {(partnerType === 'car' || partnerType === 'shuttle' || partnerType === 'airport-shuttle') ? (
+                                <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/partner/fleet' as any)}>
+                                    <View style={styles.actionIconContainer}>
+                                        <Ionicons name="car-sport" size={24} color="#004A99" />
+                                    </View>
+                                    <Text style={styles.actionText}>Manage Fleet</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/partner/rooms' as any)}>
+                                    <View style={styles.actionIconContainer}>
+                                        <Ionicons name="bed" size={24} color="#004A99" />
+                                    </View>
+                                    <Text style={styles.actionText}>Manage Rooms</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            <TouchableOpacity style={styles.actionButton}>
+                                <View style={styles.actionIconContainer}>
+                                    <Ionicons name="list" size={24} color="#004A99" />
+                                </View>
+                                <Text style={styles.actionText}>All Bookings</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                )}
 
                 {/* 🟢 RECENT ACTIVITY */}
                 <Text style={styles.sectionTitle}>Recent Activity</Text>
