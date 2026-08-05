@@ -482,7 +482,7 @@ export default function HomeScreen() {
       checkActiveTripLock();
     }
 
-    fetch(HOTELS_API_URL)
+    fetch(`${HOTELS_API_URL}?t=${new Date().getTime()}`, { headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) setHotels(data);

@@ -179,7 +179,9 @@ function TaxiEscrowContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to create booking');
 
-      setBooking(data.booking || data);
+      // Ensure _id exists even if backend only returns bookingId
+      const bookingData = data.booking || { ...data, _id: data.bookingId || data._id, totalPrice: finalPrice.toString() };
+      setBooking(bookingData);
       setPhase('payment');
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred.');

@@ -55,7 +55,11 @@ export default function RoomsScreen() {
                     <Text style={styles.emptyText}>You haven't added any rooms yet.</Text>
                 ) : (
                     rooms.map(room => (
-                        <View key={room._id} style={styles.roomCard}>
+                        <TouchableOpacity 
+                            key={room._id} 
+                            style={styles.roomCard}
+                            onPress={() => router.push(`/partner/edit-room?id=${room._id}` as any)}
+                        >
                             <Image source={{ uri: room.previewImage || room.image || 'https://via.placeholder.com/150' }} style={styles.roomImage} />
                             <View style={styles.roomInfo}>
                                 <Text style={styles.roomName}>{room.name}</Text>
@@ -69,7 +73,7 @@ export default function RoomsScreen() {
                                     </Text>
                                 </View>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))
                 )}
             </ScrollView>

@@ -98,11 +98,18 @@ function CheckoutContent() {
             });
 
             if (!response.ok) {
-                throw new Error("Failed to initialize booking.");
+                let errorMsg = "Failed to initialize booking.";
+                try {
+                    const errData = await response.json();
+                    if (errData.message) errorMsg = errData.message;
+                } catch (e) {
+                    // Ignore JSON parsing errors
+                }
+                throw new Error(errorMsg);
             }
             
             const data = await response.json();
-            const bookingId = data.booking?._id || data._id;
+            const bookingId = data.bookingId || data.booking?._id || data._id;
 
             // Trigger Paystack Popup
             popup.checkout({
@@ -123,8 +130,8 @@ function CheckoutContent() {
                     // Update Booking to Paid
                     try {
                         const token = await AsyncStorage.getItem('authToken');
-                        const updateRes = await fetch(`${API_URL}/bookings/${bookingId}`, {
-                            method: 'PATCH',
+                        const updateRes = await fetch(`${API_URL}/bookings/${bookingId}/status`, {
+                            method: 'PUT',
                             headers: { 
                                 'Content-Type': 'application/json',
                                 'Authorization': `Bearer ${token}` 
@@ -149,8 +156,9 @@ function CheckoutContent() {
                     }
                 },
             });
-        } catch (error) {
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Could not process booking. Try again.' });
+        } catch (error: any) {
+            const errorMsg = error?.message || 'Could not process booking. Try again.';
+            Toast.show({ type: 'error', text1: 'Booking Failed', text2: errorMsg });
             setIsProcessing(false);
         }
     };

@@ -147,7 +147,11 @@ export default function FleetScreen() {
                     <Text style={styles.emptyText}>You haven't added any cars yet.</Text>
                 ) : (
                     cars.map(car => (
-                        <View key={car._id} style={styles.carCard}>
+                        <TouchableOpacity 
+                            key={car._id} 
+                            style={styles.carCard}
+                            onPress={() => router.push(`/partner/edit-car?id=${car._id}` as any)}
+                        >
                             <Image source={{ uri: car.image || 'https://via.placeholder.com/150' }} style={styles.carImage} />
                             <View style={styles.carInfo}>
                                 <Text style={styles.carName}>{car.name}</Text>
@@ -155,10 +159,10 @@ export default function FleetScreen() {
                                     <Ionicons name="person-circle" size={14} /> {car.driverName || 'No Driver Assigned'}
                                 </Text>
                                 <TouchableOpacity style={styles.editBtn} onPress={() => handleEditDriver(car)}>
-                                    <Text style={styles.editBtnText}>Edit Driver Profile</Text>
+                                    <Text style={styles.editBtnText}>Quick Edit Driver</Text>
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))
                 )}
             </ScrollView>
