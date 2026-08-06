@@ -197,28 +197,56 @@ function isHotelAvailable(hotel: any, checkIn: string, checkOut: string): boolea
 }
 
 function getHotelState(hotel: any): string {
-  if (hotel?.city || hotel?.state) {
-    const parts = [hotel.city, hotel.state, hotel.country || 'Nigeria'].filter(Boolean);
-    return parts.join(', ');
+  if (!hotel) return 'Nigeria';
+  
+  let city = hotel.city || '';
+  let state = hotel.state || '';
+  let location = '';
+
+  if (hotel.location && typeof hotel.location === 'object') {
+    if (!city) city = hotel.location.city || '';
+    if (!state) state = hotel.location.state || '';
+    location = hotel.location.address || hotel.location.street || '';
+  } else if (typeof hotel.location === 'string') {
+    location = hotel.location;
+  } else if (typeof hotel.hotelAddress === 'string') {
+    location = hotel.hotelAddress;
+  } else if (typeof hotel.address === 'string') {
+    location = hotel.address;
   }
   
-  if (hotel?.location && typeof hotel.location === 'object') {
-    const city = hotel.location.city || '';
-    const state = hotel.location.state || '';
-    const country = hotel.location.country || 'Nigeria';
-    const parts = [city, state, country].filter(Boolean);
-    if (parts.length > 0) return parts.join(', ');
+  city = city.trim();
+  state = state.trim();
+  location = location.trim();
+  
+  let formatted = '';
+  
+  if (city) {
+    formatted += `(${city})`;
   }
   
-  const locStr = hotel?.location || hotel?.hotelAddress;
-  if (locStr && typeof locStr === 'string') {
-    // Simply clean up the string and return it as City, State, Country
-    const parts = locStr.split(',').map((p: string) => p.trim()).filter(Boolean);
-    if (parts.length > 0) {
-      return parts.join(', ');
+  if (state) {
+    if (formatted) formatted += ' ';
+    formatted += state;
+  }
+  
+  if (location) {
+    const isDuplicate = 
+        location.toLowerCase() === city.toLowerCase() || 
+        location.toLowerCase() === state.toLowerCase() ||
+        location.toLowerCase() === `${city}, ${state}`.toLowerCase() ||
+        location.toLowerCase() === `${city}, ${state}, nigeria`.toLowerCase();
+        
+    if (!isDuplicate) {
+        if (formatted) {
+          formatted += ` - ${location}`;
+        } else {
+          formatted = location;
+        }
     }
   }
-  return 'Nigeria';
+  
+  return formatted || 'Nigeria';
 }
 
 export default function HomeScreen() {
