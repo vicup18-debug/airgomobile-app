@@ -186,6 +186,14 @@ export default function HotelDetailsScreen() {
             setShowCalendarModal(true);
             return;
         }
+
+        const isSelectedRoomSoldOut = selectedRoomDetails?.available === 0;
+        if (isSelectedRoomSoldOut) {
+            alert("This room is sold out for the selected dates. Please change your dates.");
+            setShowCalendarModal(true);
+            return;
+        }
+
         const diff = new Date(localEndDate).getTime() - new Date(localStartDate).getTime();
         const calculatedNights = Math.max(1, Math.round(diff / (1000 * 3600 * 24)));
         // Proceed to checkout page, passing the room info and dates
@@ -262,8 +270,7 @@ export default function HotelDetailsScreen() {
                             return (
                                 <TouchableOpacity
                                     key={room.id}
-                                    style={[styles.roomCard, isSelected && styles.roomCardSelected, isSoldOut && styles.roomCardSoldOut]}
-                                    disabled={isSoldOut}
+                                    style={[styles.roomCard, isSelected && styles.roomCardSelected]}
                                     onPress={() => setSelectedRoom(room.id)}
                                 >
                                     <View style={styles.roomHeader}>
@@ -276,7 +283,7 @@ export default function HotelDetailsScreen() {
                                     <View style={styles.roomFooter}>
                                         <Text style={styles.amenities}>{room.amenities.join(' • ')}</Text>
                                         {isSoldOut ? (
-                                            <Text style={styles.soldOutText}>Sold Out</Text>
+                                            <Text style={styles.soldOutText}>Sold Out For Selected Dates</Text>
                                         ) : (
                                             <Text style={room.available <= 2 ? styles.scarceText : styles.availableText}>
                                                 {room.available} left
@@ -307,8 +314,10 @@ export default function HotelDetailsScreen() {
                         </Text>
                     </View>
                 )}
-
-                <TouchableOpacity style={[styles.continueButton, selectedRoom === null && { opacity: 0.5 }]} onPress={handleContinue}>
+                <TouchableOpacity 
+                    style={[styles.continueButton, (selectedRoom === null) && { opacity: 0.5 }]} 
+                    onPress={handleContinue}
+                >
                     <Text style={styles.continueText}>
                         {(!localStartDate || !localEndDate) ? "Select Dates to Continue" : "Continue to Payment"}
                     </Text>
