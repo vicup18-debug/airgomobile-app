@@ -575,7 +575,7 @@ export default function HomeScreen() {
     }
     router.push({
       pathname: '/taxi-bidding' as any,
-      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime, suggestedPrice: taxiPrice },
+      params: { from: taxiFrom, to: taxiTo, dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }), suggestedPrice: taxiPrice },
     });
   };
 
@@ -799,40 +799,7 @@ export default function HomeScreen() {
                     />
                 </View>
 
-                <View style={styles.consoleDivider} />
-                <TouchableOpacity style={styles.taxiInputRow} onPress={() => {
-                  if (Platform.OS === 'android') {
-                    DateTimePickerAndroid.open({
-                      value: taxiDateObj,
-                      mode: 'date',
-                      minimumDate: new Date(),
-                      onChange: (event, selectedDate) => {
-                        if (event.type === 'set' && selectedDate) {
-                          // After date is picked, open time picker
-                          DateTimePickerAndroid.open({
-                            value: selectedDate,
-                            mode: 'time',
-                            onChange: (timeEvent, finalDate) => {
-                              if (timeEvent.type === 'set' && finalDate) {
-                                setTaxiDateObj(finalDate);
-                                setTaxiDateTime(finalDate.toLocaleString('en-US', {
-                                  month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-                                }));
-                              }
-                            }
-                          });
-                        }
-                      }
-                    });
-                  } else {
-                    setShowTaxiDateModal(true);
-                  }
-                }}>
-                  <Ionicons name="time-outline" size={18} color="#000080" style={styles.taxiIcon} />
-                  <Text style={[styles.taxiInput, { color: taxiDateTime ? '#1A202C' : '#A0AEC0', paddingVertical: 4 }]}>
-                    {taxiDateTime || 'Select date & time...'}
-                  </Text>
-                </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[
                     styles.searchButton,
@@ -851,13 +818,9 @@ export default function HomeScreen() {
                       Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please enter a destination.' });
                       return;
                     }
-                    if (!taxiDateTime) {
-                      Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please select a pickup date and time.' });
-                      return;
-                    }
                     router.push({
                       pathname: '/taxi-bidding' as any,
-                      params: { from: taxiFrom, to: taxiTo, dateTime: taxiDateTime, suggestedPrice: taxiPrice },
+                      params: { from: taxiFrom, to: taxiTo, dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }), suggestedPrice: taxiPrice },
                     });
                   }}
                   disabled={!lockCheckDone}

@@ -17,6 +17,7 @@ export default function ProfileScreen() {
     const [userEmail, setUserEmail] = useState('');
     const [profileImage, setProfileImage] = useState<string | null>(null);
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     // Delete account modal state
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -34,10 +35,13 @@ export default function ProfileScreen() {
             const role  = await AsyncStorage.getItem('userRole');
             const email = await AsyncStorage.getItem('userEmail');
             const image = await AsyncStorage.getItem('profileImageUrl');
+            const token = await AsyncStorage.getItem('authToken');
+            
             if (name)  setUserName(name);
             if (role)  setUserRole(role);
             if (email) setUserEmail(email);
             if (image) setProfileImage(`${API_URL.replace('/api', '')}${image}`);
+            setIsLoggedIn(!!token);
         };
         if (isFocused) {
             fetchUserData();
@@ -281,16 +285,20 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* 🟢 SIGN OUT BUTTON */}
-                <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                    <Ionicons name="log-out-outline" size={22} color="#E53E3E" style={{ marginRight: 10 }} />
-                    <Text style={styles.signOutText}>Sign Out</Text>
-                </TouchableOpacity>
+                {isLoggedIn && (
+                    <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+                        <Ionicons name="log-out-outline" size={22} color="#E53E3E" style={{ marginRight: 10 }} />
+                        <Text style={styles.signOutText}>Sign Out</Text>
+                    </TouchableOpacity>
+                )}
 
                 {/* 🗑️ DELETE ACCOUNT BUTTON */}
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccountPress}>
-                    <Ionicons name="trash-outline" size={20} color="#718096" style={{ marginRight: 8 }} />
-                    <Text style={styles.deleteButtonText}>Delete Account</Text>
-                </TouchableOpacity>
+                {isLoggedIn && (
+                    <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccountPress}>
+                        <Ionicons name="trash-outline" size={20} color="#718096" style={{ marginRight: 8 }} />
+                        <Text style={styles.deleteButtonText}>Delete Account</Text>
+                    </TouchableOpacity>
+                )}
 
                 <Text style={styles.versionText}>Airgo v1.0.0</Text>
 
