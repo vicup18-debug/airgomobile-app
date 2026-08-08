@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Dimensions, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -161,7 +161,7 @@ export default function HotelDetailsScreen() {
         id: (hotel.rooms && hotel.rooms.length > 0) ? hotel.rooms[0]._id : 'apartment-base-room',
         name: hotel.hotelName || hotel.name,
         price: hotel.pricePerNight || (hotel.rooms && hotel.rooms.length > 0 ? (hotel.rooms[0].pricePerNight || hotel.rooms[0].netPrice) : 0),
-        capacity: "Entire Apartment",
+        capacity: hotel.rooms && hotel.rooms.length > 0 && hotel.rooms[0].description ? hotel.rooms[0].description : "Entire Property",
         available: 1,
         amenities: []
     }] : (Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
@@ -177,9 +177,37 @@ export default function HotelDetailsScreen() {
     const selectedRoomDetails = availableRooms.find((r: any) => r.id === selectedRoom);
     const refundAmount = selectedRoomDetails ? selectedRoomDetails.price * 0.7 : 0;
 
+    const findNextAvailableDates = (room: any, startSearchDate: string, currentDurationDays: number) => {
+        if (!startSearchDate) return null;
+        let currentStart = new Date(startSearchDate.includes('T') ? startSearchDate : `${startSearchDate}T00:00:00Z`);
+        currentStart.setUTCDate(currentStart.getUTCDate() + 1); // Start checking from the day after the search date
+        
+        for (let i = 0; i < 30; i++) {
+            const checkInStr = currentStart.toISOString().split('T')[0];
+            let currentEnd = new Date(currentStart);
+            currentEnd.setUTCDate(currentEnd.getUTCDate() + (currentDurationDays > 0 ? currentDurationDays : 1));
+            const checkOutStr = currentEnd.toISOString().split('T')[0];
+            
+            let maxBooked = 0;
+            if (Array.isArray(room.bookedDates)) {
+                room.bookedDates.forEach((bd: any) => {
+                    if (bd.date >= checkInStr && bd.date < checkOutStr) {
+                        if (bd.count > maxBooked) maxBooked = bd.count;
+                    }
+                });
+            }
+            const avail = Math.max(0, (room.totalAllocated || 1) - maxBooked);
+            if (avail > 0) {
+                return { checkIn: checkInStr, checkOut: checkOutStr };
+            }
+            currentStart.setUTCDate(currentStart.getUTCDate() + 1);
+        }
+        return null;
+    };
+
     const handleContinue = () => {
         if (selectedRoom === null) {
-            alert("Please select a room to continue.");
+            Alert.alert("Error", "Please select a room to continue.");
             return;
         }
         if (!localStartDate || !localEndDate) {
@@ -189,8 +217,32 @@ export default function HotelDetailsScreen() {
 
         const isSelectedRoomSoldOut = selectedRoomDetails?.available === 0;
         if (isSelectedRoomSoldOut) {
-            alert("This room is sold out for the selected dates. Please change your dates.");
-            setShowCalendarModal(true);
+            const fullRoomData = hotel?.rooms?.find((r: any) => r._id === selectedRoom) || hotel;
+            const diff = new Date(localEndDate).getTime() - new Date(localStartDate).getTime();
+            const duration = Math.max(1, Math.round(diff / (1000 * 3600 * 24)));
+            const nextDates = fullRoomData ? findNextAvailableDates(fullRoomData, localStartDate, duration) : null;
+            
+            if (nextDates) {
+                const formatNextDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                Alert.alert(
+                    "Dates Unavailable", 
+                    `This room is sold out for your selected dates.\n\nThe next available opening is:\n${formatNextDate(nextDates.checkIn)} to ${formatNextDate(nextDates.checkOut)}`,
+                    [
+                        { text: "Change My Dates", style: "cancel", onPress: () => setShowCalendarModal(true) },
+                        { 
+                            text: "Use Suggested Dates", 
+                            onPress: () => {
+                                setLocalStartDate(nextDates.checkIn);
+                                setLocalEndDate(nextDates.checkOut);
+                            } 
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert("Sold Out", "This room is sold out for the selected dates and the next 30 days. Please change your dates or try another property.", [
+                    { text: "OK", onPress: () => setShowCalendarModal(true) }
+                ]);
+            }
             return;
         }
 

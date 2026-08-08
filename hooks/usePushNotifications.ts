@@ -38,6 +38,21 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../constants/config';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { Audio } from 'expo-av';
+
+async function playForegroundSound() {
+    try {
+        const { sound } = await Audio.Sound.createAsync(
+            require('../assets/sounds/notification.wav')
+        );
+        await sound.playAsync();
+        sound.setOnPlaybackStatusUpdate((status: any) => {
+            if (status.didJustFinish) sound.unloadAsync();
+        });
+    } catch (e) {
+        console.warn('Failed to play foreground sound', e);
+    }
+}
 
 // ─────────────────────────────────────────────
 // FOREGROUND NOTIFICATION HANDLER
@@ -100,6 +115,17 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
             vibrationPattern: [0, 500, 500, 500],
             lightColor: '#000080',
             sound: 'default',
+            enableVibrate: true,
+            showBadge: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: true,
+        });
+        await Notifications.setNotificationChannelAsync('airgo-ride-requests', {
+            name: 'Airgo Ride Requests',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 500, 200, 500],
+            lightColor: '#FFB81C',
+            sound: 'notification.wav',
             enableVibrate: true,
             showBadge: true,
             lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
@@ -229,7 +255,10 @@ export function usePushNotifications() {
                     const { title, body } = notification.request.content;
                     const data = notification.request.content.data as any;
                     console.log('🔔 Foreground notification received:', title, body, data);
-                    // The setNotificationHandler above shows the system banner automatically.
+                    
+                    if (data?.type === 'ride_request') {
+                        playForegroundSound();
+                    }
                 }
             );
 

@@ -258,6 +258,7 @@ export default function HomeScreen() {
   const [userName, setUserName]       = useState('');
   const [activeTab, setActiveTab]     = useState<'stays' | 'taxi'>('stays');
   const [stayType, setStayType]       = useState<'any' | 'hotel' | 'apartment'>('any');
+  const [displayLimit, setDisplayLimit] = useState(6);
 
   const filteredHotels = hotels.filter((hotel: any) => {
     const searchWords = searchQuery ? searchQuery.toLowerCase().split(/[\s,]+/).filter(Boolean) : [];
@@ -703,12 +704,7 @@ export default function HomeScreen() {
                     </View>
                 </View>
                 <View style={styles.consoleDivider} />
-                <View style={styles.consoleActionsRow}>
-                  <TouchableOpacity style={styles.consoleAction} onPress={() => setShowCalendarModal(true)}>
-                    <Ionicons name="calendar-outline" size={19} color="#000080" />
-                    <Text style={styles.consoleActionText} numberOfLines={1}>{formatDateDisplay()}</Text>
-                  </TouchableOpacity>
-                  <View style={styles.verticalDivider} />
+                <View style={[styles.consoleActionsRow, { justifyContent: 'center' }]}>
                   <TouchableOpacity style={styles.consoleAction} onPress={() => setShowGuestModal(true)}>
                     <Ionicons name="people-outline" size={19} color="#000080" />
                     <Text style={styles.consoleActionText} numberOfLines={1}>
@@ -976,9 +972,10 @@ export default function HomeScreen() {
                   <Text style={{ marginTop: 6, fontSize: 14, color: '#718096', textAlign: 'center' }}>Check back later once new hotels and apartments are added.</Text>
                 </View>
               ) : (
-                <View style={styles.dealsGrid}>
-                  {filteredHotels.slice(0, 6).map((item, index) => {
-                    const available = isHotelAvailable(item, startDate, endDate);
+                <View>
+                  <View style={styles.dealsGrid}>
+                    {filteredHotels.slice(0, displayLimit).map((item, index) => {
+                      const available = isHotelAvailable(item, startDate, endDate);
                     return (
                       <TouchableOpacity
                         key={item._id}
@@ -1029,6 +1026,15 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     );
                   })}
+                  </View>
+                  {filteredHotels.length > displayLimit && (
+                    <TouchableOpacity 
+                      style={styles.seeMoreButton} 
+                      onPress={() => setDisplayLimit(prev => prev + 6)}
+                    >
+                      <Text style={styles.seeMoreButtonText}>See More Properties</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </View>
@@ -1490,6 +1496,22 @@ const styles = StyleSheet.create({
   bookBadge: { backgroundColor: '#000080', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
   bookBadgeUnavailable: { backgroundColor: '#A0AEC0' },
   bookBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
+
+  seeMoreButton: {
+    backgroundColor: '#EBF4FF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#000080',
+  },
+  seeMoreButtonText: {
+    color: '#000080',
+    fontSize: 14,
+    fontWeight: '800',
+  },
 
   // ── LOCKED REQUEST RIDE button ──
   searchButtonLocked: { backgroundColor: '#4A5568' },

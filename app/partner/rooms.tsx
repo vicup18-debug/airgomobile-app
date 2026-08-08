@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Switch, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +31,28 @@ export default function RoomsScreen() {
             setLoading(false);
         }
     };
+
+    const toggleRoomVisibility = async (roomId: string, currentStatus: boolean) => {
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            const res = await fetch(`${API_URL}/rooms/${roomId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ isActive: !currentStatus })
+            });
+            if (res.ok) {
+                setRooms(prev => prev.map(r => r._id === roomId ? { ...r, isActive: !currentStatus } : r));
+            } else {
+                Alert.alert("Error", "Failed to update visibility status");
+            }
+        } catch (error) {
+            Alert.alert("Error", "An error occurred");
+        }
+    };
+
 
     if (loading) {
         return (
@@ -67,10 +89,24 @@ export default function RoomsScreen() {
                                     <Ionicons name="business" size={14} /> {room.hotelName}
                                 </Text>
                                 <Text style={styles.priceText}>₦{Number(room.netPrice || 0).toLocaleString()} / night</Text>
-                                <View style={[styles.statusBadge, { backgroundColor: room.isApproved ? '#EBF8FF' : '#FFF5F5' }]}>
-                                    <Text style={[styles.statusText, { color: room.isApproved ? '#004A99' : '#C53030' }]}>
-                                        {room.isApproved ? 'Active' : 'Pending Review'}
-                                    </Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                                    <View style={[styles.statusBadge, { backgroundColor: room.isApproved ? (room.isActive === false ? '#FEFCBF' : '#EBF8FF') : '#FFF5F5' }]}>
+                                        <Text style={[styles.statusText, { color: room.isApproved ? (room.isActive === false ? '#975A16' : '#004A99') : '#C53030' }]}>
+                                            {room.isApproved ? (room.isActive === false ? 'Paused' : 'Active') : 'Pending Review'}
+                                        </Text>
+                                    </View>
+                                    {room.isApproved && (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 10, color: '#718096', marginRight: 4 }}>Visible</Text>
+                                            <Switch 
+                                                value={room.isActive !== false} 
+                                                onValueChange={() => toggleRoomVisibility(room._id, room.isActive !== false)} 
+                                                trackColor={{ false: '#CBD5E0', true: '#48BB78' }}
+                                                thumbColor={'#FFF'}
+                                                style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+                                            />
+                                        </View>
+                                    )}
                                 </View>
                             </View>
                         </TouchableOpacity>

@@ -100,7 +100,7 @@ export default function AddCarScreen() {
             
             const payload = {
                 name: carName,
-                retailPrice: Number(price),
+                retailPrice: 0,
                 type,
                 capacity: Number(capacity),
                 features,
@@ -198,15 +198,7 @@ export default function AddCarScreen() {
                         onChangeText={setCarName}
                     />
 
-                    <Text style={styles.inputLabel}>Retail Price (What the Customer Pays ₦)</Text>
-                    <TextInput
-                        style={styles.inputBox}
-                        placeholder="e.g. 150000"
-                        placeholderTextColor="#A0AEC0"
-                        keyboardType="numeric"
-                        value={price}
-                        onChangeText={setPrice}
-                    />
+
 
                     <Text style={styles.inputLabel}>Type (e.g. SUV, Sedan)</Text>
                     <TextInput

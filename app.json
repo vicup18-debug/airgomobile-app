@@ -53,7 +53,7 @@
           "icon": "./assets/images/icon.png",
           "color": "#000080",
           "defaultChannel": "airgo-urgent-alerts",
-          "sounds": [],
+          "sounds": ["./assets/sounds/notification.wav"],
           "enableBackgroundRemoteNotifications": true
         }
       ],

@@ -13,7 +13,6 @@ export default function EditCarScreen() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [carName, setCarName] = useState('');
-    const [price, setPrice] = useState('');
     const [type, setType] = useState('');
     const [capacity, setCapacity] = useState('');
     const [features, setFeatures] = useState('');
@@ -36,7 +35,6 @@ export default function EditCarScreen() {
                 .then(res => res.json())
                 .then(data => {
                     setCarName(data.name || '');
-                    setPrice(data.price?.toString().replace(/\D/g, '') || '');
                     setType(data.type || '');
                     setCapacity(data.capacity?.toString() || '');
                     setFeatures(data.features || '');
@@ -92,7 +90,7 @@ export default function EditCarScreen() {
     };
 
     // 🟢 VALIDATION
-    const isFormValid = carName && price && type && capacity && features && vehicleNumber && location && stateLocation && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
+    const isFormValid = carName && type && capacity && features && vehicleNumber && location && stateLocation && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
 
     const handleUploadToCloudinary = async (imageUri: string) => {
         const formData = new FormData();
@@ -134,7 +132,7 @@ export default function EditCarScreen() {
 
             const payload = {
                 name: carName,
-                price: Number(price),
+                price: 0,
                 type: type,
                 capacity: Number(capacity),
                 features: features,
@@ -232,15 +230,7 @@ export default function EditCarScreen() {
                         onChangeText={setCarName}
                     />
 
-                    <Text style={styles.inputLabel}>Retail Price (What the Customer Pays ₦)</Text>
-                    <TextInput
-                        style={styles.inputBox}
-                        placeholder="e.g. 150000"
-                        placeholderTextColor="#A0AEC0"
-                        keyboardType="numeric"
-                        value={price}
-                        onChangeText={setPrice}
-                    />
+
 
                     <Text style={styles.inputLabel}>Type (e.g. SUV, Sedan)</Text>
                     <TextInput
