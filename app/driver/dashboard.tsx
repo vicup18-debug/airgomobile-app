@@ -167,14 +167,24 @@ export default function DriverDashboard() {
     socket.on('new_booking_request', async (data) => {
       console.log('New ride request via WS:', data);
       
-      try {
-        const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/sounds/notification.wav')
-        );
-        await sound.playAsync();
-      } catch (e) {
-        console.log('Audio play error:', e);
-      }
+              try {
+          await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: true,
+          });
+          const { sound } = await Audio.Sound.createAsync(
+            require('../../assets/sounds/notification.wav')
+          );
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              sound.unloadAsync();
+            }
+          });
+          await sound.playAsync();
+        } catch (e) {
+          console.log('Audio play error:', e);
+        }
 
       fetchData(); // Refresh the list of available requests
       setAlertConfig({
@@ -602,3 +612,4 @@ const styles = StyleSheet.create({
   },
   webLinkText: { color: '#000080', fontSize: 14, fontWeight: '700' },
 });
+
