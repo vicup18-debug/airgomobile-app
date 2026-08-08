@@ -17,6 +17,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { API_URL } from '../../constants/config';
 import CustomAlertModal from '../../components/ui/CustomAlertModal';
 import { io } from 'socket.io-client';
+import { Audio } from 'expo-av';
 
 // ── STATUS ACTIVE CHECK ────────────────────────────────────────────────────
 const ACTIVE_STATUSES = ['Trip Started', 'Paid - Escrow Secured', 'Escrow Active', 'Accepted'];
@@ -163,8 +164,18 @@ export default function DriverDashboard() {
       socket.emit('join_drivers', {}); // Join general drivers room
     });
 
-    socket.on('new_booking_request', (data) => {
+    socket.on('new_booking_request', async (data) => {
       console.log('New ride request via WS:', data);
+      
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/notification.wav')
+        );
+        await sound.playAsync();
+      } catch (e) {
+        console.log('Audio play error:', e);
+      }
+
       fetchData(); // Refresh the list of available requests
       setAlertConfig({
         title: 'New Ride Request! 🚕',
@@ -208,6 +219,7 @@ export default function DriverDashboard() {
             setShowAlert(false);
             setClaimingId(booking._id);
             try {
+              const token = await AsyncStorage.getItem('airgo_token');
               const isRideReq = !!booking.offeredPrice || !!booking.fromAddress;
               const endpoint = isRideReq 
                 ? `${API_URL}/ride-requests/${booking._id}/accept`
@@ -215,7 +227,10 @@ export default function DriverDashboard() {
 
               const res = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ driverId: userId }),
               });
               if (res.ok) {
