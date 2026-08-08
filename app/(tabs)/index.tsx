@@ -295,9 +295,7 @@ export default function HomeScreen() {
 
   const [taxiFrom, setTaxiFrom]         = useState('');
   const [taxiTo, setTaxiTo]             = useState('');
-  const [taxiDateTime, setTaxiDateTime] = useState('');
   const [taxiPrice, setTaxiPrice]       = useState('');
-  const [showTaxiDateModal, setShowTaxiDateModal] = useState(false);
   const [hasActiveTripLock, setHasActiveTripLock] = useState(false);
 
   // Alert Modal State
@@ -338,7 +336,7 @@ export default function HomeScreen() {
     }, 300);
   };
 
-  const [taxiDateObj, setTaxiDateObj] = useState(new Date());
+
 
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationType, setLocationType] = useState<'from' | 'to' | 'search' | ''>('');
@@ -1220,27 +1218,6 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-      {/* ── TAXI MODALS ── */}
-      {Platform.OS === 'ios' && showTaxiDateModal && (
-        <DateTimePicker
-          minimumDate={new Date()}
-          value={taxiDateObj}
-          mode="datetime"
-          display="spinner"
-          onChange={(event, selectedDate) => {
-            if (event.type === 'set' || event.type === 'dismissed') {
-              setShowTaxiDateModal(false);
-            }
-            if (selectedDate) {
-              setTaxiDateObj(selectedDate);
-              const formatted = selectedDate.toLocaleString('en-US', {
-                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-              });
-              setTaxiDateTime(formatted);
-            }
-          }}
-        />
-      )}
 
       <CustomAlertModal
         visible={showAlert}
