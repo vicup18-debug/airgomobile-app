@@ -295,7 +295,6 @@ export default function HomeScreen() {
 
   const [taxiFrom, setTaxiFrom]         = useState('');
   const [taxiTo, setTaxiTo]             = useState('');
-  const [taxiPrice, setTaxiPrice]       = useState('');
   const [hasActiveTripLock, setHasActiveTripLock] = useState(false);
 
   // Alert Modal State
@@ -573,7 +572,7 @@ export default function HomeScreen() {
     }
     router.push({
       pathname: '/taxi-bidding' as any,
-      params: { from: taxiFrom, to: taxiTo, dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }), suggestedPrice: taxiPrice },
+      params: { from: taxiFrom, to: taxiTo, dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) },
     });
   };
 
@@ -785,17 +784,6 @@ export default function HomeScreen() {
 
                 <View style={styles.consoleDivider} />
 
-                <View style={styles.taxiInputRow}>
-                    <Ionicons name="cash-outline" size={18} color="#38A169" style={styles.taxiIcon} />
-                    <TextInput 
-                        style={styles.taxiInput}
-                        placeholder="Offer your fare (optional)..."
-                        placeholderTextColor="#A0AEC0"
-                        keyboardType="numeric"
-                        value={taxiPrice}
-                        onChangeText={setTaxiPrice}
-                    />
-                </View>
 
 
                 <TouchableOpacity
@@ -818,7 +806,7 @@ export default function HomeScreen() {
                     }
                     router.push({
                       pathname: '/taxi-bidding' as any,
-                      params: { from: taxiFrom, to: taxiTo, dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }), suggestedPrice: taxiPrice },
+                      params: { from: taxiFrom, to: taxiTo, dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) },
                     });
                   }}
                   disabled={!lockCheckDone}
