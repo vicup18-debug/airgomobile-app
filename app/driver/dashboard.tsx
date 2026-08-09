@@ -229,7 +229,7 @@ export default function DriverDashboard() {
             setShowAlert(false);
             setClaimingId(booking._id);
             try {
-              const token = await AsyncStorage.getItem('airgo_token');
+              const token = await AsyncStorage.getItem('authToken');
               const isRideReq = !!booking.offeredPrice || !!booking.fromAddress;
               const endpoint = isRideReq 
                 ? `${API_URL}/ride-requests/${booking._id}/accept`
@@ -310,8 +310,8 @@ export default function DriverDashboard() {
         text: "Logout",
         style: "destructive",
         onPress: async () => {
-          await AsyncStorage.removeItem('airgo_token');
-          await AsyncStorage.removeItem('airgo_user');
+          await AsyncStorage.removeItem('authToken');
+          await AsyncStorage.removeItem('userData');
           Toast.show({ type: 'success', text1: 'Logged out successfully' });
           router.replace('/auth/login' as any);
         }

@@ -39,9 +39,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../constants/config';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Audio } from 'expo-av';
+import * as TaskManager from 'expo-task-manager';
+
+const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
 async function playForegroundSound() {
     try {
+        await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: true,
+        });
         const { sound } = await Audio.Sound.createAsync(
             require('../assets/sounds/notification.wav')
         );
@@ -53,6 +61,23 @@ async function playForegroundSound() {
         console.warn('Failed to play foreground sound', e);
     }
 }
+
+// ─────────────────────────────────────────────
+// BACKGROUND NOTIFICATION HANDLER
+// ─────────────────────────────────────────────
+TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }: any) => {
+    if (error) {
+        console.error('Airgo FCM: Background task error', error);
+        return;
+    }
+    if (data) {
+        console.log('Background notification received:', data);
+        const payloadData = data.notification?.request?.content?.data || data.notification?.data || data;
+        if (payloadData?.type === 'ride_request') {
+            await playForegroundSound();
+        }
+    }
+});
 
 // ─────────────────────────────────────────────
 // FOREGROUND NOTIFICATION HANDLER
@@ -248,6 +273,12 @@ export function usePushNotifications() {
             if (!mounted || !token) return;
 
             await registerTokenWithServer(token);
+            
+            try {
+                await Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
+            } catch (err) {
+                console.warn('Airgo FCM: Failed to register background task', err);
+            }
 
             // Foreground: notification arrives while app is open
             notificationListener.current = Notifications.addNotificationReceivedListener(

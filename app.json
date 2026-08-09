@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "ng.airgo.app",
-      "versionCode": 75,
+      "versionCode": 76,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7i70u3_DN4ksi0V6LILlkCCK-Y7Gq8qo"
@@ -53,7 +53,9 @@
           "icon": "./assets/images/icon.png",
           "color": "#000080",
           "defaultChannel": "airgo-urgent-alerts",
-          "sounds": ["./assets/sounds/notification.wav"],
+          "sounds": [
+            "./assets/sounds/notification.wav"
+          ],
           "enableBackgroundRemoteNotifications": true
         }
       ],
