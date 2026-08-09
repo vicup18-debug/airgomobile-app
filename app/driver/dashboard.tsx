@@ -212,8 +212,16 @@ export default function DriverDashboard() {
       }
     });
 
+    socket.on('booking_updated', (data) => {
+      console.log('Booking updated via WS:', data);
+      if (!isModalVisibleRef.current) {
+        fetchData();
+      }
+    });
+
     return () => {
       socket.off('new_booking_request');
+      socket.off('booking_updated');
       socket.disconnect();
     };
   }, [isAvailable, fetchData]);
@@ -333,8 +341,63 @@ export default function DriverDashboard() {
     setShowAlert(true);
   };
 
+  const submitOfferResponse = async (bookingId: string, status: string, newPrice?: string) => {
+    setShowAlert(false);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const payload: any = { isOffer: true, offerStatus: status };
+      if (status === 'Accepted' && newPrice) payload.totalPrice = newPrice;
+      if (status === 'Pending Client' && newPrice) payload.counterPrice = newPrice;
+      
+      const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
+         method: 'PATCH',
+         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+         body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+         Toast.show({ type: 'success', text1: 'Success', text2: 'Response sent to client.' });
+         fetchData();
+      } else {
+         Toast.show({ type: 'error', text1: 'Error', text2: 'Could not send response.' });
+      }
+    } catch {
+       Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection.' });
+    }
+  };
+
+  const handleRespondToOffer = (booking: any) => {
+    setBidAmount('');
+    setAlertConfig({
+      title: 'Counter Offer Received',
+      message: `Client countered with ${formatPrice(booking.counterPrice || booking.offeredPrice)}.\nAccept this price or propose a new one (₦):`,
+      type: 'info',
+      showInput: true,
+      keyboardType: 'numeric',
+      inputPlaceholder: 'e.g. 6000',
+      buttons: [
+        { text: 'Decline', style: 'cancel', onPress: () => submitOfferResponse(booking._id, 'Rejected') },
+        {
+          text: 'Accept 🤝',
+          onPress: () => submitOfferResponse(booking._id, 'Accepted', booking.counterPrice || booking.offeredPrice)
+        },
+        {
+          text: 'Counter 🚕',
+          onPress: (inputValue?: string) => {
+            if (!inputValue || isNaN(Number(inputValue))) {
+               Toast.show({ type: 'error', text1: 'Fare Required', text2: 'Please enter a valid numeric fare.' });
+               return;
+            }
+            submitOfferResponse(booking._id, 'Pending Client', inputValue);
+          }
+        }
+      ]
+    });
+    setShowAlert(true);
+  };
+
   const monthly  = monthlyEarnings(myBookings);
   const allTime  = allTimeEarnings(myBookings);
+  const pendingOffers = myBookings.filter(b => b.isOffer && b.offerStatus === 'Pending Partner' && b.driverId === userId);
 
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to securely sign out?", [
@@ -377,6 +440,9 @@ export default function DriverDashboard() {
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity style={styles.refreshBtn} onPress={() => { setRefreshing(true); fetchData(); }}>
             <Ionicons name="refresh-outline" size={22} color="#FFB81C" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => router.push('/profile')}>
+            <Ionicons name="person-outline" size={22} color="#FFF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.refreshBtn} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={22} color="#FF5A5F" />
@@ -476,6 +542,35 @@ export default function DriverDashboard() {
             <Ionicons name="car-outline" size={40} color="#CBD5E0" />
             <Text style={styles.emptyCardText}>No active trip</Text>
           </View>
+        )}
+
+        {/* ── PENDING OFFERS ── */}
+        {pendingOffers.length > 0 && (
+           <>
+             <Text style={styles.sectionTitle}>Pending Counter Offers ({pendingOffers.length})</Text>
+             {pendingOffers.map(req => (
+                <View key={req._id} style={[styles.requestCard, { borderColor: '#D6BCFA', borderWidth: 1 }]}>
+                  <View style={styles.requestTop}>
+                    <Text style={styles.requestName} numberOfLines={2}>
+                      {req.itemName || 'Ride Request'}
+                    </Text>
+                    <Text style={styles.requestFare}>{formatPrice(req.counterPrice || req.offeredPrice)}</Text>
+                  </View>
+                  <View style={styles.requestRow}>
+                    <Ionicons name="location-outline" size={14} color="#718096" />
+                    <Text style={styles.requestDetail} numberOfLines={1}>
+                      Pickup: {req.deliveryAddress || req.fromAddress || '—'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.claimBtn}
+                    onPress={() => handleRespondToOffer(req)}
+                  >
+                    <Text style={styles.claimBtnText}>Respond to Offer</Text>
+                  </TouchableOpacity>
+                </View>
+             ))}
+           </>
         )}
 
         {/* ── AVAILABLE REQUESTS ── */}
