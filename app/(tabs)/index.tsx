@@ -304,6 +304,7 @@ export default function HomeScreen() {
   const isFocused = useIsFocused();
   const [placesSuggestions, setPlacesSuggestions] = useState<string[]>([]);
   const searchPlacesTimeout = useRef<any>(null);
+  const [globalCity, setGlobalCity] = useState('');
 
   const handlePlaceSearch = (query: string, setter: (val: string) => void) => {
     setter(query);
@@ -316,7 +317,10 @@ export default function HomeScreen() {
     
     searchPlacesTimeout.current = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ng&limit=5`, {
+        const finalQuery = globalCity && !query.toLowerCase().includes(globalCity.toLowerCase()) 
+            ? `${query}, ${globalCity}` 
+            : query;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(finalQuery)}&countrycodes=ng&limit=5`, {
           headers: {
             'User-Agent': 'AirgoHotelBookingApp/1.0',
             'Accept': 'application/json'
@@ -506,6 +510,20 @@ export default function HomeScreen() {
         }
       });
       checkActiveTripLock();
+
+      // Automatically try to detect the user's city to restrict autocomplete results
+      Location.getForegroundPermissionsAsync().then(({ status }) => {
+        if (status === 'granted') {
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(loc => {
+            Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude }).then(rev => {
+              if (rev && rev.length > 0) {
+                const detectedCity = rev[0].city || rev[0].subregion || rev[0].region;
+                if (detectedCity) setGlobalCity(detectedCity);
+              }
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+      });
     }
 
     fetch(`${HOTELS_API_URL}?t=${new Date().getTime()}`, { headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } })
@@ -747,6 +765,10 @@ export default function HomeScreen() {
                                 <Text style={styles.suggestionText}>{loc}</Text>
                             </TouchableOpacity>
                             ))}
+                            <TouchableOpacity style={styles.suggestionItem} onPress={() => setLocationType('')}>
+                                <Ionicons name="checkmark-circle-outline" size={16} color="#000080" style={{ marginRight: 10 }} />
+                                <Text style={[styles.suggestionText, { color: '#000080', fontWeight: 'bold' }]}>Use "{taxiFrom}"</Text>
+                            </TouchableOpacity>
                         </ScrollView>
                         </View>
                     )}
@@ -777,6 +799,10 @@ export default function HomeScreen() {
                                 <Text style={styles.suggestionText}>{loc}</Text>
                             </TouchableOpacity>
                             ))}
+                            <TouchableOpacity style={styles.suggestionItem} onPress={() => setLocationType('')}>
+                                <Ionicons name="checkmark-circle-outline" size={16} color="#000080" style={{ marginRight: 10 }} />
+                                <Text style={[styles.suggestionText, { color: '#000080', fontWeight: 'bold' }]}>Use "{taxiTo}"</Text>
+                            </TouchableOpacity>
                         </ScrollView>
                         </View>
                     )}
