@@ -40,7 +40,9 @@ export default function ProfileScreen() {
             if (name)  setUserName(name);
             if (role)  setUserRole(role);
             if (email) setUserEmail(email);
-            if (image) setProfileImage(`${API_URL.replace('/api', '')}${image}`);
+            if (image) {
+                setProfileImage(image.startsWith('http') ? image : `${API_URL.replace('/api', '')}${image}`);
+            }
             setIsLoggedIn(!!token);
         };
         if (isFocused) {
@@ -179,8 +181,13 @@ export default function ProfileScreen() {
                 <Text style={styles.sectionTitle}>Account Settings</Text>
                 <View style={styles.cardGroup}>
                     <MenuItem icon="person-outline" title="Personal Information" color="#004A99" onPress={() => router.push('/profile/personal-info' as any)} />
-                    <View style={styles.divider} />
-                    <MenuItem icon="card-outline" title="Payment Methods" color="#004A99" onPress={() => router.push('/profile/payment-methods' as any)} />
+                    
+                    {userRole !== 'driver' && (
+                        <>
+                            <View style={styles.divider} />
+                            <MenuItem icon="card-outline" title="Payment Methods" color="#004A99" onPress={() => router.push('/profile/payment-methods' as any)} />
+                        </>
+                    )}
                     
                     {(userRole === 'driver' || userRole === 'partner' || userRole === 'affiliate' || userRole === 'superadmin' || userRole === 'admin') && (
                         <>

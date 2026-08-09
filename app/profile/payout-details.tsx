@@ -109,11 +109,11 @@ export default function PayoutDetailsScreen() {
             });
             const data = await res.json();
             
-            if (res.ok && data.account_name) {
-                setAccountName(data.account_name);
-                Toast.show({ type: 'success', text1: 'Account Verified', text2: `Name: ${data.account_name}` });
+            if (res.ok && data.accountName) {
+                setAccountName(data.accountName);
+                Toast.show({ type: 'success', text1: 'Account Verified', text2: `Name: ${data.accountName}` });
             } else {
-                Toast.show({ type: 'error', text1: 'Verification Failed', text2: data.error || 'Could not verify account.' });
+                Toast.show({ type: 'error', text1: 'Verification Failed', text2: data.message || data.error || 'Could not verify account.' });
             }
         } catch (error) {
             console.error('Error resolving bank:', error);
