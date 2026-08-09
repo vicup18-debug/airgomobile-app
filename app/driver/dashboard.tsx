@@ -8,7 +8,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert, Switch, Linking, AppState
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -82,7 +82,14 @@ export default function DriverDashboard() {
   const [availableRequests, setAvailableRequests] = useState<any[]>([]);
 
   const [showAlert, setShowAlert] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'info' as any, buttons: [] as any[] });
+  const [alertConfig, setAlertConfig] = useState<any>({ title: '', message: '', type: 'info', buttons: [] });
+  const [bidAmount, setBidAmount] = useState('');
+  
+  // Track modal visibility without triggering re-renders to safely debounce socket events
+  const isModalVisibleRef = useRef(false);
+  useEffect(() => {
+    isModalVisibleRef.current = showAlert;
+  }, [showAlert]);
 
   // ── Load session ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -167,7 +174,9 @@ export default function DriverDashboard() {
     socket.on('new_booking_request', async (data) => {
       console.log('New ride request via WS:', data);
       
-              try {
+      // Only show if the driver isn't already looking at a modal (e.g. actively bidding)
+      if (!isModalVisibleRef.current) {
+        try {
           await Audio.setAudioModeAsync({
             playsInSilentModeIOS: true,
             staysActiveInBackground: true,
@@ -186,17 +195,21 @@ export default function DriverDashboard() {
           console.log('Audio play error:', e);
         }
 
-      fetchData(); // Refresh the list of available requests
-      setAlertConfig({
-        title: 'New Ride Request! 🚕',
-        message: 'A new ride request is available in your area. Open your feed to claim it!',
-        type: 'info',
-        buttons: [{ text: 'View Details', onPress: () => { 
-          setShowAlert(false); 
-          setTimeout(() => handleClaim(data), 350); 
-        } }]
-      });
-      setShowAlert(true);
+        fetchData(); // Refresh the list of available requests
+        setAlertConfig({
+          title: 'New Ride Request! 🚕',
+          message: 'A new ride request is available in your area. Open your feed to claim it!',
+          type: 'info',
+          buttons: [{ text: 'View Details', onPress: () => { 
+            setShowAlert(false); 
+            setTimeout(() => handleClaim(data), 350); 
+          } }]
+        });
+        setShowAlert(true);
+      } else {
+        // Just silently refresh the list so it appears in the background feed
+        fetchData();
+      }
     });
 
     return () => {
@@ -217,23 +230,43 @@ export default function DriverDashboard() {
       Toast.show({ type: 'error', text1: 'You are Offline', text2: 'Switch to Available to accept rides.' });
       return;
     }
+    
+    // A ride request allows bidding; a direct booking is just accepted.
+    // In our new flow, client submitted RideRequests do not have offeredPrice, so we check existence of fromAddress.
+    const isRideReq = !!booking.fromAddress && booking.status === 'pending';
+    
+    setBidAmount(''); // Clear previous bid
+    
     setAlertConfig({
-      title: 'Claim This Ride?',
-      message: `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || '-'}\n\nAccept and begin this trip?`,
+      title: isRideReq ? 'Submit a Bid' : 'Claim This Ride?',
+      message: isRideReq 
+        ? `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || booking.fromAddress || '-'}\n\nEnter your proposed fare for this trip (₦):`
+        : `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || booking.fromAddress || '-'}\n\nAccept and begin this trip?`,
       type: 'warning',
+      showInput: isRideReq,
+      keyboardType: 'numeric',
+      inputPlaceholder: 'e.g. 5000',
       buttons: [
         { text: 'Cancel', style: 'cancel', onPress: () => setShowAlert(false) },
         {
-          text: 'Claim Ride 🚕',
-          onPress: async () => {
+          text: isRideReq ? 'Submit Bid 🚕' : 'Claim Ride 🚕',
+          onPress: async (inputValue?: string) => {
+            if (isRideReq && (!inputValue || isNaN(Number(inputValue)))) {
+              Toast.show({ type: 'error', text1: 'Fare Required', text2: 'Please enter a valid numeric fare.' });
+              return;
+            }
+            
             setShowAlert(false);
             setClaimingId(booking._id);
             try {
               const token = await AsyncStorage.getItem('authToken');
-              const isRideReq = !!booking.offeredPrice || !!booking.fromAddress;
               const endpoint = isRideReq 
-                ? `${API_URL}/ride-requests/${booking._id}/accept`
+                ? `${API_URL}/ride-requests/${booking._id}/driver-offers`
                 : `${API_URL}/bookings/${booking._id}/claim`;
+
+              const payload = isRideReq 
+                ? JSON.stringify({ fare: Number(inputValue) }) 
+                : JSON.stringify({ driverId: userId });
 
               const res = await fetch(endpoint, {
                 method: 'POST',
@@ -241,14 +274,14 @@ export default function DriverDashboard() {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ driverId: userId }),
+                body: payload,
               });
               if (res.ok) {
-                Toast.show({ type: 'success', text1: '✅ Ride Claimed!', text2: 'Head to the pickup location. Safe journey!' });
+                Toast.show({ type: 'success', text1: isRideReq ? 'Bid Submitted!' : '✅ Ride Claimed!', text2: isRideReq ? 'Waiting for client to accept your bid.' : 'Head to the pickup location. Safe journey!' });
                 fetchData();
               } else {
                 const err = await res.json().catch(() => ({}));
-                Toast.show({ type: 'error', text1: 'Claim Failed', text2: err.message || 'This ride may have already been claimed.' });
+                Toast.show({ type: 'error', text1: 'Action Failed', text2: err.message || 'Could not complete the action.' });
               }
             } catch {
               Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection.' });
@@ -512,6 +545,11 @@ export default function DriverDashboard() {
         message={alertConfig.message}
         type={alertConfig.type}
         buttons={alertConfig.buttons}
+        showInput={alertConfig.showInput}
+        inputValue={bidAmount}
+        onInputChange={setBidAmount}
+        inputPlaceholder={alertConfig.inputPlaceholder}
+        keyboardType={alertConfig.keyboardType}
         onClose={() => setShowAlert(false)}
       />
     </View>

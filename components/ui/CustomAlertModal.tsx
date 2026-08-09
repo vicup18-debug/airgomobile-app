@@ -1,10 +1,10 @@
 import React from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export interface AlertButton {
   text: string;
-  onPress?: () => void;
+  onPress?: (inputValue?: string) => void;
   style?: 'default' | 'cancel' | 'destructive';
 }
 
@@ -15,6 +15,11 @@ interface CustomAlertModalProps {
   buttons?: AlertButton[];
   type?: 'info' | 'warning' | 'error' | 'success';
   onClose?: () => void;
+  showInput?: boolean;
+  inputValue?: string;
+  onInputChange?: (text: string) => void;
+  inputPlaceholder?: string;
+  keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
 }
 
 const { width } = Dimensions.get('window');
@@ -26,6 +31,11 @@ export default function CustomAlertModal({
   buttons = [],
   type = 'info',
   onClose,
+  showInput = false,
+  inputValue = '',
+  onInputChange,
+  inputPlaceholder = '',
+  keyboardType = 'default',
 }: CustomAlertModalProps) {
   const scaleValue = React.useRef(new Animated.Value(0)).current;
   const opacityValue = React.useRef(new Animated.Value(0)).current;
@@ -59,8 +69,10 @@ export default function CustomAlertModal({
           duration: 150,
           useNativeDriver: true,
         }),
-      ]).start(() => {
-        setInternalVisible(false);
+      ]).start(({ finished }) => {
+        if (finished) {
+          setInternalVisible(false);
+        }
       });
     }
   }, [visible]);
@@ -79,7 +91,7 @@ export default function CustomAlertModal({
 
   const handleButtonPress = (btn: AlertButton) => {
     if (btn.onPress) {
-      btn.onPress();
+      btn.onPress(inputValue);
     } else if (onClose) {
       onClose();
     }
@@ -93,18 +105,33 @@ export default function CustomAlertModal({
 
   return (
     <Modal transparent visible={internalVisible} animationType="none" onRequestClose={onClose}>
-      <Animated.View style={[styles.overlay, { opacity: opacityValue }]}>
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
-        
-        <Animated.View style={[styles.modalContainer, { transform: [{ scale: scaleValue }] }]}>
-          <View style={[styles.iconBox, { backgroundColor: iconData.bg }]}>
-            <Ionicons name={iconData.name as any} size={32} color={iconData.color} />
-          </View>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Animated.View style={[styles.overlay, { opacity: opacityValue }]}>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
           
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-          
-          <View style={[styles.buttonContainer, activeButtons.length === 1 && { justifyContent: 'center' }]}>
+          <Animated.View style={[styles.modalContainer, { transform: [{ scale: scaleValue }] }]}>
+            <View style={[styles.iconBox, { backgroundColor: iconData.bg }]}>
+              <Ionicons name={iconData.name as any} size={32} color={iconData.color} />
+            </View>
+            
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.message}>{message}</Text>
+
+            {showInput && (
+              <TextInput
+                style={styles.input}
+                value={inputValue}
+                onChangeText={onInputChange}
+                placeholder={inputPlaceholder}
+                placeholderTextColor="#A0AEC0"
+                keyboardType={keyboardType}
+              />
+            )}
+            
+            <View style={[styles.buttonContainer, activeButtons.length === 1 && { justifyContent: 'center' }]}>
             {activeButtons.map((btn, index) => {
               const isCancel = btn.style === 'cancel';
               const isDestructive = btn.style === 'destructive';
@@ -133,8 +160,9 @@ export default function CustomAlertModal({
               );
             })}
           </View>
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -227,4 +255,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  input: {
+    width: '100%',
+    backgroundColor: '#F7FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1A202C',
+    marginBottom: 24,
+    fontWeight: '600',
+  }
 });
