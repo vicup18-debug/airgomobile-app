@@ -229,6 +229,13 @@ export default function DriverDashboard() {
         if (!isModalVisibleRef.current) {
            handleRespondToOfferRef.current?.(data);
         }
+      } else if (data.isOffer && data.offerStatus === 'Accepted' && data.driverId === userId) {
+        try {
+          Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
+            .then(({ sound }) => sound.playAsync());
+        } catch(e){}
+        Toast.show({ type: 'success', text1: 'Bid Accepted! 🎉', text2: `Client accepted your fare!` });
+        fetchData();
       } else if (!isModalVisibleRef.current) {
         fetchData();
       }
@@ -401,7 +408,7 @@ export default function DriverDashboard() {
     setBidAmount('');
     setAlertConfig({
       title: 'Counter Offer Received',
-      message: `Client countered with ${formatPrice(booking.counterPrice || booking.offeredPrice)}.\nAccept this price or propose a new one (₦):`,
+      message: `Client countered with ${formatPrice(booking.totalPrice)}.\nAccept this price or propose a new one (₦):`,
       type: 'info',
       showInput: true,
       keyboardType: 'numeric',
@@ -410,7 +417,7 @@ export default function DriverDashboard() {
         { text: 'Decline', style: 'cancel', onPress: () => submitOfferResponse(booking._id, 'Rejected') },
         {
           text: 'Accept 🤝',
-          onPress: () => submitOfferResponse(booking._id, 'Accepted', booking.counterPrice || booking.offeredPrice)
+          onPress: () => submitOfferResponse(booking._id, 'Accepted', booking.totalPrice)
         },
         {
           text: 'Counter 🚕',
@@ -611,7 +618,7 @@ export default function DriverDashboard() {
                         <Text style={styles.requestName} numberOfLines={2}>
                           {req.itemName || 'Ride Request'}
                         </Text>
-                        <Text style={styles.requestFare}>{formatPrice(req.counterPrice || req.offeredPrice)}</Text>
+                        <Text style={styles.requestFare}>{formatPrice(req.totalPrice)}</Text>
                       </View>
                       <View style={styles.requestRow}>
                         <Ionicons name="location-outline" size={14} color="#718096" />
