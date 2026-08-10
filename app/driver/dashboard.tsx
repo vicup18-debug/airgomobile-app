@@ -623,7 +623,13 @@ export default function DriverDashboard() {
                       <View style={styles.requestRow}>
                         <Ionicons name="location-outline" size={14} color="#718096" />
                         <Text style={styles.requestDetail} numberOfLines={1}>
-                          Pickup: {req.deliveryAddress || req.fromAddress || '—'}
+                          Pickup: {req.fromAddress || (req.deliveryAddress?.includes('From:') ? req.deliveryAddress.split('|')[0].replace('From:', '').trim() : req.deliveryAddress) || '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.requestRow}>
+                        <Ionicons name="flag-outline" size={14} color="#38A169" />
+                        <Text style={styles.requestDetail} numberOfLines={1}>
+                          Drop-off: {req.toAddress || req.dropoffAddress || (req.deliveryAddress?.includes('To:') ? req.deliveryAddress.split('|')[1]?.replace('To:', '')?.trim() : '—') || '—'}
                         </Text>
                       </View>
                       <TouchableOpacity
@@ -660,7 +666,14 @@ export default function DriverDashboard() {
                   <View style={styles.requestRow}>
                     <Ionicons name="location-outline" size={14} color="#718096" />
                     <Text style={styles.requestDetail} numberOfLines={1}>
-                      Pickup: {req.deliveryAddress || '—'}
+                      Pickup: {req.fromAddress || (req.deliveryAddress?.includes('From:') ? req.deliveryAddress.split('|')[0].replace('From:', '').trim() : req.deliveryAddress) || '—'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.requestRow}>
+                    <Ionicons name="flag-outline" size={14} color="#38A169" />
+                    <Text style={styles.requestDetail} numberOfLines={1}>
+                      Drop-off: {req.toAddress || req.dropoffAddress || (req.deliveryAddress?.includes('To:') ? req.deliveryAddress.split('|')[1]?.replace('To:', '')?.trim() : '—') || '—'}
                     </Text>
                   </View>
 
