@@ -84,9 +84,12 @@ export default function DriverDashboard() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertConfig, setAlertConfig] = useState<any>({ title: '', message: '', type: 'info', buttons: [] });
   const [bidAmount, setBidAmount] = useState('');
+  const [activeTab, setActiveTab] = useState<'dispatches' | 'trips'>('dispatches');
   
   // Track modal visibility without triggering re-renders to safely debounce socket events
   const isModalVisibleRef = useRef(false);
+  const handleRespondToOfferRef = useRef<any>(null);
+  
   useEffect(() => {
     isModalVisibleRef.current = showAlert;
   }, [showAlert]);
@@ -167,6 +170,7 @@ export default function DriverDashboard() {
       console.log('Driver connected to WebSocket:', socket.id);
       if (userId) {
         socket.emit('join_driver', { driverId: userId });
+        socket.emit('join_partner', { partnerId: userId });
       }
       socket.emit('join_drivers', {}); // Join general drivers room
     });
@@ -214,17 +218,41 @@ export default function DriverDashboard() {
 
     socket.on('booking_updated', (data) => {
       console.log('Booking updated via WS:', data);
-      if (!isModalVisibleRef.current) {
+      
+      if (data.isOffer && data.offerStatus === 'Pending Partner' && data.driverId === userId) {
+        try {
+          Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
+            .then(({ sound }) => sound.playAsync());
+        } catch(e){}
+        Toast.show({ type: 'info', text1: 'Counter Offer Received! 🚕', text2: `Client countered your bid!` });
+        
+        if (!isModalVisibleRef.current) {
+           handleRespondToOfferRef.current?.(data);
+        }
+      } else if (!isModalVisibleRef.current) {
         fetchData();
       }
+    });
+
+    socket.on('booking_claimed', (data) => {
+      console.log('Booking claimed via WS:', data);
+      setAvailableRequests(prev => prev.filter(r => r._id !== data.bookingId));
+    });
+
+    socket.on('booking_cancelled', (data) => {
+      console.log('Booking cancelled via WS:', data);
+      setAvailableRequests(prev => prev.filter(r => r._id !== data.bookingId));
+      fetchData();
     });
 
     return () => {
       socket.off('new_booking_request');
       socket.off('booking_updated');
+      socket.off('booking_claimed');
+      socket.off('booking_cancelled');
       socket.disconnect();
     };
-  }, [isAvailable, fetchData]);
+  }, [isAvailable, fetchData, userId]);
 
   // ── Toggle availability ───────────────────────────────────────────────────
   const toggleAvailability = async (val: boolean) => {
@@ -365,6 +393,10 @@ export default function DriverDashboard() {
     }
   };
 
+  useEffect(() => {
+    handleRespondToOfferRef.current = handleRespondToOffer;
+  });
+
   const handleRespondToOffer = (booking: any) => {
     setBidAmount('');
     setAlertConfig({
@@ -464,6 +496,26 @@ export default function DriverDashboard() {
         />
       </View>
 
+      {/* ── TABS ── */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'dispatches' && styles.activeTabButton]}
+          onPress={() => setActiveTab('dispatches')}
+        >
+          <Text style={[styles.tabText, activeTab === 'dispatches' && styles.activeTabText]}>
+            Dispatches {availableRequests.length > 0 ? `(${availableRequests.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'trips' && styles.activeTabButton]}
+          onPress={() => setActiveTab('trips')}
+        >
+          <Text style={[styles.tabText, activeTab === 'trips' && styles.activeTabText]}>
+            Active Trips
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -500,127 +552,134 @@ export default function DriverDashboard() {
             </View>
           </View>
         </View>
-        {/* ── ACTIVE TRIP ── */}
-        <Text style={styles.sectionTitle}>Active Trip</Text>
-        {activeTrip ? (
-          <View style={styles.activeTripCard}>
-            <View style={styles.activeBadge}>
-              <Text style={styles.activeBadgeText}>IN PROGRESS</Text>
-            </View>
-            <Text style={styles.tripItemName}>{activeTrip.itemName || 'Active Ride'}</Text>
-            <View style={styles.tripRow}>
-              <Ionicons name="location" size={16} color="#000080" />
-              <Text style={styles.tripDetail}>From: {activeTrip.deliveryAddress || '—'}</Text>
-            </View>
-            {activeTrip.dropoffAddress && (
-              <View style={styles.tripRow}>
-                <Ionicons name="flag" size={16} color="#38A169" />
-                <Text style={styles.tripDetail}>To: {activeTrip.dropoffAddress}</Text>
+        {/* ── TAB CONTENT ── */}
+        {activeTab === 'trips' ? (
+          <>
+            {/* ── ACTIVE TRIP ── */}
+            <Text style={styles.sectionTitle}>Active Trip</Text>
+            {activeTrip ? (
+              <View style={styles.activeTripCard}>
+                <View style={styles.activeBadge}>
+                  <Text style={styles.activeBadgeText}>IN PROGRESS</Text>
+                </View>
+                <Text style={styles.tripItemName}>{activeTrip.itemName || 'Active Ride'}</Text>
+                <View style={styles.tripRow}>
+                  <Ionicons name="location" size={16} color="#000080" />
+                  <Text style={styles.tripDetail}>From: {activeTrip.deliveryAddress || '—'}</Text>
+                </View>
+                {activeTrip.dropoffAddress && (
+                  <View style={styles.tripRow}>
+                    <Ionicons name="flag" size={16} color="#38A169" />
+                    <Text style={styles.tripDetail}>To: {activeTrip.dropoffAddress}</Text>
+                  </View>
+                )}
+                <View style={styles.tripRow}>
+                  <Ionicons name="person-outline" size={16} color="#718096" />
+                  <Text style={styles.tripDetail}>Client: {activeTrip.clientName || '—'}</Text>
+                </View>
+                <View style={styles.tripRow}>
+                  <Ionicons name="cash-outline" size={16} color="#D97706" />
+                  <Text style={styles.tripDetail}>Fare: {formatPrice(activeTrip.totalPrice)}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.completeBtn}
+                  onPress={() => handleComplete(activeTrip)}
+                  disabled={!!completingId}
+                >
+                  {completingId === activeTrip._id
+                    ? <ActivityIndicator color="#000080" />
+                    : <Text style={styles.completeBtnText}>✅ Complete Trip</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyCard}>
+                <Ionicons name="car-outline" size={40} color="#CBD5E0" />
+                <Text style={styles.emptyCardText}>No active trip</Text>
               </View>
             )}
-            <View style={styles.tripRow}>
-              <Ionicons name="person-outline" size={16} color="#718096" />
-              <Text style={styles.tripDetail}>Client: {activeTrip.clientName || '—'}</Text>
-            </View>
-            <View style={styles.tripRow}>
-              <Ionicons name="cash-outline" size={16} color="#D97706" />
-              <Text style={styles.tripDetail}>Fare: {formatPrice(activeTrip.totalPrice)}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.completeBtn}
-              onPress={() => handleComplete(activeTrip)}
-              disabled={!!completingId}
-            >
-              {completingId === activeTrip._id
-                ? <ActivityIndicator color="#000080" />
-                : <Text style={styles.completeBtnText}>✅ Complete Trip</Text>
-              }
-            </TouchableOpacity>
-          </View>
+          </>
         ) : (
-          <View style={styles.emptyCard}>
-            <Ionicons name="car-outline" size={40} color="#CBD5E0" />
-            <Text style={styles.emptyCardText}>No active trip</Text>
-          </View>
-        )}
+          <>
+            {/* ── PENDING OFFERS ── */}
+            {pendingOffers.length > 0 && (
+               <>
+                 <Text style={styles.sectionTitle}>Pending Counter Offers ({pendingOffers.length})</Text>
+                 {pendingOffers.map(req => (
+                    <View key={req._id} style={[styles.requestCard, { borderColor: '#D6BCFA', borderWidth: 1 }]}>
+                      <View style={styles.requestTop}>
+                        <Text style={styles.requestName} numberOfLines={2}>
+                          {req.itemName || 'Ride Request'}
+                        </Text>
+                        <Text style={styles.requestFare}>{formatPrice(req.counterPrice || req.offeredPrice)}</Text>
+                      </View>
+                      <View style={styles.requestRow}>
+                        <Ionicons name="location-outline" size={14} color="#718096" />
+                        <Text style={styles.requestDetail} numberOfLines={1}>
+                          Pickup: {req.deliveryAddress || req.fromAddress || '—'}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.claimBtn}
+                        onPress={() => handleRespondToOffer(req)}
+                      >
+                        <Text style={styles.claimBtnText}>Respond to Offer</Text>
+                      </TouchableOpacity>
+                    </View>
+                 ))}
+               </>
+            )}
 
-        {/* ── PENDING OFFERS ── */}
-        {pendingOffers.length > 0 && (
-           <>
-             <Text style={styles.sectionTitle}>Pending Counter Offers ({pendingOffers.length})</Text>
-             {pendingOffers.map(req => (
-                <View key={req._id} style={[styles.requestCard, { borderColor: '#D6BCFA', borderWidth: 1 }]}>
+            {/* ── AVAILABLE REQUESTS ── */}
+            <Text style={styles.sectionTitle}>
+              Available Requests ({availableRequests.length})
+            </Text>
+            {availableRequests.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Ionicons name="hourglass-outline" size={40} color="#CBD5E0" />
+                <Text style={styles.emptyCardText}>No pickup requests right now</Text>
+                <Text style={styles.emptyCardSub}>Pull down to refresh</Text>
+              </View>
+            ) : (
+              availableRequests.map(req => (
+                <View key={req._id} style={styles.requestCard}>
                   <View style={styles.requestTop}>
                     <Text style={styles.requestName} numberOfLines={2}>
                       {req.itemName || 'Ride Request'}
                     </Text>
-                    <Text style={styles.requestFare}>{formatPrice(req.counterPrice || req.offeredPrice)}</Text>
+                    <Text style={styles.requestFare}>{formatPrice(req.totalPrice)}</Text>
                   </View>
+
                   <View style={styles.requestRow}>
                     <Ionicons name="location-outline" size={14} color="#718096" />
                     <Text style={styles.requestDetail} numberOfLines={1}>
-                      Pickup: {req.deliveryAddress || req.fromAddress || '—'}
+                      Pickup: {req.deliveryAddress || '—'}
                     </Text>
                   </View>
+
+                  <View style={styles.requestRow}>
+                    <Ionicons name="time-outline" size={14} color="#718096" />
+                    <Text style={styles.requestDetail}>
+                      {formatDateTime(req.checkIn)}
+                    </Text>
+                  </View>
+
                   <TouchableOpacity
-                    style={styles.claimBtn}
-                    onPress={() => handleRespondToOffer(req)}
+                    style={[styles.claimBtn, !isAvailable && styles.claimBtnDisabled]}
+                    onPress={() => handleClaim(req)}
+                    disabled={claimingId === req._id || !isAvailable}
                   >
-                    <Text style={styles.claimBtnText}>Respond to Offer</Text>
+                    {claimingId === req._id
+                      ? <ActivityIndicator size="small" color="#000080" />
+                      : <Text style={styles.claimBtnText}>
+                          {isAvailable ? 'Claim This Ride 🚗' : 'Go Online to Claim'}
+                        </Text>
+                    }
                   </TouchableOpacity>
                 </View>
-             ))}
-           </>
-        )}
-
-        {/* ── AVAILABLE REQUESTS ── */}
-        <Text style={styles.sectionTitle}>
-          Available Requests ({availableRequests.length})
-        </Text>
-        {availableRequests.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="hourglass-outline" size={40} color="#CBD5E0" />
-            <Text style={styles.emptyCardText}>No pickup requests right now</Text>
-            <Text style={styles.emptyCardSub}>Pull down to refresh</Text>
-          </View>
-        ) : (
-          availableRequests.map(req => (
-            <View key={req._id} style={styles.requestCard}>
-              <View style={styles.requestTop}>
-                <Text style={styles.requestName} numberOfLines={2}>
-                  {req.itemName || 'Ride Request'}
-                </Text>
-                <Text style={styles.requestFare}>{formatPrice(req.totalPrice)}</Text>
-              </View>
-
-              <View style={styles.requestRow}>
-                <Ionicons name="location-outline" size={14} color="#718096" />
-                <Text style={styles.requestDetail} numberOfLines={1}>
-                  Pickup: {req.deliveryAddress || '—'}
-                </Text>
-              </View>
-
-              <View style={styles.requestRow}>
-                <Ionicons name="time-outline" size={14} color="#718096" />
-                <Text style={styles.requestDetail}>
-                  {formatDateTime(req.checkIn)}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.claimBtn, !isAvailable && styles.claimBtnDisabled]}
-                onPress={() => handleClaim(req)}
-                disabled={claimingId === req._id || !isAvailable}
-              >
-                {claimingId === req._id
-                  ? <ActivityIndicator size="small" color="#000080" />
-                  : <Text style={styles.claimBtnText}>
-                      {isAvailable ? 'Claim This Ride 🚗' : 'Go Online to Claim'}
-                    </Text>
-                }
-              </TouchableOpacity>
-            </View>
-          ))
+              ))
+            )}
+          </>
         )}
 
         {/* ── WEB FALLBACK ── */}
@@ -673,11 +732,22 @@ const styles = StyleSheet.create({
   availabilityBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: '#FFF', paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
   availRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   availDot: { width: 10, height: 10, borderRadius: 5 },
   availText: { fontSize: 15, fontWeight: '700', color: '#1A202C' },
+
+  tabsContainer: {
+    flexDirection: 'row', backgroundColor: '#FFF',
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
+  tabButton: {
+    flex: 1, paddingVertical: 16, alignItems: 'center',
+    borderBottomWidth: 3, borderBottomColor: 'transparent',
+  },
+  activeTabButton: { borderBottomColor: '#FFB81C' },
+  tabText: { fontSize: 15, fontWeight: '700', color: '#718096' },
+  activeTabText: { color: '#000080' },
 
   content: { padding: 20, paddingTop: 24 },
 
