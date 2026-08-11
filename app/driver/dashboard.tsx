@@ -20,7 +20,8 @@ import { io } from 'socket.io-client';
 import { Audio } from 'expo-av';
 
 // ── STATUS ACTIVE CHECK ────────────────────────────────────────────────────
-const ACTIVE_STATUSES = ['Trip Started', 'Paid - Escrow Secured', 'Escrow Active', 'Accepted'];
+const ACTIVE_STATUSES = ['Trip Started', 'Paid - Escrow Secured', 'Escrow Active', 'Accepted', 'Paid', 'Confirmed', 'Approved for Disbursement', 'Trip Start Pending'];
+const TRIP_PENDING_START = ['Accepted', 'Paid', 'Paid - Escrow Secured', 'Confirmed', 'Approved for Disbursement', 'Trip Start Pending'];
 const COMPLETED_STATUSES = ['Completed', 'Completed & Disbursed', 'Disbursed', 'Payment Disbursed', 'Paid Out'];
 
 function formatPrice(raw: any): string {
@@ -267,10 +268,19 @@ export default function DriverDashboard() {
     await AsyncStorage.setItem('driverAvailable', val ? 'true' : 'false');
   };
 
-  // ── Claim a ride ──────────────────────────────────────────────────────────
+  // ── Claim a ride (with bid-lock guard) ───────────────────────────────────
   const handleClaim = (booking: any) => {
     if (!isAvailable) {
       Toast.show({ type: 'error', text1: 'You are Offline', text2: 'Switch to Available to accept rides.' });
+      return;
+    }
+
+    // Bid lock: prevent bidding if driver already has an active trip
+    const hasActiveTrip = myBookings.some(b =>
+      ['Trip Started', 'Trip Start Pending', 'Accepted', 'Paid', 'Paid - Escrow Secured', 'Confirmed'].includes(b.status || '')
+    );
+    if (hasActiveTrip) {
+      Toast.show({ type: 'error', text1: 'Active Trip In Progress', text2: 'Finish your current trip before claiming a new ride.' });
       return;
     }
     
@@ -338,42 +348,51 @@ export default function DriverDashboard() {
     setShowAlert(true);
   };
 
-  // ── Complete a trip ───────────────────────────────────────────────────────
-  const handleComplete = (booking: any) => {
-    setAlertConfig({
-      title: 'Complete Trip?',
-      message: 'Confirm that you have delivered the passenger to their destination.',
-      type: 'success',
-      buttons: [
-        { text: 'Not Yet', style: 'cancel', onPress: () => setShowAlert(false) },
-        {
-          text: 'Complete Trip ✓',
-          onPress: async () => {
-            setShowAlert(false);
-            setCompletingId(booking._id);
-            try {
-              const res = await fetch(`${API_URL}/bookings/${booking._id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Completed' }),
-              });
-              if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Trip Complete!', text2: 'Great work! Your earnings are being processed.' });
-                setActiveTrip(null);
-                fetchData();
-              } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: 'Could not mark as complete. Please try again.' });
-              }
-            } catch {
-              Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection.' });
-            } finally {
-              setCompletingId(null);
-            }
-          }
-        }
-      ]
-    });
-    setShowAlert(true);
+  // ── Start trip ────────────────────────────────────────────────────────────
+  const handleStartTrip = async (bookingId: string) => {
+    setIsUpdatingTripId(bookingId);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const res = await fetch(`${API_URL}/bookings/${bookingId}/start-trip`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        Toast.show({ type: 'success', text1: '🚗 Trip Started!', text2: 'Drive safe. Head to the pickup location.' });
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        Toast.show({ type: 'error', text1: 'Could not start trip', text2: err.message || 'Please try again.' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection.' });
+    } finally {
+      setIsUpdatingTripId(null);
+    }
+  };
+
+  // ── End trip ──────────────────────────────────────────────────────────────
+  const handleEndTrip = async (bookingId: string) => {
+    setIsUpdatingTripId(bookingId);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const res = await fetch(`${API_URL}/bookings/${bookingId}/end-trip`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        Toast.show({ type: 'success', text1: '✅ Trip Complete!', text2: 'Great work! Your earnings are being processed.' });
+        setActiveTrip(null);
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        Toast.show({ type: 'error', text1: 'Could not end trip', text2: err.message || 'Please try again.' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection.' });
+    } finally {
+      setIsUpdatingTripId(null);
+    }
   };
 
   const submitOfferResponse = async (bookingId: string, status: string, newPrice?: string) => {
@@ -434,6 +453,7 @@ export default function DriverDashboard() {
     setShowAlert(true);
   };
 
+  const [isUpdatingTripId, setIsUpdatingTripId] = useState<string | null>(null);
   const monthly  = monthlyEarnings(myBookings);
   const allTime  = allTimeEarnings(myBookings);
   const pendingOffers = myBookings.filter(b => b.isOffer && b.offerStatus === 'Pending Partner' && b.driverId === userId);
@@ -562,48 +582,103 @@ export default function DriverDashboard() {
         {/* ── TAB CONTENT ── */}
         {activeTab === 'trips' ? (
           <>
-            {/* ── ACTIVE TRIP ── */}
-            <Text style={styles.sectionTitle}>Active Trip</Text>
-            {activeTrip ? (
-              <View style={styles.activeTripCard}>
-                <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>IN PROGRESS</Text>
-                </View>
-                <Text style={styles.tripItemName}>{activeTrip.itemName || 'Active Ride'}</Text>
-                <View style={styles.tripRow}>
-                  <Ionicons name="location" size={16} color="#000080" />
-                  <Text style={styles.tripDetail}>From: {activeTrip.deliveryAddress || '—'}</Text>
-                </View>
-                {activeTrip.dropoffAddress && (
-                  <View style={styles.tripRow}>
-                    <Ionicons name="flag" size={16} color="#38A169" />
-                    <Text style={styles.tripDetail}>To: {activeTrip.dropoffAddress}</Text>
-                  </View>
-                )}
-                <View style={styles.tripRow}>
-                  <Ionicons name="person-outline" size={16} color="#718096" />
-                  <Text style={styles.tripDetail}>Client: {activeTrip.clientName || '—'}</Text>
-                </View>
-                <View style={styles.tripRow}>
-                  <Ionicons name="cash-outline" size={16} color="#D97706" />
-                  <Text style={styles.tripDetail}>Fare: {formatPrice(activeTrip.totalPrice)}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.completeBtn}
-                  onPress={() => handleComplete(activeTrip)}
-                  disabled={!!completingId}
-                >
-                  {completingId === activeTrip._id
-                    ? <ActivityIndicator color="#000080" />
-                    : <Text style={styles.completeBtnText}>✅ Complete Trip</Text>
-                  }
-                </TouchableOpacity>
-              </View>
-            ) : (
+            {/* ── MY TRIPS TAB ── */}
+            {myBookings.filter(b => {
+              if (b.isOffer && (b.offerStatus === 'Pending Partner' || b.offerStatus === 'Pending Client')) return false;
+              return ACTIVE_STATUSES.includes(b.status || '') || COMPLETED_STATUSES.includes(b.status || '');
+            }).length === 0 ? (
               <View style={styles.emptyCard}>
                 <Ionicons name="car-outline" size={40} color="#CBD5E0" />
-                <Text style={styles.emptyCardText}>No active trip</Text>
+                <Text style={styles.emptyCardText}>No active trips yet</Text>
+                <Text style={styles.emptyCardSub}>Claim a ride from the Dispatches tab</Text>
               </View>
+            ) : (
+              myBookings
+                .filter(b => {
+                  if (b.isOffer && (b.offerStatus === 'Pending Partner' || b.offerStatus === 'Pending Client')) return false;
+                  return ACTIVE_STATUSES.includes(b.status || '') || COMPLETED_STATUSES.includes(b.status || '');
+                })
+                .map(booking => {
+                  const isTripActive = booking.status === 'Trip Started';
+                  const isTripPendingStart = TRIP_PENDING_START.includes(booking.status || '');
+                  const isCompleted = COMPLETED_STATUSES.includes(booking.status || '');
+                  const pickup = booking.fromAddress || booking.deliveryAddress || '—';
+                  const dropoff = booking.toAddress || booking.dropoffAddress || '—';
+                  return (
+                    <View key={booking._id} style={styles.activeTripCard}>
+                      {/* Status Badge */}
+                      <View style={[styles.activeBadge, isTripActive && { backgroundColor: '#C6F6D5' }, isCompleted && { backgroundColor: '#E2E8F0' }]}>
+                        <Text style={[styles.activeBadgeText, isTripActive && { color: '#22543D' }, isCompleted && { color: '#4A5568' }]}>
+                          {booking.status?.toUpperCase() || 'PENDING'}
+                        </Text>
+                      </View>
+                      <Text style={styles.tripItemName}>{booking.itemName || 'Ride'}</Text>
+
+                      <View style={styles.tripRow}>
+                        <Ionicons name="person-outline" size={16} color="#718096" />
+                        <Text style={styles.tripDetail}>Client: {booking.clientName || '—'}</Text>
+                      </View>
+                      <View style={styles.tripRow}>
+                        <Ionicons name="location" size={16} color="#000080" />
+                        <Text style={styles.tripDetail} numberOfLines={2}>Pickup: {pickup}</Text>
+                      </View>
+                      <View style={styles.tripRow}>
+                        <Ionicons name="flag" size={16} color="#38A169" />
+                        <Text style={styles.tripDetail} numberOfLines={2}>Drop-off: {dropoff}</Text>
+                      </View>
+                      <View style={styles.tripRow}>
+                        <Ionicons name="cash-outline" size={16} color="#D97706" />
+                        <Text style={styles.tripDetail}>Fare: {formatPrice(booking.totalPrice)}</Text>
+                      </View>
+
+                      {/* Action Buttons */}
+                      {!isCompleted && (
+                        <View style={styles.tripActions}>
+                          {/* Navigate */}
+                          <TouchableOpacity
+                            style={styles.navigateBtn}
+                            onPress={() => {
+                              const dest = isTripActive ? dropoff : pickup;
+                              const url = `https://maps.google.com/?q=${encodeURIComponent(dest)}`;
+                              Linking.openURL(url);
+                            }}
+                          >
+                            <Ionicons name="navigate-outline" size={16} color="#000080" />
+                            <Text style={styles.navigateBtnText}>{isTripActive ? 'Navigate to Drop-off' : 'Navigate to Pickup'}</Text>
+                          </TouchableOpacity>
+
+                          {/* Start Trip */}
+                          {isTripPendingStart && (
+                            <TouchableOpacity
+                              style={styles.startTripBtn}
+                              onPress={() => handleStartTrip(booking._id)}
+                              disabled={isUpdatingTripId === booking._id}
+                            >
+                              {isUpdatingTripId === booking._id
+                                ? <ActivityIndicator size="small" color="#FFF" />
+                                : <Text style={styles.startTripBtnText}>🚀 Start Trip</Text>
+                              }
+                            </TouchableOpacity>
+                          )}
+
+                          {/* End Trip */}
+                          {isTripActive && (
+                            <TouchableOpacity
+                              style={styles.endTripBtn}
+                              onPress={() => handleEndTrip(booking._id)}
+                              disabled={isUpdatingTripId === booking._id}
+                            >
+                              {isUpdatingTripId === booking._id
+                                ? <ActivityIndicator size="small" color="#FFF" />
+                                : <Text style={styles.endTripBtnText}>🏁 End Trip</Text>
+                              }
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
             )}
           </>
         ) : (
@@ -803,6 +878,25 @@ const styles = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center',
   },
   completeBtnText: { color: '#000080', fontSize: 15, fontWeight: '900' },
+
+  // Trip action buttons
+  tripActions: { marginTop: 16, gap: 10 },
+  navigateBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: '#000080', borderRadius: 14,
+    paddingVertical: 12, backgroundColor: '#EBF4FF',
+  },
+  navigateBtnText: { color: '#000080', fontSize: 14, fontWeight: '700' },
+  startTripBtn: {
+    backgroundColor: '#000080', borderRadius: 14,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  startTripBtnText: { color: '#FFF', fontSize: 15, fontWeight: '900' },
+  endTripBtn: {
+    backgroundColor: '#E53E3E', borderRadius: 14,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  endTripBtnText: { color: '#FFF', fontSize: 15, fontWeight: '900' },
 
   // Empty card
   emptyCard: {
