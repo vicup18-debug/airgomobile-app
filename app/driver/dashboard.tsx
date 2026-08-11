@@ -201,9 +201,9 @@ export default function DriverDashboard() {
 
         fetchData(); // Refresh the list of available requests
         setAlertConfig({
-          title: 'New Ride Request! 🚕',
-          message: 'A new ride request is available in your area. Open your feed to claim it!',
-          type: 'info',
+            title: 'New Ride Request! 🚕 ',
+            message: `Pickup: ${data.fromAddress || '—'}\nDrop-off: ${data.toAddress || '—'}\n\nA new ride request is available in your area. Open your feed to claim it!`,
+            type: 'info',
           buttons: [{ text: 'View Details', onPress: () => { 
             setShowAlert(false); 
             setTimeout(() => handleClaim(data), 350); 
@@ -660,7 +660,9 @@ export default function DriverDashboard() {
                     <Text style={styles.requestName} numberOfLines={2}>
                       {req.itemName || 'Ride Request'}
                     </Text>
-                    <Text style={styles.requestFare}>{formatPrice(req.totalPrice)}</Text>
+                    <Text style={styles.requestFare}>
+                      {(!!req.fromAddress && req.status === 'pending') ? 'Awaiting Bid' : formatPrice(req.totalPrice)}
+                    </Text>
                   </View>
 
                   <View style={styles.requestRow}>

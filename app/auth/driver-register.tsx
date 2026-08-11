@@ -53,7 +53,6 @@ export default function DriverRegisterScreen() {
 
   const handleRegister = async () => {
     if (!agreed) return setErrorMsg("You must agree to the Terms & Conditions.");
-    if (!partnerId) return setErrorMsg("You must select a Fleet Partner.");
     if (!phone) return setErrorMsg("Phone number is required.");
     if (password !== confirmPassword) return setErrorMsg("Passwords do not match.");
     if (password.length < 6) return setErrorMsg("Password must be at least 6 characters.");
@@ -77,11 +76,11 @@ export default function DriverRegisterScreen() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccessMsg("✅ Driver account created successfully! Please check your email to verify your account, and wait for your Fleet Manager to approve you.");
+      setSuccessMsg("✅ Driver account created successfully! You can now log in.");
 
       setTimeout(() => {
-        router.replace('/auth/login?verifyEmail=true' as any);
-      }, 5000);
+        router.replace('/auth/login' as any);
+      }, 3000);
 
     } catch (err: any) {
       setErrorMsg(`⚠️ ${err.message}`);
@@ -113,7 +112,7 @@ export default function DriverRegisterScreen() {
                 </View>
             ) : null}
 
-            <Text style={styles.label}>Select Your Fleet Partner *</Text>
+            <Text style={styles.label}>Select Your Fleet Partner (Optional)</Text>
             <View style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16}}>
                 {partners.length === 0 ? (
                     <Text style={{fontSize: 13, color: '#A0AEC0', fontStyle: 'italic'}}>Loading partners...</Text>
