@@ -112,11 +112,14 @@ export default function DriverDashboard() {
   const fetchData = useCallback(async () => {
     try {
       const id = userId || await AsyncStorage.getItem('userId');
-      if (!id) return;
+      const token = await AsyncStorage.getItem('authToken');
+      if (!id || !token) return;
+
+      const headers = { 'Authorization': `Bearer ${token}` };
 
       const [myRes, reqRes] = await Promise.allSettled([
-        fetch(`${API_URL}/bookings/user/${id}`),
-        fetch(`${API_URL}/bookings/available-requests`),
+        fetch(`${API_URL}/bookings/user/${id}`, { headers }),
+        fetch(`${API_URL}/ride-requests/available`, { headers }),
       ]);
 
       // My bookings (trips I've claimed)
@@ -130,7 +133,7 @@ export default function DriverDashboard() {
         setActiveTrip(active || null);
       }
 
-      // Platform-wide available pickup requests
+      // Platform-wide available ride requests (RideRequest documents)
       if (reqRes.status === 'fulfilled' && reqRes.value.ok) {
         const reqData: any[] = await reqRes.value.json();
         setAvailableRequests(Array.isArray(reqData) ? reqData : []);
@@ -179,7 +182,13 @@ export default function DriverDashboard() {
     socket.on('new_booking_request', async (data) => {
       console.log('New ride request via WS:', data);
       
-      // Only show if the driver isn't already looking at a modal (e.g. actively bidding)
+      // Add the new request directly to the feed (handles simultaneous requests)
+      setAvailableRequests(prev => {
+        if (prev.some(r => r._id === data._id)) return prev; // deduplicate
+        return [data, ...prev];
+      });
+      
+      // Only show alert if the driver isn't already looking at a modal
       if (!isModalVisibleRef.current) {
         try {
           await Audio.setAudioModeAsync({
@@ -200,7 +209,6 @@ export default function DriverDashboard() {
           console.log('Audio play error:', e);
         }
 
-        fetchData(); // Refresh the list of available requests
         setAlertConfig({
             title: 'New Ride Request! 🚕 ',
             message: `Pickup: ${data.fromAddress || '—'}\nDrop-off: ${data.toAddress || '—'}\n\nA new ride request is available in your area. Open your feed to claim it!`,
@@ -211,9 +219,6 @@ export default function DriverDashboard() {
           } }]
         });
         setShowAlert(true);
-      } else {
-        // Just silently refresh the list so it appears in the background feed
-        fetchData();
       }
     });
 
@@ -221,6 +226,7 @@ export default function DriverDashboard() {
       console.log('Booking updated via WS:', data);
       
       if (data.isOffer && data.offerStatus === 'Pending Partner' && data.driverId === userId) {
+        // Client sent a counter-offer — alert the driver
         try {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
             .then(({ sound }) => sound.playAsync());
@@ -230,14 +236,19 @@ export default function DriverDashboard() {
         if (!isModalVisibleRef.current) {
            handleRespondToOfferRef.current?.(data);
         }
-      } else if (data.isOffer && data.offerStatus === 'Accepted' && data.driverId === userId) {
+      } else if (
+        (data.isOffer && data.offerStatus === 'Accepted' && data.driverId === userId) ||
+        (data.driverId === userId && data.status === 'Pending Escrow')
+      ) {
+        // Client accepted the driver's bid — switch to My Trips and refresh
         try {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
             .then(({ sound }) => sound.playAsync());
         } catch(e){}
-        Toast.show({ type: 'success', text1: 'Bid Accepted! 🎉', text2: `Client accepted your fare!` });
+        Toast.show({ type: 'success', text1: '🎉 Bid Accepted!', text2: `Client accepted your fare! Check My Trips.` });
+        setActiveTab('trips');
         fetchData();
-      } else if (!isModalVisibleRef.current) {
+      } else {
         fetchData();
       }
     });
