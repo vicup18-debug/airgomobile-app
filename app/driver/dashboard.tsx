@@ -16,6 +16,7 @@ import Toast from 'react-native-toast-message';
 import { useIsFocused } from '@react-navigation/native';
 import { API_URL } from '../../constants/config';
 import CustomAlertModal from '../../components/ui/CustomAlertModal';
+import DriverChatModal from '../../components/ui/DriverChatModal';
 import { io } from 'socket.io-client';
 import { Audio } from 'expo-av';
 
@@ -465,6 +466,9 @@ export default function DriverDashboard() {
   };
 
   const [isUpdatingTripId, setIsUpdatingTripId] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen]         = useState(false);
+  const [chatBookingId, setChatBookingId]   = useState('');
+  const [chatBookingName, setChatBookingName] = useState('');
   const monthly  = monthlyEarnings(myBookings);
   const allTime  = allTimeEarnings(myBookings);
   const pendingOffers = myBookings.filter(b => b.isOffer && b.offerStatus === 'Pending Partner' && b.driverId === userId);
@@ -645,6 +649,19 @@ export default function DriverDashboard() {
                       {/* Action Buttons */}
                       {!isCompleted && (
                         <View style={styles.tripActions}>
+                          {/* Chat */}
+                          <TouchableOpacity
+                            style={styles.chatBtn}
+                            onPress={() => {
+                              setChatBookingId(booking._id);
+                              setChatBookingName(booking.itemName || 'Ride Chat');
+                              setIsChatOpen(true);
+                            }}
+                          >
+                            <Ionicons name="chatbubble-ellipses-outline" size={16} color="#FFF" />
+                            <Text style={styles.chatBtnText}>Chat with Client</Text>
+                          </TouchableOpacity>
+
                           {/* Navigate */}
                           <TouchableOpacity
                             style={styles.navigateBtn}
@@ -814,6 +831,14 @@ export default function DriverDashboard() {
         keyboardType={alertConfig.keyboardType}
         onClose={() => setShowAlert(false)}
       />
+      <DriverChatModal
+        visible={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        bookingId={chatBookingId}
+        bookingName={chatBookingName}
+        currentUserId={userId || ''}
+        currentUserName={driverName || 'Driver'}
+      />
     </View>
   );
 }
@@ -892,6 +917,12 @@ const styles = StyleSheet.create({
 
   // Trip action buttons
   tripActions: { marginTop: 16, gap: 10 },
+  chatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#6B46C1', borderRadius: 14,
+    paddingVertical: 13,
+  },
+  chatBtnText: { color: '#FFF', fontSize: 14, fontWeight: '900' },
   navigateBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderWidth: 1.5, borderColor: '#000080', borderRadius: 14,
