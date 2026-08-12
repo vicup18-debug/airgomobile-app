@@ -16,7 +16,7 @@
     "android": {
       "package": "ng.airgo.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 87,
+      "versionCode": 88,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7i70u3_DN4ksi0V6LILlkCCK-Y7Gq8qo"
@@ -72,9 +72,10 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "5c420a60-765c-4cba-a474-cfd7f75fb41d"
+        "projectId": "b2b91674-a429-4384-a27f-a4d45182b813"
       }
     },
-    "runtimeVersion": "1.0.7"
+    "runtimeVersion": "1.0.7",
+    "owner": "vicupbro1"
   }
 }
