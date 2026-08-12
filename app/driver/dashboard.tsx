@@ -658,7 +658,6 @@ export default function DriverDashboard() {
                               setIsChatOpen(true);
                             }}
                           >
-                            <Ionicons name="chatbubble-ellipses-outline" size={16} color="#FFF" />
                             <Text style={styles.chatBtnText}>Chat with Client</Text>
                           </TouchableOpacity>
 
@@ -671,7 +670,6 @@ export default function DriverDashboard() {
                               Linking.openURL(url);
                             }}
                           >
-                            <Ionicons name="navigate-outline" size={16} color="#000080" />
                             <Text style={styles.navigateBtnText}>{isTripActive ? 'Navigate to Drop-off' : 'Navigate to Pickup'}</Text>
                           </TouchableOpacity>
 
@@ -684,7 +682,7 @@ export default function DriverDashboard() {
                             >
                               {isUpdatingTripId === booking._id
                                 ? <ActivityIndicator size="small" color="#FFF" />
-                                : <Text style={styles.startTripBtnText}>🚀 Start Trip</Text>
+                                : <Text style={styles.startTripBtnText}>Start Trip</Text>
                               }
                             </TouchableOpacity>
                           )}
@@ -698,7 +696,7 @@ export default function DriverDashboard() {
                             >
                               {isUpdatingTripId === booking._id
                                 ? <ActivityIndicator size="small" color="#FFF" />
-                                : <Text style={styles.endTripBtnText}>🏁 End Trip</Text>
+                                : <Text style={styles.endTripBtnText}>End Trip</Text>
                               }
                             </TouchableOpacity>
                           )}
@@ -797,7 +795,7 @@ export default function DriverDashboard() {
                     {claimingId === req._id
                       ? <ActivityIndicator size="small" color="#000080" />
                       : <Text style={styles.claimBtnText}>
-                          {isAvailable ? 'Claim This Ride 🚗' : 'Go Online to Claim'}
+                          {isAvailable ? 'Claim This Ride' : 'Go Online to Claim'}
                         </Text>
                     }
                   </TouchableOpacity>
