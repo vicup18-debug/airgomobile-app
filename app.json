@@ -2,7 +2,7 @@
   "expo": {
     "name": "Airgo",
     "slug": "airgo-app",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "airgo",
@@ -11,12 +11,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ng.airgo.app",
-      "buildNumber": "1.0.11"
+      "buildNumber": "1.0.12"
     },
     "android": {
       "package": "ng.airgo.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 86,
+      "versionCode": 87,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7i70u3_DN4ksi0V6LILlkCCK-Y7Gq8qo"
