@@ -221,7 +221,12 @@ export default function DriverDashboard() {
             type: 'info',
           buttons: [{ text: 'View Details', onPress: () => { 
             setShowAlert(false); 
-            setTimeout(() => handleClaim(data), 350); 
+            if (!!data.fromAddress && data.status === 'pending') {
+              setActiveTab('dispatches');
+              setTimeout(() => setActiveBidId(data._id), 350);
+            } else {
+              setTimeout(() => handleClaim(data), 350); 
+            }
           } }]
         });
         setShowAlert(true);
