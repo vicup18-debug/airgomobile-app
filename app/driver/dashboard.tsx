@@ -232,12 +232,16 @@ export default function DriverDashboard() {
       console.log('Booking updated via WS:', data);
       
       if (data.isOffer && data.offerStatus === 'Pending Partner' && data.driverId === userId) {
-        // Client sent a counter-offer — alert the driver
+        // Client sent a counter-offer — sound, toast, refresh feed and switch to dispatches tab
         try {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
             .then(({ sound }) => sound.playAsync());
         } catch(e){}
-        Toast.show({ type: 'info', text1: 'Counter Offer Received! 🚕', text2: `Client countered your bid!` });
+        Toast.show({ type: 'info', text1: 'Counter Offer Received! 🚕', text2: 'Client countered your bid. Respond now!' });
+        // Refresh data so the inline counter-offer card appears immediately
+        fetchData();
+        // Switch to the Dispatches tab where pendingOffers are rendered
+        setActiveTab('dispatches');
       } else if (
         (data.isOffer && data.offerStatus === 'Accepted' && data.driverId === userId) ||
         (data.driverId === userId && data.status === 'Pending Escrow')
@@ -496,6 +500,9 @@ export default function DriverDashboard() {
           <TouchableOpacity style={styles.refreshBtn} onPress={() => { setRefreshing(true); fetchData(); }}>
             <Ionicons name="refresh-outline" size={22} color="#FFB81C" />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => router.replace('/(tabs)/' as any)}>
+            <Ionicons name="home-outline" size={22} color="#FFF" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.refreshBtn} onPress={() => router.push('/profile')}>
             <Ionicons name="person-outline" size={22} color="#FFF" />
           </TouchableOpacity>
@@ -526,7 +533,7 @@ export default function DriverDashboard() {
           onPress={() => setActiveTab('dispatches')}
         >
           <Text style={[styles.tabText, activeTab === 'dispatches' && styles.activeTabText]}>
-            Dispatches {availableRequests.length > 0 ? `(${availableRequests.length})` : ''}
+            Dispatches {availableRequests.length > 0 ? `(${availableRequests.length})` : ''}{pendingOffers.length > 0 ? ` 🔴${pendingOffers.length}` : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
