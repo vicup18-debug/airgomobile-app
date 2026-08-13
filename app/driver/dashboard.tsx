@@ -6,7 +6,7 @@
  */
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, Switch, Linking, AppState
+  ActivityIndicator, RefreshControl, Alert, Switch, Linking, AppState, TextInput
 } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -82,6 +82,11 @@ export default function DriverDashboard() {
   const [activeTrip, setActiveTrip]               = useState<any>(null);
   const [myBookings, setMyBookings]               = useState<any[]>([]);
   const [availableRequests, setAvailableRequests] = useState<any[]>([]);
+
+  const [activeBidId, setActiveBidId]             = useState<string | null>(null);
+  const [biddingInputs, setBiddingInputs]         = useState<Record<string, string>>({});
+  const [activeCounterId, setActiveCounterId]     = useState<string | null>(null);
+  const [counterInputs, setCounterInputs]         = useState<Record<string, string>>({});
 
   const [showAlert, setShowAlert] = useState(false);
   const [alertConfig, setAlertConfig] = useState<any>({ title: '', message: '', type: 'info', buttons: [] });
@@ -233,10 +238,6 @@ export default function DriverDashboard() {
             .then(({ sound }) => sound.playAsync());
         } catch(e){}
         Toast.show({ type: 'info', text1: 'Counter Offer Received! 🚕', text2: `Client countered your bid!` });
-        
-        if (!isModalVisibleRef.current) {
-           handleRespondToOfferRef.current?.(data);
-        }
       } else if (
         (data.isOffer && data.offerStatus === 'Accepted' && data.driverId === userId) ||
         (data.driverId === userId && data.status === 'Pending Escrow')
@@ -280,7 +281,7 @@ export default function DriverDashboard() {
     await AsyncStorage.setItem('driverAvailable', val ? 'true' : 'false');
   };
 
-  // ── Claim a ride (with bid-lock guard) ───────────────────────────────────
+  // ── Claim a direct ride (with bid-lock guard) ───────────────────────────
   const handleClaim = (booking: any) => {
     if (!isAvailable) {
       Toast.show({ type: 'error', text1: 'You are Offline', text2: 'Switch to Available to accept rides.' });
@@ -296,53 +297,30 @@ export default function DriverDashboard() {
       return;
     }
     
-    // A ride request allows bidding; a direct booking is just accepted.
-    // In our new flow, client submitted RideRequests do not have offeredPrice, so we check existence of fromAddress.
-    const isRideReq = !!booking.fromAddress && booking.status === 'pending';
-    
-    setBidAmount(''); // Clear previous bid
-    
     setAlertConfig({
-      title: isRideReq ? 'Submit a Bid' : 'Claim This Ride?',
-      message: isRideReq 
-        ? `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || booking.fromAddress || '-'}\n\nEnter your proposed fare for this trip (₦):`
-        : `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || booking.fromAddress || '-'}\n\nAccept and begin this trip?`,
+      title: 'Claim This Ride?',
+      message: `${booking.itemName || 'This ride'}\nPickup: ${booking.deliveryAddress || booking.fromAddress || '-'}\n\nAccept and begin this trip?`,
       type: 'warning',
-      showInput: isRideReq,
-      keyboardType: 'numeric',
-      inputPlaceholder: 'e.g. 5000',
+      showInput: false,
       buttons: [
         { text: 'Cancel', style: 'cancel', onPress: () => setShowAlert(false) },
         {
-          text: isRideReq ? 'Submit Bid 🚕' : 'Claim Ride 🚕',
-          onPress: async (inputValue?: string) => {
-            if (isRideReq && (!inputValue || isNaN(Number(inputValue)))) {
-              Toast.show({ type: 'error', text1: 'Fare Required', text2: 'Please enter a valid numeric fare.' });
-              return;
-            }
-            
+          text: 'Claim Ride 🚕',
+          onPress: async () => {
             setShowAlert(false);
             setClaimingId(booking._id);
             try {
               const token = await AsyncStorage.getItem('authToken');
-              const endpoint = isRideReq 
-                ? `${API_URL}/ride-requests/${booking._id}/driver-offers`
-                : `${API_URL}/bookings/${booking._id}/claim`;
-
-              const payload = isRideReq 
-                ? JSON.stringify({ fare: Number(inputValue) }) 
-                : JSON.stringify({ driverId: userId });
-
-              const res = await fetch(endpoint, {
+              const res = await fetch(`${API_URL}/bookings/${booking._id}/claim`, {
                 method: 'POST',
                 headers: { 
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${token}`
                 },
-                body: payload,
+                body: JSON.stringify({ driverId: userId }),
               });
               if (res.ok) {
-                Toast.show({ type: 'success', text1: isRideReq ? 'Bid Submitted!' : '✅ Ride Claimed!', text2: isRideReq ? 'Waiting for client to accept your bid.' : 'Head to the pickup location. Safe journey!' });
+                Toast.show({ type: 'success', text1: '✅ Ride Claimed!', text2: 'Head to the pickup location. Safe journey!' });
                 fetchData();
               } else {
                 const err = await res.json().catch(() => ({}));
@@ -358,6 +336,34 @@ export default function DriverDashboard() {
       ]
     });
     setShowAlert(true);
+  };
+
+  const submitInlineBid = async (booking: any, inputValue: string) => {
+    if (!inputValue || isNaN(Number(inputValue))) {
+      Toast.show({ type: 'error', text1: 'Fare Required', text2: 'Please enter a valid numeric fare.' });
+      return;
+    }
+    setClaimingId(booking._id);
+    setActiveBidId(null);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const res = await fetch(`${API_URL}/ride-requests/${booking._id}/driver-offers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ fare: Number(inputValue) }),
+      });
+      if (res.ok) {
+        Toast.show({ type: 'success', text1: 'Bid Submitted!', text2: 'Waiting for client to accept your bid.' });
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        Toast.show({ type: 'error', text1: 'Action Failed', text2: err.message || 'Could not submit bid.' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection.' });
+    } finally {
+      setClaimingId(null);
+    }
   };
 
   // ── Start trip ────────────────────────────────────────────────────────────
@@ -431,38 +437,13 @@ export default function DriverDashboard() {
     }
   };
 
-  useEffect(() => {
-    handleRespondToOfferRef.current = handleRespondToOffer;
-  });
-
-  const handleRespondToOffer = (booking: any) => {
-    setBidAmount('');
-    setAlertConfig({
-      title: 'Counter Offer Received',
-      message: `Client countered with ${formatPrice(booking.totalPrice)}.\nAccept this price or propose a new one (₦):`,
-      type: 'info',
-      showInput: true,
-      keyboardType: 'numeric',
-      inputPlaceholder: 'e.g. 6000',
-      buttons: [
-        { text: 'Decline', style: 'cancel', onPress: () => submitOfferResponse(booking._id, 'Rejected') },
-        {
-          text: 'Accept 🤝',
-          onPress: () => submitOfferResponse(booking._id, 'Accepted', booking.totalPrice)
-        },
-        {
-          text: 'Counter 🚕',
-          onPress: (inputValue?: string) => {
-            if (!inputValue || isNaN(Number(inputValue))) {
-               Toast.show({ type: 'error', text1: 'Fare Required', text2: 'Please enter a valid numeric fare.' });
-               return;
-            }
-            submitOfferResponse(booking._id, 'Pending Client', inputValue);
-          }
-        }
-      ]
-    });
-    setShowAlert(true);
+  const submitInlineCounter = async (bookingId: string, newPrice: string) => {
+    if (!newPrice || isNaN(Number(newPrice))) {
+      Toast.show({ type: 'error', text1: 'Fare Required', text2: 'Please enter a valid numeric fare.' });
+      return;
+    }
+    setActiveCounterId(null);
+    await submitOfferResponse(bookingId, 'Pending Client', newPrice);
   };
 
   const [isUpdatingTripId, setIsUpdatingTripId] = useState<string | null>(null);
@@ -733,12 +714,56 @@ export default function DriverDashboard() {
                           Drop-off: {req.toAddress || req.dropoffAddress || (req.deliveryAddress?.includes('To:') ? req.deliveryAddress.split('|')[1]?.replace('To:', '')?.trim() : '—') || '—'}
                         </Text>
                       </View>
-                      <TouchableOpacity
-                        style={styles.claimBtn}
-                        onPress={() => handleRespondToOffer(req)}
-                      >
-                        <Text style={styles.claimBtnText}>Respond to Offer</Text>
-                      </TouchableOpacity>
+                      {activeCounterId === req._id ? (
+                        <View style={{ marginTop: 12 }}>
+                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <View style={{ flex: 1, backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' }}>
+                                <Text style={{ color: '#718096', fontWeight: 'bold', marginRight: 4 }}>₦</Text>
+                                <TextInput
+                                  style={{ flex: 1, color: '#1A202C', fontWeight: 'bold', fontSize: 16 }}
+                                  placeholder="Counter amount..."
+                                  keyboardType="numeric"
+                                  value={counterInputs[req._id] || ''}
+                                  onChangeText={(val) => setCounterInputs(prev => ({ ...prev, [req._id]: val }))}
+                                  autoFocus
+                                />
+                              </View>
+                              <TouchableOpacity
+                                style={{ backgroundColor: '#000080', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8 }}
+                                onPress={() => submitInlineCounter(req._id, counterInputs[req._id])}
+                              >
+                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Send</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={{ paddingHorizontal: 8, paddingVertical: 12 }}
+                                onPress={() => setActiveCounterId(null)}
+                              >
+                                <Ionicons name="close-circle" size={24} color="#A0AEC0" />
+                              </TouchableOpacity>
+                           </View>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                          <TouchableOpacity
+                            style={{ flex: 1, backgroundColor: '#38A169', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
+                            onPress={() => submitOfferResponse(req._id, 'Accepted', req.totalPrice)}
+                          >
+                            <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Accept 🤝</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ flex: 1, backgroundColor: '#D6BCFA', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
+                            onPress={() => setActiveCounterId(req._id)}
+                          >
+                            <Text style={{ color: '#553C9A', fontWeight: 'bold', fontSize: 13 }}>Counter 🚕</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ flex: 1, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FEB2B2', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
+                            onPress={() => submitOfferResponse(req._id, 'Rejected')}
+                          >
+                            <Text style={{ color: '#E53E3E', fontWeight: 'bold', fontSize: 13 }}>Decline</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                  ))}
                </>
@@ -787,18 +812,66 @@ export default function DriverDashboard() {
                     </Text>
                   </View>
 
-                  <TouchableOpacity
-                    style={[styles.claimBtn, !isAvailable && styles.claimBtnDisabled]}
-                    onPress={() => handleClaim(req)}
-                    disabled={claimingId === req._id || !isAvailable}
-                  >
-                    {claimingId === req._id
-                      ? <ActivityIndicator size="small" color="#000080" />
-                      : <Text style={styles.claimBtnText}>
-                          {isAvailable ? 'Claim This Ride' : 'Go Online to Claim'}
-                        </Text>
-                    }
-                  </TouchableOpacity>
+                  {(!!req.fromAddress && req.status === 'pending') ? (
+                    <View style={{ marginTop: 12 }}>
+                      {activeBidId === req._id ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                           <View style={{ flex: 1, backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' }}>
+                             <Text style={{ color: '#718096', fontWeight: 'bold', marginRight: 4 }}>₦</Text>
+                             <TextInput
+                               style={{ flex: 1, color: '#1A202C', fontWeight: 'bold', fontSize: 16 }}
+                               placeholder="Your Bid..."
+                               keyboardType="numeric"
+                               value={biddingInputs[req._id] || ''}
+                               onChangeText={(val) => setBiddingInputs(prev => ({ ...prev, [req._id]: val }))}
+                               autoFocus
+                             />
+                           </View>
+                           <TouchableOpacity
+                             style={{ backgroundColor: '#000080', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8 }}
+                             onPress={() => submitInlineBid(req, biddingInputs[req._id])}
+                           >
+                             <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Send</Text>
+                           </TouchableOpacity>
+                           <TouchableOpacity
+                             style={{ paddingHorizontal: 8, paddingVertical: 12 }}
+                             onPress={() => setActiveBidId(null)}
+                           >
+                             <Ionicons name="close-circle" size={24} color="#A0AEC0" />
+                           </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.claimBtn, !isAvailable && styles.claimBtnDisabled]}
+                          onPress={() => {
+                            if (!isAvailable) {
+                              Toast.show({ type: 'error', text1: 'You are Offline', text2: 'Switch to Available to accept rides.' });
+                              return;
+                            }
+                            setActiveBidId(req._id);
+                          }}
+                          disabled={!isAvailable}
+                        >
+                          <Text style={styles.claimBtnText}>
+                            {isAvailable ? 'Submit Bid 🚕' : 'Go Online to Bid'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.claimBtn, !isAvailable && styles.claimBtnDisabled]}
+                      onPress={() => handleClaim(req)}
+                      disabled={claimingId === req._id || !isAvailable}
+                    >
+                      {claimingId === req._id
+                        ? <ActivityIndicator size="small" color="#000080" />
+                        : <Text style={styles.claimBtnText}>
+                            {isAvailable ? 'Claim This Ride' : 'Go Online to Claim'}
+                          </Text>
+                      }
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))
             )}
