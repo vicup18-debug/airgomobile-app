@@ -124,7 +124,7 @@ export default function DriverDashboard() {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const [myRes, reqRes] = await Promise.allSettled([
-        fetch(`${API_URL}/bookings/user/${id}`, { headers }),
+        fetch(`${API_URL}/bookings`, { headers }),
         fetch(`${API_URL}/ride-requests/available`, { headers }),
       ]);
 
@@ -431,7 +431,7 @@ export default function DriverDashboard() {
       if (status === 'Pending Client' && newPrice) payload.counterPrice = newPrice;
       
       const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
-         method: 'PATCH',
+         method: 'PUT',
          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
          body: JSON.stringify(payload)
       });
@@ -461,7 +461,7 @@ export default function DriverDashboard() {
   const [chatBookingName, setChatBookingName] = useState('');
   const monthly  = monthlyEarnings(myBookings);
   const allTime  = allTimeEarnings(myBookings);
-  const pendingOffers = myBookings.filter(b => b.isOffer && b.offerStatus === 'Pending Partner' && b.driverId === userId);
+  const pendingOffers = myBookings.filter(b => b.isOffer && b.offerStatus === 'Pending Partner' && b.driverId === userId && !['Cancelled', 'Archived'].includes(b.status));
 
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to securely sign out?", [
