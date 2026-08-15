@@ -502,13 +502,6 @@ export default function HomeScreen() {
       AsyncStorage.getItem('userName').then(name => {
         if (name) setUserName(name);
       });
-      AsyncStorage.getItem('userRole').then(role => {
-        if (role === 'driver') {
-          router.replace('/driver/dashboard' as any);
-        } else if (role === 'partner') {
-          router.replace('/partner/dashboard' as any);
-        }
-      });
       checkActiveTripLock();
 
       // Automatically try to detect the user's city to restrict autocomplete results

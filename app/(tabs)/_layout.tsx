@@ -1,7 +1,29 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TabLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const enforceRoleRouting = async () => {
+      try {
+        const role = await AsyncStorage.getItem('userRole');
+        if (role === 'driver') {
+          router.replace('/driver/dashboard' as any);
+        } else if (role === 'partner') {
+          router.replace('/partner/dashboard' as any);
+        } else if (role === 'superadmin' || role === 'admin') {
+          router.replace('/superadmin/dashboard' as any);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    enforceRoleRouting();
+  }, []);
+
   return (
     <Tabs
       initialRouteName="index"
