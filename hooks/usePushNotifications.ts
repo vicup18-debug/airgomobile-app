@@ -79,8 +79,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }: any
 
             try {
                 // Wake the screen using Notifee Full-Screen Intent
-                await notifee.requestPermission();
-                
+                // Note: We cannot request permissions in the background. It must be done in the foreground.
                 const channelId = await notifee.createChannel({
                   id: 'airgo-wake-alerts',
                   name: 'Airgo Urgent Wake Alerts',
