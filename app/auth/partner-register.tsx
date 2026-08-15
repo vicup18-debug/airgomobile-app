@@ -63,7 +63,7 @@ export default function PartnerRegisterScreen() {
         const formData = new FormData();
         const filename = documentUri.split('/').pop() || 'upload.jpg';
         const match = /\.(\w+)$/.exec(filename);
-        let type = match ? `image/${match[1]}` : `image`;
+        let type = match ? `image/${match[1]}` : `image/jpeg`; // default to jpeg if no extension
         if (type === 'image/jpg') type = 'image/jpeg';
 
         formData.append('file', { uri: documentUri, name: filename, type } as any);
@@ -79,7 +79,7 @@ export default function PartnerRegisterScreen() {
         if (uploadData.secure_url) {
           uploadedDocUrl = uploadData.secure_url;
         } else {
-          throw new Error('Failed to upload document to Cloudinary');
+          throw new Error('Failed to upload document. Please try again.');
         }
       }
 
@@ -111,6 +111,7 @@ export default function PartnerRegisterScreen() {
     } catch (err: any) {
       setErrorMsg(`⚠️ ${err.message}`);
       setLoading(false);
+      setUploadingDoc(false);
     }
   };
 
