@@ -21,8 +21,8 @@ import { io } from 'socket.io-client';
 import { Audio } from 'expo-av';
 
 // ── STATUS ACTIVE CHECK ────────────────────────────────────────────────────
-const ACTIVE_STATUSES = ['Trip Started', 'Paid - Escrow Secured', 'Escrow Active', 'Accepted', 'Paid', 'Confirmed', 'Approved for Disbursement', 'Trip Start Pending'];
-const TRIP_PENDING_START = ['Accepted', 'Paid', 'Paid - Escrow Secured', 'Confirmed', 'Approved for Disbursement', 'Trip Start Pending'];
+const ACTIVE_STATUSES = ['Trip Started', 'Pending Escrow', 'Paid - Escrow Secured', 'Escrow Active', 'Accepted', 'Paid', 'Confirmed', 'Approved for Disbursement', 'Trip Start Pending'];
+const TRIP_PENDING_START = ['Accepted', 'Pending Escrow', 'Paid', 'Paid - Escrow Secured', 'Confirmed', 'Approved for Disbursement', 'Trip Start Pending'];
 const COMPLETED_STATUSES = ['Completed', 'Completed & Disbursed', 'Disbursed', 'Payment Disbursed', 'Paid Out'];
 
 function formatPrice(raw: any): string {
@@ -256,7 +256,7 @@ export default function DriverDashboard() {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
             .then(({ sound }) => sound.playAsync());
         } catch(e){}
-        Toast.show({ type: 'success', text1: '🎉 Bid Accepted!', text2: `Client accepted your fare! Check My Trips.` });
+        Toast.show({ type: 'success', text1: '🎉 Bid Accepted!', text2: `Client accepted your fare! Check Active Trips.` });
         setActiveTab('trips');
         fetchData();
       } else {
@@ -464,19 +464,25 @@ export default function DriverDashboard() {
   const pendingOffers = myBookings.filter(b => b.isOffer && b.offerStatus === 'Pending Partner' && b.driverId === userId && !['Cancelled', 'Archived'].includes(b.status));
 
   const handleLogout = async () => {
-    Alert.alert("Logout", "Are you sure you want to securely sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await AsyncStorage.removeItem('authToken');
-          await AsyncStorage.removeItem('userData');
-          Toast.show({ type: 'success', text1: 'Logged out successfully' });
-          router.replace('/auth/login' as any);
+    setAlertConfig({
+      title: "Confirm Logout",
+      message: "Are you sure you want to securely sign out?",
+      type: "warning",
+      buttons: [
+        { text: "Cancel", onPress: () => setShowAlert(false) },
+        {
+          text: "Logout",
+          onPress: async () => {
+            setShowAlert(false);
+            await AsyncStorage.removeItem('authToken');
+            await AsyncStorage.removeItem('userData');
+            Toast.show({ type: 'success', text1: 'Logged out successfully' });
+            router.replace('/auth/login' as any);
+          }
         }
-      }
-    ]);
+      ]
+    });
+    setShowAlert(true);
   };
 
   if (loading) {
