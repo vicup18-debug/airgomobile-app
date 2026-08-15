@@ -27,7 +27,11 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.WAKE_LOCK"
+      ]
     },
     "web": {
       "output": "static",
@@ -63,7 +67,8 @@
       "@react-native-community/datetimepicker",
       "@react-native-google-signin/google-signin",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@notifee/react-native"
     ],
     "experiments": {
       "typedRoutes": true,

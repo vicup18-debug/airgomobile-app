@@ -40,6 +40,7 @@ import { API_URL } from '../constants/config';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Audio } from 'expo-av';
 import * as TaskManager from 'expo-task-manager';
+import notifee, { AndroidImportance, AndroidVisibility } from '@notifee/react-native';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
@@ -75,6 +76,41 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }: any
         const payloadData = data.notification?.request?.content?.data || data.notification?.data || data;
         if (payloadData?.type === 'ride_request') {
             await playForegroundSound();
+
+            try {
+                // Wake the screen using Notifee Full-Screen Intent
+                await notifee.requestPermission();
+                
+                const channelId = await notifee.createChannel({
+                  id: 'airgo-wake-alerts',
+                  name: 'Airgo Urgent Wake Alerts',
+                  vibration: true,
+                  vibrationPattern: [0, 500, 200, 500],
+                  importance: AndroidImportance.HIGH,
+                  visibility: AndroidVisibility.PUBLIC,
+                });
+
+                await notifee.displayNotification({
+                  title: payloadData?.title || 'New Ride Request!',
+                  body: payloadData?.body || 'A client is requesting a ride nearby.',
+                  data: payloadData,
+                  android: {
+                    channelId,
+                    importance: AndroidImportance.HIGH,
+                    visibility: AndroidVisibility.PUBLIC,
+                    fullScreenAction: {
+                      id: 'default',
+                      mainComponent: 'airgo', // Try to bring the app to foreground
+                    },
+                    pressAction: {
+                      id: 'default',
+                      launchActivity: 'default',
+                    },
+                  },
+                });
+            } catch (notifeeErr) {
+                console.warn('Notifee failed to wake screen:', notifeeErr);
+            }
         }
     }
 });
