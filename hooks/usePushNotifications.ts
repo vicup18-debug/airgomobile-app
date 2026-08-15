@@ -191,7 +191,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 //   cold-start:  response.notification.request.content.data.data  (some FCM configs)
 // This function normalises both cases by checking both levels.
 // ─────────────────────────────────────────────
-export function handleNotificationTap(rawData: any): void {
+export async function handleNotificationTap(rawData: any): Promise<void> {
     if (!rawData) return;
 
     // Normalise: some FCM configs nest payload under a nested .data key
@@ -203,13 +203,25 @@ export function handleNotificationTap(rawData: any): void {
 
     console.log('🔔 Routing notification tap:', { type, bookingId, roomId });
 
+    let userRole = 'client';
+    try {
+        const storedRole = await AsyncStorage.getItem('userRole');
+        if (storedRole) userRole = storedRole;
+    } catch (e) {
+        console.warn('Failed to get userRole for notification tap', e);
+    }
+
+    const fallbackRoute = userRole === 'driver' ? '/driver/dashboard' 
+                        : userRole === 'partner' ? '/partner/dashboard' 
+                        : '/(tabs)/bookings';
+
     switch (type) {
         // ── Chat / bidding room ──────────────────────────────────────────
         case 'chat':
             if (roomId) {
                 router.push(`/hotel/${roomId}` as any);
             } else {
-                router.push('/(tabs)/bookings' as any);
+                router.push(fallbackRoute as any);
             }
             break;
 
@@ -226,7 +238,7 @@ export function handleNotificationTap(rawData: any): void {
                     params: { existingBookingId: bookingId },
                 });
             } else {
-                router.push('/(tabs)/bookings' as any);
+                router.push(fallbackRoute as any);
             }
             break;
 
@@ -247,13 +259,13 @@ export function handleNotificationTap(rawData: any): void {
         case 'booking_update':
         case 'booking_cancelled':
         case 'booking_expired':
-            router.push('/(tabs)/bookings' as any);
+            router.push(fallbackRoute as any);
             break;
 
         // ── Default fallback ─────────────────────────────────────────────
         default:
-            console.log('🔔 Unknown notification type, routing to bookings:', type);
-            router.push('/(tabs)/bookings' as any);
+            console.log('🔔 Unknown notification type, routing to default for role:', type);
+            router.push(fallbackRoute as any);
             break;
     }
 }
