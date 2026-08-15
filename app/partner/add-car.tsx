@@ -12,7 +12,6 @@ export default function AddCarScreen() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [carName, setCarName] = useState('');
-    const [price, setPrice] = useState('');
     const [type, setType] = useState('');
     const [capacity, setCapacity] = useState('');
     const [features, setFeatures] = useState('');
@@ -61,7 +60,7 @@ export default function AddCarScreen() {
     };
 
     // 🟢 VALIDATION
-    const isFormValid = carName && price && type && capacity && features && vehicleNumber && location && stateLocation && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
+    const isFormValid = carName && type && capacity && features && vehicleNumber && location && stateLocation && driverName && driverPhone && driverEmail && driverPassword && images.length >= 5 && agreedToQA;
 
     const handleUploadToCloudinary = async (imageUri: string) => {
         const formData = new FormData();
