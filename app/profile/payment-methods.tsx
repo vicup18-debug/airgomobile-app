@@ -22,7 +22,7 @@ function PaymentMethodsContent() {
     const handleAddPaymentMethod = () => {
         popup.checkout({
             email: userEmail || 'user@example.com',
-            amount: 5000,
+            amount: 50, // 50 NGN for tokenization
             reference: `token_${new Date().getTime()}`,
             onCancel: () => Toast.show({ type: 'error', text1: 'Cancelled', text2: 'Payment method addition cancelled.' }),
             onSuccess: () => Toast.show({ type: 'success', text1: 'Success', text2: 'Payment method added successfully!' }),

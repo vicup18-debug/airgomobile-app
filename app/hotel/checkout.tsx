@@ -114,7 +114,7 @@ function CheckoutContent() {
             // Trigger Paystack Popup
             popup.checkout({
                 email: userEmail || 'guest@airgo.ng',
-                amount: Math.round(totalDue * 100), // Paystack expects kobo
+                amount: Math.round(totalDue), // Paystack expects Naira in react-native-paystack-webview
                 reference: bookingId,
                 metadata: {
                     custom_fields: [

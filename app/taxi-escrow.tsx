@@ -28,10 +28,10 @@ const ESCROW_SECURED_STATUSES = [
   'Trip Started',
 ];
 
-function priceToKobo(priceStr: string): number {
+function parsePrice(priceStr: string): number {
   const cleaned = String(priceStr).replace(/[^0-9.]/g, '');
   const ngn = parseFloat(cleaned) || 0;
-  return Math.round(ngn * 100);
+  return Math.round(ngn);
 }
 
 function extractCity(address: string): string {
@@ -71,10 +71,10 @@ function TaxiEscrowContent() {
 
   const triggerPayment = () => {
     if (!booking) return;
-    const amountKobo = priceToKobo(booking.totalPrice || '15000');
+    const amountNaira = parsePrice(booking.totalPrice || '15000');
     popup.checkout({
       email: userEmail || AIRGO_PLATFORM_EMAIL,
-      amount: amountKobo,
+      amount: amountNaira,
       reference: booking._id,
       metadata: {
         custom_fields: [
