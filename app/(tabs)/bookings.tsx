@@ -117,7 +117,7 @@ export default function BookingsScreen() {
   }, [isFocused]);
 
   useEffect(() => {
-    if (socket && socket.connected && bookings.length > 0) {
+    if (socket && bookings.length > 0) {
       bookings.forEach(b => {
         socket.emit('join_booking', { bookingId: b._id });
       });
