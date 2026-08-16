@@ -110,6 +110,13 @@ export default function BookingsScreen() {
           setBookings(prev => prev.map(b => b._id === data.bookingId ? { ...b, driverOffers: data.driverOffers } : b));
           Toast.show({ type: 'info', text1: 'New Bid Received', text2: 'A driver has placed a new bid on your ride request.' });
        });
+       socketInstance.on('connect', () => {
+          setBookings(currentBookings => {
+             currentBookings.forEach(b => socketInstance.emit('join_booking', { bookingId: b._id }));
+             return currentBookings;
+          });
+       });
+
        return () => {
          socketInstance.disconnect();
        };
@@ -344,7 +351,7 @@ export default function BookingsScreen() {
                 {booking.isOffer && booking.offerStatus === 'Pending Client' && (
                   <View style={{ marginTop: 16, backgroundColor: '#EBF8FF', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#BEE3F8' }}>
                     <Text style={{ fontSize: 13, fontWeight: '700', color: '#2B6CB0', marginBottom: 8 }}>
-                      Driver countered with <Text style={{ fontWeight: '900', fontSize: 16 }}>{formatPrice(booking.totalPrice)}</Text>
+                      Driver countered with <Text style={{ fontWeight: '900', fontSize: 16 }}>{formatPrice(booking.counterPrice || booking.totalPrice)}</Text>
                     </Text>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                       <TouchableOpacity 
@@ -365,6 +372,16 @@ export default function BookingsScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
+                )}
+
+                {/* Pay Button for Accepted Bids */}
+                {booking.status === 'Pending Escrow' && (!booking.isOffer || booking.offerStatus === 'Accepted') && (
+                  <TouchableOpacity 
+                    style={{ marginTop: 14, backgroundColor: '#000080', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                    onPress={() => router.push(`/taxi-escrow?bookingId=${booking._id}&from=${encodeURIComponent(booking.deliveryAddress || '')}&to=${encodeURIComponent(booking.deliveryAddress || '')}&dateTime=${encodeURIComponent(booking.checkIn || '')}`)}
+                  >
+                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700' }}>Complete Payment</Text>
+                  </TouchableOpacity>
                 )}
 
                 {/* Cancel button */}
