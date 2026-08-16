@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, RefreshControl, Alert
+  ActivityIndicator, RefreshControl, Modal
 } from 'react-native';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useIsFocused } from '@react-navigation/native';
+import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../../constants/config';
 
 // ── STATUS HELPERS ─────────────────────────────────────────────────────────
@@ -65,6 +66,10 @@ export default function BookingsScreen() {
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<any>(null);
+  const [respondingOfferId, setRespondingOfferId] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchBookings = async () => {
@@ -90,6 +95,35 @@ export default function BookingsScreen() {
   useEffect(() => { if (isFocused) { setLoading(true); fetchBookings(); } }, [isFocused]);
   const onRefresh = () => { setRefreshing(true); fetchBookings(); };
 
+  useEffect(() => {
+    if (isFocused) {
+       const SOCKET_URL = API_URL.replace('/api', '');
+       const socketInstance = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+       setSocket(socketInstance);
+       socketInstance.on('booking_updated', (updatedBooking: any) => {
+          setBookings(prev => prev.map(b => b._id === updatedBooking._id ? updatedBooking : b));
+          if (updatedBooking.offerStatus === 'Pending Client') {
+             Toast.show({ type: 'info', text1: 'Counter Offer', text2: 'The driver countered your bid.' });
+          }
+       });
+       socketInstance.on('new_driver_bid', (data: any) => {
+          setBookings(prev => prev.map(b => b._id === data.bookingId ? { ...b, driverOffers: data.driverOffers } : b));
+          Toast.show({ type: 'info', text1: 'New Bid Received', text2: 'A driver has placed a new bid on your ride request.' });
+       });
+       return () => {
+         socketInstance.disconnect();
+       };
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (socket && socket.connected && bookings.length > 0) {
+      bookings.forEach(b => {
+        socket.emit('join_booking', { bookingId: b._id });
+      });
+    }
+  }, [socket, bookings]);
+
   // ── Stats ────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     let active = 0, totalSpent = 0;
@@ -109,44 +143,75 @@ export default function BookingsScreen() {
     [bookings, activeTab]
   );
 
+  // ── Handle Counter Offer Actions ─────────────────────────────────────────
+  const handleOfferAction = async (bookingId: string, action: 'Accept' | 'Decline') => {
+    setRespondingOfferId(bookingId);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const payload: any = {
+        offerStatus: action === 'Accept' ? 'Accepted' : 'Rejected'
+      };
+      const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        Toast.show({ 
+           type: 'success', 
+           text1: action === 'Accept' ? 'Offer Accepted' : 'Offer Declined', 
+           text2: action === 'Accept' ? 'Proceeding to checkout...' : 'The booking was cancelled.' 
+        });
+        if (action === 'Accept') {
+           const b = bookings.find(x => x._id === bookingId);
+           if (b) {
+             router.push(`/taxi-escrow?bookingId=${b._id}&from=${encodeURIComponent(b.deliveryAddress || '')}&to=${encodeURIComponent(b.deliveryAddress || '')}&dateTime=${encodeURIComponent(b.checkIn || '')}`);
+           }
+        }
+        fetchBookings();
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to process offer.' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Network error occurred.' });
+    } finally {
+      setRespondingOfferId(null);
+    }
+  };
+
   // ── Cancel booking ───────────────────────────────────────────────────────
   const handleCancel = (booking: any) => {
-    Alert.alert(
-      'Cancel Booking',
-      `Cancel booking for "${booking.itemName}"? This will release your escrow hold.`,
-      [
-        { text: 'Keep Booking', style: 'cancel' },
-        {
-          text: 'Cancel It',
-          style: 'destructive',
-          onPress: async () => {
-            setCancelling(booking._id);
-            try {
-              const token = await AsyncStorage.getItem('authToken');
-              const res = await fetch(`${API_URL}/bookings/${booking._id}`, {
-                method: 'DELETE',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-              });
-              if (res.ok) {
-                setBookings(prev =>
-                  prev.map(b => b._id === booking._id ? { ...b, status: 'Cancelled' } : b)
-                );
-                Toast.show({ type: 'success', text1: 'Cancelled', text2: 'Your booking has been cancelled and escrow released.' });
-              } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: 'Could not cancel. Please try again.' });
-              }
-            } catch {
-              Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection and try again.' });
-            } finally {
-              setCancelling(null);
-            }
-          }
+    setBookingToCancel(booking);
+    setCancelModalVisible(true);
+  };
+
+  const confirmCancel = async () => {
+    if (!bookingToCancel) return;
+    setCancelModalVisible(false);
+    setCancelling(bookingToCancel._id);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      const res = await fetch(`${API_URL}/bookings/${bookingToCancel._id}`, {
+        method: 'DELETE',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
         }
-      ]
-    );
+      });
+      if (res.ok) {
+        setBookings(prev =>
+          prev.map(b => b._id === bookingToCancel._id ? { ...b, status: 'Cancelled' } : b)
+        );
+        Toast.show({ type: 'success', text1: 'Cancelled', text2: 'Your booking has been cancelled and escrow released.' });
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Could not cancel. Please try again.' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Network Error', text2: 'Please check your connection and try again.' });
+    } finally {
+      setCancelling(null);
+      setBookingToCancel(null);
+    }
   };
 
   // ── Loading state ────────────────────────────────────────────────────────
@@ -275,6 +340,33 @@ export default function BookingsScreen() {
                   </View>
                 </View>
 
+                {/* Counter Offer UI */}
+                {booking.isOffer && booking.offerStatus === 'Pending Client' && (
+                  <View style={{ marginTop: 16, backgroundColor: '#EBF8FF', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#BEE3F8' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#2B6CB0', marginBottom: 8 }}>
+                      Driver countered with <Text style={{ fontWeight: '900', fontSize: 16 }}>{formatPrice(booking.totalPrice)}</Text>
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity 
+                        style={{ flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }} 
+                        onPress={() => handleOfferAction(booking._id, 'Decline')}
+                        disabled={respondingOfferId === booking._id}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#4A5568' }}>Decline</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={{ flex: 1, backgroundColor: '#000080', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }} 
+                        onPress={() => handleOfferAction(booking._id, 'Accept')}
+                        disabled={respondingOfferId === booking._id}
+                      >
+                        {respondingOfferId === booking._id 
+                          ? <ActivityIndicator size="small" color="#FFF" /> 
+                          : <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFF' }}>Accept</Text>}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
                 {/* Cancel button */}
                 {canCancel && (
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(booking)}>
@@ -290,6 +382,26 @@ export default function BookingsScreen() {
         )}
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* ── CANCEL MODAL ── */}
+      <Modal visible={cancelModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Cancel Booking</Text>
+            <Text style={styles.modalText}>
+              Are you sure you want to cancel the booking for "{bookingToCancel?.itemName || 'this stay'}"? This will release your escrow hold.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => { setCancelModalVisible(false); setBookingToCancel(null); }}>
+                <Text style={styles.modalBtnCancelText}>Keep Booking</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnConfirm} onPress={confirmCancel}>
+                <Text style={styles.modalBtnConfirmText}>Cancel It</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -385,4 +497,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
   exploreBtnText: { color: '#000080', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
+
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, width: '100%', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1A202C', marginBottom: 12 },
+  modalText: { fontSize: 15, color: '#4A5568', lineHeight: 22, marginBottom: 24 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  modalBtnCancel: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#EDF2F7' },
+  modalBtnCancelText: { color: '#4A5568', fontWeight: '700', fontSize: 14 },
+  modalBtnConfirm: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#E53E3E' },
+  modalBtnConfirmText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
 });

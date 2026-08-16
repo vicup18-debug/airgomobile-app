@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
 
 export default function RoomsScreen() {
@@ -46,10 +47,10 @@ export default function RoomsScreen() {
             if (res.ok) {
                 setRooms(prev => prev.map(r => r._id === roomId ? { ...r, isActive: !currentStatus } : r));
             } else {
-                Alert.alert("Error", "Failed to update visibility status");
+                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update visibility status' });
             }
         } catch (error) {
-            Alert.alert("Error", "An error occurred");
+            Toast.show({ type: 'error', text1: 'Error', text2: 'An error occurred while updating.' });
         }
     };
 

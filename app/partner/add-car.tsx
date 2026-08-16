@@ -73,8 +73,8 @@ export default function AddCarScreen() {
 
         const res = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
             method: 'POST',
-            body: formData,
-            headers: { 'Content-Type': 'multipart/form-data' }
+            body: formData
+            // React Native fetch will automatically generate the correct boundary string for multipart/form-data
         });
 
         const data = await res.json();
@@ -134,9 +134,9 @@ export default function AddCarScreen() {
                 const data = await response.json();
                 Toast.show({ type: 'error', text1: 'Submission Failed', text2: data.message || 'Something went wrong.' });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to upload and submit.' });
+            Toast.show({ type: 'error', text1: 'Error', text2: error?.message || 'Failed to upload and submit.' });
         } finally {
             setIsSubmitting(false);
         }

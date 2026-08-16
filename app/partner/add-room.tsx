@@ -61,7 +61,7 @@ export default function AddRoomScreen() {
         const res = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
             method: 'POST',
             body: formData,
-            headers: { 'Content-Type': 'multipart/form-data' }
+            // React Native fetch boundary auto-generation
         });
 
         const data = await res.json();

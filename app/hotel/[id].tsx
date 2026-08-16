@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
+import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
 
 const getHotelState = (hotel: any) => {
@@ -76,6 +77,8 @@ export default function HotelDetailsScreen() {
     };
 
     const [showCalendarModal, setShowCalendarModal] = useState(false);
+    const [datesUnavailableModalVisible, setDatesUnavailableModalVisible] = useState(false);
+    const [suggestedDates, setSuggestedDates] = useState<{ checkIn: string, checkOut: string } | null>(null);
     const [localStartDate, setLocalStartDate] = useState(startDate as string || '');
     const [localEndDate, setLocalEndDate] = useState(endDate as string || '');
 
@@ -207,7 +210,7 @@ export default function HotelDetailsScreen() {
 
     const handleContinue = () => {
         if (selectedRoom === null) {
-            Alert.alert("Error", "Please select a room to continue.");
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Please select a room to continue.' });
             return;
         }
         if (!localStartDate || !localEndDate) {
@@ -223,25 +226,11 @@ export default function HotelDetailsScreen() {
             const nextDates = fullRoomData ? findNextAvailableDates(fullRoomData, localStartDate, duration) : null;
             
             if (nextDates) {
-                const formatNextDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                Alert.alert(
-                    "Dates Unavailable", 
-                    `This room is sold out for your selected dates.\n\nThe next available opening is:\n${formatNextDate(nextDates.checkIn)} to ${formatNextDate(nextDates.checkOut)}`,
-                    [
-                        { text: "Change My Dates", style: "cancel", onPress: () => setShowCalendarModal(true) },
-                        { 
-                            text: "Use Suggested Dates", 
-                            onPress: () => {
-                                setLocalStartDate(nextDates.checkIn);
-                                setLocalEndDate(nextDates.checkOut);
-                            } 
-                        }
-                    ]
-                );
+                setSuggestedDates(nextDates);
+                setDatesUnavailableModalVisible(true);
             } else {
-                Alert.alert("Sold Out", "This room is sold out for the selected dates and the next 30 days. Please change your dates or try another property.", [
-                    { text: "OK", onPress: () => setShowCalendarModal(true) }
-                ]);
+                Toast.show({ type: 'error', text1: 'Sold Out', text2: 'This room is sold out for the selected dates. Please change your dates.' });
+                setShowCalendarModal(true);
             }
             return;
         }
@@ -396,6 +385,41 @@ export default function HotelDetailsScreen() {
                         <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowCalendarModal(false)}>
                             <Text style={styles.modalApplyText}>Confirm Dates</Text>
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Dates Unavailable Modal */}
+            <Modal visible={datesUnavailableModalVisible} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Dates Unavailable</Text>
+                            <TouchableOpacity onPress={() => setDatesUnavailableModalVisible(false)}>
+                                <Ionicons name="close-circle" size={30} color="#CBD5E0" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={{ fontSize: 15, color: '#4A5568', lineHeight: 22, marginBottom: 20 }}>
+                            This room is sold out for your selected dates.{"\n\n"}
+                            The next available opening is:{"\n"}
+                            <Text style={{ fontWeight: '800', color: '#1A202C' }}>
+                                {suggestedDates ? `${new Date(suggestedDates.checkIn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} to ${new Date(suggestedDates.checkOut).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                            </Text>
+                        </Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                            <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#EDF2F7' }} onPress={() => { setDatesUnavailableModalVisible(false); setShowCalendarModal(true); }}>
+                                <Text style={{ color: '#4A5568', fontWeight: '700', fontSize: 14 }}>Change Dates</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={{ paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#000080' }} onPress={() => {
+                                if (suggestedDates) {
+                                    setLocalStartDate(suggestedDates.checkIn);
+                                    setLocalEndDate(suggestedDates.checkOut);
+                                }
+                                setDatesUnavailableModalVisible(false);
+                            }}>
+                                <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>Use Suggestion</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
