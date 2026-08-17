@@ -3,7 +3,7 @@ import {
   ActivityIndicator, ScrollView, TextInput, Modal,
   Keyboard, Dimensions, Animated, Easing, Platform, Alert
 } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
@@ -605,7 +605,7 @@ export default function HomeScreen() {
     { icon: 'headset',           label: '24/7 Support',      sub: 'Always available VIP assistance' },
   ];
 
-  const uniqueDestinations = React.useMemo(() => {
+  const uniqueDestinations = useMemo(() => {
     const destMap = new Map<string, any>();
     hotels.forEach((hotel, idx) => {
       const state = getHotelState(hotel);
