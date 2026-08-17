@@ -605,6 +605,24 @@ export default function HomeScreen() {
     { icon: 'headset',           label: '24/7 Support',      sub: 'Always available VIP assistance' },
   ];
 
+  const uniqueDestinations = React.useMemo(() => {
+    const destMap = new Map<string, any>();
+    hotels.forEach((hotel, idx) => {
+      const state = getHotelState(hotel);
+      if (!destMap.has(state)) {
+        destMap.set(state, {
+          stateName: state,
+          count: 1,
+          image: getSafeImage(hotel, idx)
+        });
+      } else {
+        const existing = destMap.get(state);
+        existing.count += 1;
+      }
+    });
+    return Array.from(destMap.values()).sort((a, b) => b.count - a.count);
+  }, [hotels]);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -901,23 +919,26 @@ export default function HomeScreen() {
 <Text style={styles.sectionSub}>Most popular travel destinations in Nigeria</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-                {filteredHotels.slice(0, 4).map((item, index) => (
+                {uniqueDestinations.slice(0, 4).map((dest, index) => (
                   <TouchableOpacity
-                    key={`pop-${item._id}`}
+                    key={`pop-${dest.stateName}`}
                     style={styles.destCard}
                     activeOpacity={0.85}
-                    onPress={() => navigateToHotel(item._id)}
+                    onPress={() => {
+                      setSearchQuery(dest.stateName);
+                      handleSearchPress();
+                    }}
                   >
                     <Image
-                      source={{ uri: getSafeImage(item, index) }}
+                      source={{ uri: dest.image }}
                       style={styles.destImage}
                       resizeMode="cover"
                     />
                     <View style={styles.destOverlay}>
                       <Text style={styles.destName} numberOfLines={1}>
-                        Hotels in {getHotelState(item)}
+                        Hotels in {dest.stateName}
                       </Text>
-                      <Text style={styles.destCount}>2,642 hotels</Text>
+                      <Text style={styles.destCount}>{dest.count} hotel{dest.count !== 1 ? 's' : ''}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
