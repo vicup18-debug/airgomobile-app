@@ -79,13 +79,25 @@ function TaxiEscrowContent() {
       metadata: {
         custom_fields: [
           { display_name: 'Booking ID',  variable_name: 'bookingId', value: booking._id },
-          { display_name: 'Service',     variable_name: 'service',   value: 'Taxi Escrow' },
+          { display_name: 'Service',     variable_name: 'service',   value: booking.itemType === 'hotel' ? 'Hotel Escrow' : 'Taxi Escrow' },
           { display_name: 'Pickup',      variable_name: 'from',      value: params.from },
           { display_name: 'Destination', variable_name: 'to',        value: params.to },
         ],
       },
       onCancel: () => handleCancel(),
-      onSuccess: () => { if (booking?._id) startPolling(booking._id); },
+      onSuccess: async (res: any) => { 
+        if (booking?._id) {
+          try {
+            const token = await AsyncStorage.getItem('authToken');
+            await fetch(`${API_URL}/bookings/${booking._id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ status: 'Paid - Escrow Secured', paymentReference: res.reference || booking._id })
+            });
+          } catch(e) { console.warn(e); }
+          startPolling(booking._id); 
+        } 
+      },
     });
   };
 

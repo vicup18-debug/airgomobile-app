@@ -42,12 +42,13 @@ export default function TaxiBiddingScreen() {
          }
        });
 
-       socketInstance.on('booking_updated', (booking: any) => {
-         if (booking.offerStatus === 'Accepted') {
+       socketInstance.on('booking_updated', (payload: any) => {
+         if (payload.offerStatus === 'Accepted') {
             Toast.show({ type: 'success', text1: 'Fare Accepted!', text2: 'Redirecting to checkout.' });
             socketInstance.disconnect();
-            router.push(`/taxi-escrow?bookingId=${booking._id}&from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&dateTime=${encodeURIComponent(params.dateTime)}`);
-         } else if (booking.offerStatus === 'Pending Partner') {
+            const realBookingId = payload.booking ? payload.booking._id : payload._id;
+            router.push(`/taxi-escrow?bookingId=${realBookingId}&from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.to)}&dateTime=${encodeURIComponent(params.dateTime)}`);
+         } else if (payload.offerStatus === 'Pending Partner') {
             Toast.show({ type: 'info', text1: 'Counter-offer sent', text2: 'Awaiting driver response.' });
             socketInstance.disconnect();
             router.push('/(tabs)/bookings');
