@@ -117,6 +117,7 @@ function CheckoutContent() {
                 email: userEmail || 'guest@airgo.ng',
                 amount: Math.round(totalDue), // Paystack expects Naira in react-native-paystack-webview
                 reference: uniqueRef,
+                channels: ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer'],
                 metadata: {
                     custom_fields: [
                         { display_name: 'Booking ID', variable_name: 'bookingId', value: bookingId },

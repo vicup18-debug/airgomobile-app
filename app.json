@@ -16,7 +16,7 @@
     "android": {
       "package": "ng.airgo.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 103,
+      "versionCode": 104,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7i70u3_DN4ksi0V6LILlkCCK-Y7Gq8qo"

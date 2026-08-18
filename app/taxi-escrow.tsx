@@ -78,6 +78,7 @@ function TaxiEscrowContent() {
       email: userEmail || AIRGO_PLATFORM_EMAIL,
       amount: amountNaira,
       reference: uniqueRef,
+      channels: ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer'],
       metadata: {
         custom_fields: [
           { display_name: 'Booking ID',  variable_name: 'bookingId', value: booking._id },
