@@ -110,12 +110,13 @@ function CheckoutContent() {
             
             const data = await response.json();
             const bookingId = data.bookingId || data.booking?._id || data._id;
+            const uniqueRef = `${bookingId}-${Date.now()}`;
 
             // Trigger Paystack Popup
             popup.checkout({
                 email: userEmail || 'guest@airgo.ng',
                 amount: Math.round(totalDue), // Paystack expects Naira in react-native-paystack-webview
-                reference: bookingId,
+                reference: uniqueRef,
                 metadata: {
                     custom_fields: [
                         { display_name: 'Booking ID', variable_name: 'bookingId', value: bookingId },
@@ -138,7 +139,7 @@ function CheckoutContent() {
                             },
                             body: JSON.stringify({
                                 status: 'Paid',
-                                paymentReference: res.reference || bookingId
+                                paymentReference: res?.transactionRef?.reference || res?.reference || uniqueRef
                             })
                         });
 
