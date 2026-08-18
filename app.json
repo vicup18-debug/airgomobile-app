@@ -30,6 +30,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.WAKE_LOCK",
+        "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.WAKE_LOCK"
       ]
     },
@@ -80,6 +82,9 @@
       }
     },
     "runtimeVersion": "1.0.7",
-    "owner": "vicupbro1"
+    "owner": "vicupbro1",
+    "updates": {
+      "url": "https://u.expo.dev/b2b91674-a429-4384-a27f-a4d45182b813"
+    }
   }
 }

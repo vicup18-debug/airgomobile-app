@@ -2,9 +2,11 @@ import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const enforceRoleRouting = async () => {
@@ -32,8 +34,8 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#FFB81C',
         tabBarInactiveTintColor: '#999',
         tabBarStyle: {
-          height: 65,
-          paddingBottom: 10,
+          height: 65 + Math.max(insets.bottom, 10),
+          paddingBottom: Math.max(insets.bottom, 10),
           paddingTop: 10,
           backgroundColor: '#000080',
           borderTopWidth: 1,
