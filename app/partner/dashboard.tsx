@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,12 +7,14 @@ import { API_URL } from '../../constants/config';
 
 export default function PartnerDashboard() {
     const router = useRouter();
-
-    const [isApproved, setIsApproved] = useState(false);
+    const [isApproved, setIsApproved] = useState<boolean | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [stats, setStats] = useState({ activeItems: 0, bookingsToday: 0, totalRevenue: 0 });
     const [partnerType, setPartnerType] = useState('hotel');
+    const [recentBookings, setRecentBookings] = useState<any[]>([]);
+    
+    const scrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -33,6 +35,15 @@ export default function PartnerDashboard() {
                             totalRevenue: data.totalRevenue || 0
                         });
                         setPartnerType(data.partnerType || 'hotel');
+                    }
+                    
+                    const token = await AsyncStorage.getItem('authToken');
+                    const bookingsRes = await fetch(`${API_URL}/bookings/partner/${userId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (bookingsRes.ok) {
+                        const bData = await bookingsRes.json();
+                        setRecentBookings(bData);
                     }
                 } catch (err) {
                     console.error('Error fetching partner stats:', err);
@@ -100,7 +111,7 @@ export default function PartnerDashboard() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView ref={scrollViewRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
                 {/* 🟢 ANALYTICS CARDS (Light Theme) */}
                 <View style={styles.statsGrid}>
@@ -173,21 +184,45 @@ export default function PartnerDashboard() {
                                 </TouchableOpacity>
                             )}
 
-                            <TouchableOpacity style={styles.actionButton}>
-                                <View style={styles.actionIconContainer}>
-                                    <Ionicons name="list" size={24} color="#004A99" />
-                                </View>
-                                <Text style={styles.actionText}>All Bookings</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </>
-                )}
+                                <TouchableOpacity style={styles.actionButton} onPress={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
+                                    <View style={styles.actionIconContainer}>
+                                        <Ionicons name="list" size={24} color="#004A99" />
+                                    </View>
+                                    <Text style={styles.actionText}>All Bookings</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    )}
 
                 {/* 🟢 RECENT ACTIVITY */}
-                <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <View style={styles.activityCard}>
-                    <Text style={{textAlign: 'center', color: '#718096', paddingVertical: 10}}>No recent activity to display.</Text>
-                </View>
+                <Text style={styles.sectionTitle}>Recent Activity & All Bookings</Text>
+                {recentBookings.length > 0 ? (
+                    recentBookings.map((booking: any) => (
+                        <View key={booking._id} style={styles.activityCard}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <View>
+                                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1A202C' }}>{booking.itemName || 'Taxi Ride'}</Text>
+                                    <Text style={{ color: '#718096', fontSize: 12, marginTop: 4 }}>
+                                        {new Date(booking.createdAt).toLocaleDateString()}
+                                    </Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#004A99' }}>₦{booking.totalPrice}</Text>
+                                    <Text style={{ color: booking.status === 'Completed' ? '#38A169' : '#D97706', fontSize: 12, marginTop: 4, fontWeight: 'bold' }}>
+                                        {booking.status}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Text style={{ color: '#4A5568', fontSize: 13, marginTop: 10 }}>
+                                Client: {booking.clientName || 'Guest'}
+                            </Text>
+                        </View>
+                    ))
+                ) : (
+                    <View style={styles.activityCard}>
+                        <Text style={{textAlign: 'center', color: '#718096', paddingVertical: 10}}>No recent activity to display.</Text>
+                    </View>
+                )}
 
             </ScrollView>
         </View>

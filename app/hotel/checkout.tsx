@@ -219,7 +219,10 @@ function CheckoutContent() {
 
 export default function CheckoutScreen() {
     return (
-        <PaystackProvider publicKey={PAYSTACK_PUBLIC_KEY}>
+        <PaystackProvider 
+            publicKey={PAYSTACK_PUBLIC_KEY} 
+            defaultChannels={['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer']}
+        >
             <CheckoutContent />
         </PaystackProvider>
     );

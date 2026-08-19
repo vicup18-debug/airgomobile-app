@@ -90,7 +90,9 @@ export default function SuperAdminDashboard() {
     useEffect(() => {
         const fetchPlatformStats = async () => {
             try {
-                const res = await fetch(`${API_URL}/user/superadmin/stats`);
+                const token = await AsyncStorage.getItem('authToken');
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const res = await fetch(`${API_URL}/user/superadmin/stats`, { headers });
                 if (res.ok) {
                     const data = await res.json();
                     setPlatformStats({

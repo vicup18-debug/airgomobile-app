@@ -10,6 +10,7 @@ import Toast from 'react-native-toast-message';
 import { useIsFocused } from '@react-navigation/native';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../../constants/config';
+import DriverChatModal from '../../components/ui/DriverChatModal';
 
 // ── STATUS HELPERS ─────────────────────────────────────────────────────────
 function getStatusColor(status: string): string {
@@ -64,6 +65,14 @@ export default function BookingsScreen() {
   const [activeTab, setActiveTab]   = useState<TabKey>('All');
   const [bookings, setBookings]     = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
+  
+  // Chat Modal State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatBookingId, setChatBookingId] = useState('');
+  const [chatBookingName, setChatBookingName] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [currentUserName, setCurrentUserName] = useState('');
+  
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
@@ -72,10 +81,15 @@ export default function BookingsScreen() {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
-      const userId = await AsyncStorage.getItem('userId');
       const token = await AsyncStorage.getItem('authToken');
+      const userId = await AsyncStorage.getItem('userId');
+      const userName = await AsyncStorage.getItem('userName');
+      
+      if (userId) setCurrentUserId(userId);
+      if (userName) setCurrentUserName(userName);
+      
       if (!userId || !token) { setLoading(false); return; }
       const res  = await fetch(`${API_URL}/bookings/user/${userId}`, {
         headers: {
@@ -90,7 +104,7 @@ export default function BookingsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => { if (isFocused) { setLoading(true); fetchBookings(); } }, [isFocused]);
   const onRefresh = () => { setRefreshing(true); fetchBookings(); };
@@ -384,15 +398,32 @@ export default function BookingsScreen() {
                   </TouchableOpacity>
                 )}
 
-                {/* Cancel button */}
-                {canCancel && (
-                  <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(booking)}>
-                    {cancelling === booking._id
-                      ? <ActivityIndicator size="small" color="#E53E3E" />
-                      : <Text style={styles.cancelBtnText}>Cancel Booking</Text>
-                    }
-                  </TouchableOpacity>
-                )}
+                {/* Action Buttons Row */}
+                <View style={{ flexDirection: 'column', gap: 10, marginTop: 14 }}>
+                  {/* Chat Button (Only if active trip or escrow secured/pending) */}
+                  {!booking.status?.toLowerCase().includes('cancelled') && (
+                    <TouchableOpacity 
+                      style={{ backgroundColor: '#004A99', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                      onPress={() => {
+                        setChatBookingId(booking._id);
+                        setChatBookingName(booking.itemName || 'Chat with Driver');
+                        setIsChatOpen(true);
+                      }}
+                    >
+                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700' }}>Chat with Driver</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Cancel button */}
+                  {canCancel && (
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(booking)}>
+                      {cancelling === booking._id
+                        ? <ActivityIndicator size="small" color="#E53E3E" />
+                        : <Text style={styles.cancelBtnText}>Cancel Booking</Text>
+                      }
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             );
           })
@@ -419,6 +450,16 @@ export default function BookingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── CHAT MODAL ── */}
+      <DriverChatModal
+        visible={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        bookingId={chatBookingId}
+        bookingName={chatBookingName}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+      />
     </View>
   );
 }
