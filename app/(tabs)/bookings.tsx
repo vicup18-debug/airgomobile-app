@@ -401,7 +401,7 @@ export default function BookingsScreen() {
                 {/* Action Buttons Row */}
                 <View style={{ flexDirection: 'column', gap: 10, marginTop: 14 }}>
                   {/* Chat Button (Only if active trip or escrow secured/pending) */}
-                  {!booking.status?.toLowerCase().includes('cancelled') && (
+                  {!(booking.status || '').toLowerCase().includes('cancelled') && (
                     <TouchableOpacity 
                       style={{ backgroundColor: '#004A99', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
                       onPress={() => {

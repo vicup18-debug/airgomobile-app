@@ -258,7 +258,12 @@ export default function HomeScreen() {
   const [userName, setUserName]       = useState('');
   const [activeTab, setActiveTab]     = useState<'stays' | 'taxi'>('stays');
   const [stayType, setStayType]       = useState<'any' | 'hotel' | 'apartment'>('any');
-  const [displayLimit, setDisplayLimit] = useState(6);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, stayType]);
 
   const filteredHotels = hotels.filter((hotel: any) => {
     const searchWords = searchQuery ? searchQuery.toLowerCase().split(/[\s,]+/).filter(Boolean) : [];
@@ -963,7 +968,7 @@ export default function HomeScreen() {
               ) : (
                 <View>
                   <View style={styles.dealsGrid}>
-                    {filteredHotels.slice(0, displayLimit).map((item, index) => {
+                    {filteredHotels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((item, index) => {
                       const available = isHotelAvailable(item, startDate, endDate);
                     return (
                       <TouchableOpacity
@@ -1016,13 +1021,27 @@ export default function HomeScreen() {
                     );
                   })}
                   </View>
-                  {filteredHotels.length > displayLimit && (
-                    <TouchableOpacity 
-                      style={styles.seeMoreButton} 
-                      onPress={() => setDisplayLimit(prev => prev + 6)}
-                    >
-                      <Text style={styles.seeMoreButtonText}>See More Properties</Text>
-                    </TouchableOpacity>
+                  {Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) > 1 && (
+                    <View style={{ marginVertical: 20 }}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}>
+                        {Array.from({ length: Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map(page => (
+                          <TouchableOpacity 
+                            key={page} 
+                            style={{
+                              paddingHorizontal: 16, 
+                              paddingVertical: 10,
+                              borderRadius: 12,
+                              backgroundColor: currentPage === page ? '#004A99' : '#E2E8F0',
+                              borderWidth: 1,
+                              borderColor: currentPage === page ? '#004A99' : '#CBD5E0'
+                            }}
+                            onPress={() => setCurrentPage(page)}
+                          >
+                            <Text style={{ color: currentPage === page ? '#FFF' : '#4A5568', fontWeight: 'bold', fontSize: 14 }}>{page}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
                   )}
                 </View>
               )}
@@ -1042,36 +1061,60 @@ export default function HomeScreen() {
                   <Text style={styles.emptySubTitle}>Try a different city or hotel name</Text>
                 </View>
               ) : (
-                filteredHotels.map((item, index) => (
-                  <TouchableOpacity
-                    key={item._id}
-                    style={styles.listCard}
-                    activeOpacity={0.88}
-                    onPress={() => navigateToHotel(item._id)}
-                  >
-                    <Image
-                      source={{ uri: getSafeImage(item, index) }}
-                      style={styles.listCardImage}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.listCardInfo}>
-                      <View style={styles.listCardHeader}>
-                        <Text style={styles.listCardName} numberOfLines={1}>{item.hotelName || item.name}</Text>
-                        <Text style={styles.listCardPrice}>
-                          ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
+                <View>
+                  {filteredHotels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((item, index) => (
+                    <TouchableOpacity
+                      key={item._id}
+                      style={styles.listCard}
+                      activeOpacity={0.88}
+                      onPress={() => navigateToHotel(item._id)}
+                    >
+                      <Image
+                        source={{ uri: getSafeImage(item, index) }}
+                        style={styles.listCardImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.listCardInfo}>
+                        <View style={styles.listCardHeader}>
+                          <Text style={styles.listCardName} numberOfLines={1}>{item.hotelName || item.name}</Text>
+                          <Text style={styles.listCardPrice}>
+                            ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
+                          </Text>
+                        </View>
+                        <Text style={styles.listCardLocation} numberOfLines={1}>
+                          <Ionicons name="location-outline" size={13} color="#718096" /> {getHotelState(item)}
                         </Text>
+                        <View style={styles.escrowRow}>
+                          <Ionicons name="shield-checkmark" size={12} color="#000080" />
+                          <Text style={styles.escrowRowText}>Escrow-protected booking</Text>
+                        </View>
                       </View>
-                      <Text style={styles.listCardLocation}>
-                        <Ionicons name="location-outline" size={14} color="#718096" />{' '}
-                        {getHotelState(item)}
-                      </Text>
-                      <View style={styles.escrowRow}>
-                        <Ionicons name="shield-checkmark" size={12} color="#000080" />
-                        <Text style={styles.escrowRowText}>Escrow-protected booking</Text>
-                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  
+                  {Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) > 1 && (
+                    <View style={{ marginVertical: 20 }}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}>
+                        {Array.from({ length: Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map(page => (
+                          <TouchableOpacity 
+                            key={page} 
+                            style={{
+                              paddingHorizontal: 16, 
+                              paddingVertical: 10,
+                              borderRadius: 12,
+                              backgroundColor: currentPage === page ? '#004A99' : '#E2E8F0',
+                              borderWidth: 1,
+                              borderColor: currentPage === page ? '#004A99' : '#CBD5E0'
+                            }}
+                            onPress={() => setCurrentPage(page)}
+                          >
+                            <Text style={{ color: currentPage === page ? '#FFF' : '#4A5568', fontWeight: 'bold', fontSize: 14 }}>{page}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
                     </View>
-                  </TouchableOpacity>
-                ))
+                  )}
+                </View>
               )}
             </View>
           )}

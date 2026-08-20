@@ -13,6 +13,8 @@ export default function PartnerDashboard() {
     const [stats, setStats] = useState({ activeItems: 0, bookingsToday: 0, totalRevenue: 0 });
     const [partnerType, setPartnerType] = useState('hotel');
     const [recentBookings, setRecentBookings] = useState<any[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
     
     const scrollViewRef = useRef<ScrollView>(null);
 
@@ -194,30 +196,56 @@ export default function PartnerDashboard() {
                         </>
                     )}
 
-                {/* 🟢 RECENT ACTIVITY */}
+                {/* 🛒 RECENT ACTIVITY */}
                 <Text style={styles.sectionTitle}>Recent Activity & All Bookings</Text>
                 {recentBookings.length > 0 ? (
-                    recentBookings.map((booking: any) => (
-                        <View key={booking._id} style={styles.activityCard}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <View>
-                                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1A202C' }}>{booking.itemName || 'Taxi Ride'}</Text>
-                                    <Text style={{ color: '#718096', fontSize: 12, marginTop: 4 }}>
-                                        {new Date(booking.createdAt).toLocaleDateString()}
-                                    </Text>
+                    <>
+                        {recentBookings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((booking: any) => (
+                            <View key={booking._id} style={styles.activityCard}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <View style={{ flex: 1, marginRight: 12 }}>
+                                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1A202C' }}>{booking.itemName || 'Taxi Ride'}</Text>
+                                        <Text style={{ color: '#718096', fontSize: 12, marginTop: 4 }}>
+                                            {new Date(booking.createdAt).toLocaleDateString()}
+                                        </Text>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#004A99' }}>₦{booking.totalPrice}</Text>
+                                        <Text style={{ color: booking.status === 'Completed' ? '#38A169' : '#D97706', fontSize: 12, marginTop: 4, fontWeight: 'bold' }}>
+                                            {booking.status}
+                                        </Text>
+                                    </View>
                                 </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#004A99' }}>₦{booking.totalPrice}</Text>
-                                    <Text style={{ color: booking.status === 'Completed' ? '#38A169' : '#D97706', fontSize: 12, marginTop: 4, fontWeight: 'bold' }}>
-                                        {booking.status}
-                                    </Text>
-                                </View>
+                                <Text style={{ color: '#4A5568', fontSize: 13, marginTop: 10 }}>
+                                    Client: {booking.clientName || 'Guest'}
+                                </Text>
                             </View>
-                            <Text style={{ color: '#4A5568', fontSize: 13, marginTop: 10 }}>
-                                Client: {booking.clientName || 'Guest'}
-                            </Text>
-                        </View>
-                    ))
+                        ))}
+                        
+                        {/* PAGINATION CONTROLS */}
+                        {Math.ceil(recentBookings.length / ITEMS_PER_PAGE) > 1 && (
+                            <View style={{ marginVertical: 20 }}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}>
+                                    {Array.from({ length: Math.ceil(recentBookings.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map(page => (
+                                        <TouchableOpacity 
+                                            key={page} 
+                                            style={{
+                                                paddingHorizontal: 16, 
+                                                paddingVertical: 10,
+                                                borderRadius: 12,
+                                                backgroundColor: currentPage === page ? '#004A99' : '#E2E8F0',
+                                                borderWidth: 1,
+                                                borderColor: currentPage === page ? '#004A99' : '#CBD5E0'
+                                            }}
+                                            onPress={() => setCurrentPage(page)}
+                                        >
+                                            <Text style={{ color: currentPage === page ? '#FFF' : '#4A5568', fontWeight: 'bold', fontSize: 14 }}>{page}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+                    </>
                 ) : (
                     <View style={styles.activityCard}>
                         <Text style={{textAlign: 'center', color: '#718096', paddingVertical: 10}}>No recent activity to display.</Text>

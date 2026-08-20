@@ -24,8 +24,8 @@ export default function SuperAdminDashboard() {
         { id: 'chats', label: 'Chat Monitor' }
     ];
 
-    // 🟢 LIVE STATS from staging backend
-    const [liveStats, setLiveStats] = useState({ total: 0, activeEscrow: 0, totalRevenue: 0, loading: true });
+    // 🚀 LIVE STATS from staging backend
+    const [liveStats, setLiveStats] = useState({ total: 0, activeBookings: 0, activeEscrow: 0, totalRevenue: 0, loading: true });
 
     useEffect(() => {
         const socket = io(API_URL.replace('/api', ''), {
@@ -61,13 +61,16 @@ export default function SuperAdminDashboard() {
                         ['Pending Escrow','Paid - Escrow Secured','Escrow Active','Trip Started']
                             .some(s => (b.status || '').includes(s))
                     ).length;
+                    const successfulStatuses = ['Paid - Escrow Secured', 'Approved for Disbursement', 'Paid', 'Paid Out', 'Confirmed', 'Completed', 'Completed & Disbursed', 'Trip Started', 'Trip Start Pending', 'Trip End Pending', 'Trip Ended'];
+                    const activeBookings = bookings.filter(b => successfulStatuses.includes(b.status)).length;
                     const totalRevenue = bookings.reduce((sum, b) => {
+                        if (!successfulStatuses.includes(b.status)) return sum;
                         const p = typeof b.totalPrice === 'string'
                             ? parseInt(b.totalPrice.replace(/\D/g,''), 10)
                             : Number(b.totalPrice || 0);
                         return sum + (isNaN(p) ? 0 : p);
                     }, 0);
-                    setLiveStats({ total: bookings.length, activeEscrow, totalRevenue, loading: false });
+                    setLiveStats({ total: bookings.length, activeBookings, activeEscrow, totalRevenue, loading: false });
                 } else {
                     setLiveStats(prev => ({ ...prev, loading: false }));
                 }
@@ -364,7 +367,7 @@ export default function SuperAdminDashboard() {
                         </View>
                         <View>
                             <Text style={styles.kpiLabel}>Platform Bookings (30 Days)</Text>
-                            <Text style={[styles.kpiValue, { fontSize: 24 }]}>{Math.max(platformStats.activeBookings, liveStats.total).toLocaleString()}</Text>
+                            <Text style={[styles.kpiValue, { fontSize: 24 }]}>{Math.max(platformStats.activeBookings, liveStats.activeBookings).toLocaleString()}</Text>
                         </View>
                     </View>
                 </View>

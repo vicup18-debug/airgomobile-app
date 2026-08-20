@@ -80,9 +80,9 @@ export default function LoginScreen() {
         }
       } else {
         Toast.show({ type: 'error', text1: 'Login Failed', text2: data.message || 'Invalid credentials' });
-        if (response.status === 403 && data.message?.toLowerCase().includes('pending approval')) {
+        if (response.status === 403 && (data.message || '').toLowerCase().includes('pending approval')) {
           setPendingApprovalMsg(data.message);
-        } else if (response.status === 403 && data.message?.toLowerCase().includes('verify')) {
+        } else if (response.status === 403 && (data.message || '').toLowerCase().includes('verify')) {
           setShowResend(true);
         } else {
           setShowResend(false);
