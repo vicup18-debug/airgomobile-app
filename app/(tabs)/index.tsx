@@ -549,6 +549,10 @@ export default function HomeScreen() {
   };
 
   const handleSearchPress = () => {
+    if (startDate && !endDate) {
+      Toast.show({ type: 'error', text1: 'Checkout Date Required', text2: 'Please select a checkout date.' });
+      return;
+    }
     Keyboard.dismiss();
     scrollViewRef.current?.scrollTo({ y: 360, animated: true });
   };
@@ -720,29 +724,76 @@ export default function HomeScreen() {
                   )}
                 </View>
                 <View style={styles.consoleDivider} />
-                <View style={{flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center'}}>
-                    <Text style={{fontSize: 12, fontWeight: 'bold', color: '#000080'}}>STAY TYPE:</Text>
-                    <View style={{flexDirection: 'row', gap: 10}}>
-                        <TouchableOpacity onPress={() => setStayType('any')} style={{paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: stayType === 'any' ? '#000080' : '#E2E8F0'}}>
-                            <Text style={{fontSize: 12, fontWeight: 'bold', color: stayType === 'any' ? '#FFF' : '#4A5568'}}>Any</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setStayType('hotel')} style={{paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: stayType === 'hotel' ? '#000080' : '#E2E8F0'}}>
-                            <Text style={{fontSize: 12, fontWeight: 'bold', color: stayType === 'hotel' ? '#FFF' : '#4A5568'}}>Hotels</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setStayType('apartment')} style={{paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: stayType === 'apartment' ? '#000080' : '#E2E8F0'}}>
-                            <Text style={{fontSize: 12, fontWeight: 'bold', color: stayType === 'apartment' ? '#FFF' : '#4A5568'}}>Apartments</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                <View style={styles.consoleDivider} />
-                <View style={[styles.consoleActionsRow, { justifyContent: 'center' }]}>
+
+                {/* Dates & Guests Row */}
+                <View style={styles.consoleActionsRow}>
+                  <TouchableOpacity style={styles.consoleAction} onPress={() => setShowCalendarModal(true)}>
+                    <Ionicons name="calendar-outline" size={18} color="#000080" />
+                    <Text style={styles.consoleActionText} numberOfLines={1}>
+                      {formatDateDisplay()}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.verticalDivider} />
+
                   <TouchableOpacity style={styles.consoleAction} onPress={() => setShowGuestModal(true)}>
-                    <Ionicons name="people-outline" size={19} color="#000080" />
+                    <Ionicons name="people-outline" size={18} color="#000080" />
                     <Text style={styles.consoleActionText} numberOfLines={1}>
                       {guests.rooms} Room · {guests.adults} Adults
                     </Text>
                   </TouchableOpacity>
                 </View>
+
+                <View style={styles.consoleDivider} />
+
+                {/* Responsive Stay Type Segmented Control */}
+                <View style={{ paddingHorizontal: 4, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#000080', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 }}>Stay Type</Text>
+                  <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 3, gap: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => setStayType('any')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 7,
+                        borderRadius: 9,
+                        backgroundColor: stayType === 'any' ? '#000080' : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: stayType === 'any' ? '#FFF' : '#64748B' }}>Any</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setStayType('hotel')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 7,
+                        borderRadius: 9,
+                        backgroundColor: stayType === 'hotel' ? '#000080' : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: stayType === 'hotel' ? '#FFF' : '#64748B' }}>Hotels</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setStayType('apartment')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 7,
+                        borderRadius: 9,
+                        backgroundColor: stayType === 'apartment' ? '#000080' : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: stayType === 'apartment' ? '#FFF' : '#64748B' }}>Apartments</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <TouchableOpacity style={styles.searchButton} onPress={handleSearchPress}>
                   <Text style={styles.searchButtonText}>Search Hotels</Text>
                 </TouchableOpacity>
@@ -1008,6 +1059,14 @@ export default function HomeScreen() {
                           <Text style={styles.propertyLocation} numberOfLines={1}>
                             <Ionicons name="location-outline" size={11} color="#718096" /> {getHotelState(item)}
                           </Text>
+                          
+                          {item.isRefundable !== false && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+                              <Ionicons name="checkmark-circle" size={12} color="#38A169" />
+                              <Text style={{ fontSize: 10, color: '#38A169', fontWeight: 'bold', marginLeft: 4 }}>70% Refundable</Text>
+                            </View>
+                          )}
+                          
                           <View style={styles.propertyFooter}>
                             <Text style={styles.propertyPrice}>
                               ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
@@ -1084,9 +1143,17 @@ export default function HomeScreen() {
                         <Text style={styles.listCardLocation} numberOfLines={1}>
                           <Ionicons name="location-outline" size={13} color="#718096" /> {getHotelState(item)}
                         </Text>
-                        <View style={styles.escrowRow}>
-                          <Ionicons name="shield-checkmark" size={12} color="#000080" />
-                          <Text style={styles.escrowRowText}>Escrow-protected booking</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                          <View style={styles.escrowRow}>
+                            <Ionicons name="shield-checkmark" size={12} color="#000080" />
+                            <Text style={styles.escrowRowText}>Escrow-protected booking</Text>
+                          </View>
+                          {item.isRefundable !== false && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Ionicons name="checkmark-circle" size={12} color="#38A169" />
+                              <Text style={{ fontSize: 11, color: '#38A169', fontWeight: 'bold', marginLeft: 4 }}>70% Refundable</Text>
+                            </View>
+                          )}
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -1240,7 +1307,13 @@ export default function HomeScreen() {
               onDayPress={onDayPress}
               theme={{ todayTextColor: '#000080', arrowColor: '#000080', selectedDayBackgroundColor: '#000080' }}
             />
-            <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowCalendarModal(false)}>
+            <TouchableOpacity style={styles.modalApplyButton} onPress={() => {
+              if (startDate && !endDate) {
+                Toast.show({ type: 'error', text1: 'Checkout Date Required', text2: 'Please select a checkout date.' });
+                return;
+              }
+              setShowCalendarModal(false);
+            }}>
               <Text style={styles.modalApplyText}>Confirm Dates</Text>
             </TouchableOpacity>
           </View>

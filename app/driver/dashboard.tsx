@@ -93,6 +93,17 @@ export default function DriverDashboard() {
   const [bidAmount, setBidAmount] = useState('');
   const [activeTab, setActiveTab] = useState<'dispatches' | 'trips'>('dispatches');
   
+  const [isChatOpen, setIsChatOpen]                 = useState(false);
+  const [chatBookingId, setChatBookingId]           = useState('');
+  const [chatBookingName, setChatBookingName]       = useState('');
+  const isChatOpenRef = useRef(false);
+  const chatBookingIdRef = useRef('');
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+    chatBookingIdRef.current = chatBookingId;
+  }, [isChatOpen, chatBookingId]);
+
   // Track modal visibility without triggering re-renders to safely debounce socket events
   const isModalVisibleRef = useRef(false);
   const handleRespondToOfferRef = useRef<any>(null);
@@ -236,7 +247,59 @@ export default function DriverDashboard() {
     socket.on('booking_updated', (data) => {
       console.log('Booking updated via WS:', data);
       
-      if (data.isOffer && data.offerStatus === 'Pending Partner' && data.driverId === userId) {
+      if (
+        (data.driverId === userId || data.partnerId === userId) &&
+        (data.status === 'Paid - Escrow Secured' || data.status === 'Paid')
+      ) {
+        // Client completed payment — play sound, toast, modal alert, switch to trips tab & auto-refresh
+        try {
+          Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: true,
+          }).then(() => {
+            Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
+              .then(({ sound }) => {
+                sound.setOnPlaybackStatusUpdate((status) => {
+                  if (status.isLoaded && status.didJustFinish) {
+                    sound.unloadAsync();
+                  }
+                });
+                sound.playAsync();
+              });
+          });
+        } catch(e){}
+
+        Toast.show({
+          type: 'success',
+          text1: '💰 Payment Confirmed in Escrow!',
+          text2: `Client paid for ${data.itemName || 'Trip'}. Prepare for pickup!`
+        });
+
+        setAlertConfig({
+          title: '💰 Payment Secured in Escrow!',
+          message: `Client has completed payment for:\n${data.itemName || 'Ride Request'}\n\nAmount: ₦${typeof data.totalPrice === 'number' ? data.totalPrice.toLocaleString() : (data.totalPrice || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\n\nFunds are locked in Airgo Escrow. You can start the trip now!`,
+          type: 'success',
+          buttons: [
+            {
+              text: 'View Active Trip 🚗',
+              onPress: () => {
+                setShowAlert(false);
+                setActiveTab('trips');
+                fetchData();
+              }
+            },
+            {
+              text: 'Dismiss',
+              style: 'cancel',
+              onPress: () => setShowAlert(false)
+            }
+          ]
+        });
+        setShowAlert(true);
+        setActiveTab('trips');
+        fetchData();
+      } else if (data.isOffer && data.offerStatus === 'Pending Partner' && data.driverId === userId) {
         // Client sent a counter-offer — sound, toast, refresh feed and switch to dispatches tab
         try {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
@@ -264,6 +327,59 @@ export default function DriverDashboard() {
       }
     });
 
+    socket.on('payment_received', (data) => {
+      console.log('Payment received via WS on driver dashboard:', data);
+      if (data.driverId === userId || data.partnerId === userId) {
+        try {
+          Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: true,
+          }).then(() => {
+            Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
+              .then(({ sound }) => {
+                sound.setOnPlaybackStatusUpdate((status) => {
+                  if (status.isLoaded && status.didJustFinish) {
+                    sound.unloadAsync();
+                  }
+                });
+                sound.playAsync();
+              });
+          });
+        } catch(e){}
+
+        Toast.show({
+          type: 'success',
+          text1: '💰 Payment Confirmed in Escrow!',
+          text2: `Client paid for ${data.itemName || 'Trip'}. Prepare for pickup!`
+        });
+
+        setAlertConfig({
+          title: '💰 Payment Secured in Escrow!',
+          message: `Client has completed payment for:\n${data.itemName || 'Ride Request'}\n\nAmount: ₦${typeof data.totalPrice === 'number' ? data.totalPrice.toLocaleString() : (data.totalPrice || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\n\nFunds are locked in Airgo Escrow. You can start the trip now!`,
+          type: 'success',
+          buttons: [
+            {
+              text: 'View Active Trip 🚗',
+              onPress: () => {
+                setShowAlert(false);
+                setActiveTab('trips');
+                fetchData();
+              }
+            },
+            {
+              text: 'Dismiss',
+              style: 'cancel',
+              onPress: () => setShowAlert(false)
+            }
+          ]
+        });
+        setShowAlert(true);
+        setActiveTab('trips');
+        fetchData();
+      }
+    });
+
     socket.on('booking_claimed', (data) => {
       console.log('Booking claimed via WS:', data);
       setAvailableRequests(prev => prev.filter(r => r._id !== data.bookingId));
@@ -275,11 +391,76 @@ export default function DriverDashboard() {
       fetchData();
     });
 
+    socket.on('incoming_chat_notification', async (data: any) => {
+      console.log('Incoming chat notification via WS:', data);
+      if (data.senderId === userId || data.senderRole === 'partner') return;
+
+      // Play chime sound
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/notification.wav')
+        );
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            sound.unloadAsync();
+          }
+        });
+        await sound.playAsync();
+      } catch (e) {
+        console.log('Chat audio play error:', e);
+      }
+
+      // If the chat modal is not open or is for another booking, show popup and toast
+      if (!isChatOpenRef.current || chatBookingIdRef.current !== data.bookingId) {
+        Toast.show({
+          type: 'info',
+          text1: `💬 ${data.senderName || 'Passenger'}`,
+          text2: data.text,
+          visibilityTime: 7000,
+          onPress: () => {
+            setChatBookingId(data.bookingId);
+            setChatBookingName(data.bookingName || 'Ride Chat');
+            setIsChatOpen(true);
+          }
+        });
+
+        setAlertConfig({
+          title: `💬 Message from ${data.senderName || 'Passenger'}`,
+          message: `Trip: ${data.bookingName || 'Active Ride'}\n\n"${data.text}"`,
+          type: 'info',
+          buttons: [
+            {
+              text: 'Open Chat 💬',
+              onPress: () => {
+                setShowAlert(false);
+                setChatBookingId(data.bookingId);
+                setChatBookingName(data.bookingName || 'Ride Chat');
+                setIsChatOpen(true);
+              }
+            },
+            {
+              text: 'Dismiss',
+              style: 'cancel',
+              onPress: () => setShowAlert(false)
+            }
+          ]
+        });
+        setShowAlert(true);
+      }
+    });
+
     return () => {
       socket.off('new_booking_request');
       socket.off('booking_updated');
       socket.off('booking_claimed');
       socket.off('booking_cancelled');
+      socket.off('payment_received');
+      socket.off('incoming_chat_notification');
       socket.disconnect();
     };
   }, [isAvailable, fetchData, userId]);
@@ -422,6 +603,42 @@ export default function DriverDashboard() {
     }
   };
 
+  const handleCancelTrip = (bookingId: string) => {
+    Alert.alert(
+      "Cancel Trip",
+      "Are you sure you want to cancel this trip?",
+      [
+        { text: "No, keep it", style: "cancel" },
+        { 
+          text: "Yes, Cancel", 
+          style: "destructive",
+          onPress: async () => {
+            setIsUpdatingTripId(bookingId);
+            try {
+              const token = await AsyncStorage.getItem('authToken');
+              const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (res.ok) {
+                Toast.show({ type: 'success', text1: 'Trip Cancelled', text2: 'The booking has been cancelled.' });
+                setActiveTrip(null);
+                fetchData();
+              } else {
+                const err = await res.json().catch(() => ({}));
+                Toast.show({ type: 'error', text1: 'Could not cancel', text2: err.message || 'Please try again.' });
+              }
+            } catch {
+              Toast.show({ type: 'error', text1: 'Network Error', text2: 'Check your connection.' });
+            } finally {
+              setIsUpdatingTripId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const submitOfferResponse = async (bookingId: string, status: string, newPrice?: string) => {
     setShowAlert(false);
     try {
@@ -456,9 +673,6 @@ export default function DriverDashboard() {
   };
 
   const [isUpdatingTripId, setIsUpdatingTripId] = useState<string | null>(null);
-  const [isChatOpen, setIsChatOpen]         = useState(false);
-  const [chatBookingId, setChatBookingId]   = useState('');
-  const [chatBookingName, setChatBookingName] = useState('');
   const monthly  = monthlyEarnings(myBookings);
   const allTime  = allTimeEarnings(myBookings);
   const pendingOffers = myBookings.filter(b => b.isOffer && b.offerStatus === 'Pending Partner' && b.driverId === userId && !['Cancelled', 'Archived'].includes(b.status));
@@ -647,58 +861,87 @@ export default function DriverDashboard() {
 
                       {/* Action Buttons */}
                       {!isCompleted && (
-                        <View style={styles.tripActions}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#EDF2F7' }}>
+                          
                           {/* Chat */}
                           <TouchableOpacity
-                            style={styles.chatBtn}
+                            style={{ alignItems: 'center', flex: 1 }}
                             onPress={() => {
                               setChatBookingId(booking._id);
                               setChatBookingName(booking.itemName || 'Ride Chat');
                               setIsChatOpen(true);
                             }}
                           >
-                            <Text style={styles.chatBtnText}>Chat with Client</Text>
+                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#EBF4FF', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
+                              <Ionicons name="chatbubble-ellipses" size={20} color="#3182CE" />
+                            </View>
+                            <Text style={{ fontSize: 11, color: '#4A5568', fontWeight: '600' }}>Chat</Text>
                           </TouchableOpacity>
 
                           {/* Navigate */}
                           <TouchableOpacity
-                            style={styles.navigateBtn}
+                            style={{ alignItems: 'center', flex: 1 }}
                             onPress={() => {
                               const dest = isTripActive ? dropoff : pickup;
                               const url = `https://maps.google.com/?q=${encodeURIComponent(dest)}`;
                               Linking.openURL(url);
                             }}
                           >
-                            <Text style={styles.navigateBtnText}>{isTripActive ? 'Navigate to Drop-off' : 'Navigate to Pickup'}</Text>
+                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#EBF8FF', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
+                              <Ionicons name="navigate" size={20} color="#00B5D8" />
+                            </View>
+                            <Text style={{ fontSize: 11, color: '#4A5568', fontWeight: '600' }}>Navigate</Text>
                           </TouchableOpacity>
 
                           {/* Start Trip */}
                           {isTripPendingStart && (
                             <TouchableOpacity
-                              style={styles.startTripBtn}
+                              style={{ alignItems: 'center', flex: 1 }}
                               onPress={() => handleStartTrip(booking._id)}
                               disabled={isUpdatingTripId === booking._id}
                             >
-                              {isUpdatingTripId === booking._id
-                                ? <ActivityIndicator size="small" color="#FFF" />
-                                : <Text style={styles.startTripBtnText}>Start Trip</Text>
-                              }
+                              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F0FFF4', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
+                                {isUpdatingTripId === booking._id
+                                  ? <ActivityIndicator size="small" color="#38A169" />
+                                  : <Ionicons name="play" size={20} color="#38A169" />
+                                }
+                              </View>
+                              <Text style={{ fontSize: 11, color: '#4A5568', fontWeight: '600' }}>Start</Text>
                             </TouchableOpacity>
                           )}
 
                           {/* End Trip */}
                           {isTripActive && (
                             <TouchableOpacity
-                              style={styles.endTripBtn}
+                              style={{ alignItems: 'center', flex: 1 }}
                               onPress={() => handleEndTrip(booking._id)}
                               disabled={isUpdatingTripId === booking._id}
                             >
-                              {isUpdatingTripId === booking._id
-                                ? <ActivityIndicator size="small" color="#FFF" />
-                                : <Text style={styles.endTripBtnText}>End Trip</Text>
-                              }
+                              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF5F5', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
+                                {isUpdatingTripId === booking._id
+                                  ? <ActivityIndicator size="small" color="#E53E3E" />
+                                  : <Ionicons name="stop" size={20} color="#E53E3E" />
+                                }
+                              </View>
+                              <Text style={{ fontSize: 11, color: '#4A5568', fontWeight: '600' }}>End</Text>
                             </TouchableOpacity>
                           )}
+
+                          {/* Cancel */}
+                          <TouchableOpacity
+                            style={{ alignItems: 'center', flex: 1 }}
+                            onPress={() => handleCancelTrip(booking._id)}
+                            disabled={isUpdatingTripId === booking._id}
+                          >
+                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
+                               {isUpdatingTripId === booking._id
+                                  ? <ActivityIndicator size="small" color="#4A5568" />
+                                  : <Ionicons name="close" size={20} color="#4A5568" />
+                                }
+                            </View>
+                            <Text style={{ fontSize: 11, color: '#4A5568', fontWeight: '600' }}>Cancel</Text>
+                          </TouchableOpacity>
+
                         </View>
                       )}
                     </View>

@@ -166,14 +166,16 @@ export default function HotelDetailsScreen() {
         price: hotel.pricePerNight || (hotel.rooms && hotel.rooms.length > 0 ? (hotel.rooms[0].pricePerNight || hotel.rooms[0].netPrice) : 0),
         capacity: hotel.rooms && hotel.rooms.length > 0 && hotel.rooms[0].description ? hotel.rooms[0].description : "Entire Property",
         available: 1,
-        amenities: []
+        amenities: [],
+        isRefundable: hotel.isRefundable !== false
     }] : (Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
         id: r._id,
         name: r.name,
         price: r.pricePerNight || r.netPrice || 0,
         capacity: r.description || "2 Adults",
         available: getAvailableRoomsCount(r),
-        amenities: typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()) : (r.amenities || ["Free WiFi"])
+        amenities: typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()) : (r.amenities || ["Free WiFi"]),
+        isRefundable: r.isRefundable !== false && hotel?.isRefundable !== false
     })) : []);
 
     // 🟢 NEW: Calculate selected room details for the Escrow Policy
@@ -214,6 +216,9 @@ export default function HotelDetailsScreen() {
             return;
         }
         if (!localStartDate || !localEndDate) {
+            if (localStartDate && !localEndDate) {
+                Toast.show({ type: 'error', text1: 'Checkout Date Required', text2: 'Please select a checkout date.' });
+            }
             setShowCalendarModal(true);
             return;
         }
@@ -345,13 +350,21 @@ export default function HotelDetailsScreen() {
 
                 {/* 🟢 NEW: AIRGO ESCROW POLICY BANNER */}
                 {selectedRoomDetails && (
-                    <View style={styles.protectionBanner}>
+                    <View style={selectedRoomDetails.isRefundable ? styles.protectionBanner : [styles.protectionBanner, { backgroundColor: '#FFF5F5', borderColor: '#FC8181' }]}>
                         <View style={styles.protectionHeader}>
-                            <Ionicons name="shield-checkmark" size={16} color="#975A16" />
-                            <Text style={styles.protectionTitle}>Airgo Escrow Protection</Text>
+                            <Ionicons name={selectedRoomDetails.isRefundable ? "shield-checkmark" : "warning"} size={16} color={selectedRoomDetails.isRefundable ? "#975A16" : "#C53030"} />
+                            <Text style={[styles.protectionTitle, { color: selectedRoomDetails.isRefundable ? "#975A16" : "#C53030" }]}>
+                                {selectedRoomDetails.isRefundable ? "Airgo Escrow Protection" : "Non-Refundable Booking"}
+                            </Text>
                         </View>
                         <Text style={styles.protectionText}>
-                            You are paying <Text style={{ fontWeight: 'bold' }}>Airgo.ng</Text>. Valid cancellations are eligible for a <Text style={{ fontWeight: 'bold', color: '#276749' }}>70% refund (₦{refundAmount.toLocaleString()})</Text>.
+                            You are paying <Text style={{ fontWeight: 'bold' }}>Airgo.ng</Text>. 
+                            {selectedRoomDetails.isRefundable 
+                              ? ` Valid cancellations are eligible for a `
+                              : ` This property does `}
+                            {selectedRoomDetails.isRefundable && <Text style={{ fontWeight: 'bold', color: '#276749' }}>70% refund (₦{refundAmount.toLocaleString()})</Text>}
+                            {!selectedRoomDetails.isRefundable && <Text style={{ fontWeight: 'bold', color: '#C53030' }}>NOT offer refunds</Text>}
+                            {selectedRoomDetails.isRefundable ? "." : " for cancellations."}
                         </Text>
                     </View>
                 )}
@@ -382,7 +395,13 @@ export default function HotelDetailsScreen() {
                             onDayPress={onDayPress}
                             theme={{ todayTextColor: '#000080', arrowColor: '#000080', selectedDayBackgroundColor: '#000080' }}
                         />
-                        <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowCalendarModal(false)}>
+                        <TouchableOpacity style={styles.modalApplyButton} onPress={() => {
+                            if (localStartDate && !localEndDate) {
+                                Toast.show({ type: 'error', text1: 'Checkout Date Required', text2: 'Please select a checkout date.' });
+                                return;
+                            }
+                            setShowCalendarModal(false);
+                        }}>
                             <Text style={styles.modalApplyText}>Confirm Dates</Text>
                         </TouchableOpacity>
                     </View>

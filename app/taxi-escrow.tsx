@@ -78,7 +78,6 @@ function TaxiEscrowContent() {
       email: userEmail || AIRGO_PLATFORM_EMAIL,
       amount: amountNaira,
       reference: uniqueRef,
-      channels: ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer'],
       metadata: {
         custom_fields: [
           { display_name: 'Booking ID',  variable_name: 'bookingId', value: booking._id },
@@ -95,7 +94,7 @@ function TaxiEscrowContent() {
             await fetch(`${API_URL}/bookings/${booking._id}/status`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ status: 'Paid - Escrow Secured', paymentReference: res?.transactionRef?.reference || res?.reference || uniqueRef })
+                body: JSON.stringify({ status: 'Paid - Escrow Secured', paymentReference: res?.transactionRef || (res as any)?.reference || uniqueRef })
             });
           } catch(e) { console.warn(e); }
           startPolling(booking._id); 

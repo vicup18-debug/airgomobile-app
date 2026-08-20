@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { io, Socket } from 'socket.io-client';
+import { Audio } from 'expo-av';
 import { API_URL } from '../../constants/config';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -124,6 +125,20 @@ export default function DriverChatModal({
       socket.on('disconnect', () => setIsConnected(false));
 
       socket.on('receive_chat_message', (msg: Message) => {
+        if (msg.senderId !== currentUserId) {
+          try {
+            Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
+              .then(({ sound }) => {
+                sound.setOnPlaybackStatusUpdate((status) => {
+                  if (status.isLoaded && status.didJustFinish) {
+                    sound.unloadAsync();
+                  }
+                });
+                sound.playAsync();
+              })
+              .catch(() => {});
+          } catch (e) {}
+        }
         setMessages(prev => {
           const exists = prev.some(
             m => m._id === msg._id ||

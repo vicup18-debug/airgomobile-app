@@ -2,7 +2,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, RefreshControl, Modal
 } from 'react-native';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +10,7 @@ import Toast from 'react-native-toast-message';
 import { useIsFocused } from '@react-navigation/native';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../../constants/config';
+import { Audio } from 'expo-av';
 import DriverChatModal from '../../components/ui/DriverChatModal';
 
 // ── STATUS HELPERS ─────────────────────────────────────────────────────────
@@ -72,6 +73,16 @@ export default function BookingsScreen() {
   const [chatBookingName, setChatBookingName] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
+
+  const isChatOpenRef = useRef(false);
+  const chatBookingIdRef = useRef('');
+  const currentUserIdRef = useRef('');
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+    chatBookingIdRef.current = chatBookingId;
+    currentUserIdRef.current = currentUserId;
+  }, [isChatOpen, chatBookingId, currentUserId]);
   
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -87,7 +98,10 @@ export default function BookingsScreen() {
       const userId = await AsyncStorage.getItem('userId');
       const userName = await AsyncStorage.getItem('userName');
       
-      if (userId) setCurrentUserId(userId);
+      if (userId) {
+        setCurrentUserId(userId);
+        currentUserIdRef.current = userId;
+      }
       if (userName) setCurrentUserName(userName);
       
       if (!userId || !token) { setLoading(false); return; }
@@ -120,11 +134,59 @@ export default function BookingsScreen() {
              Toast.show({ type: 'info', text1: 'Counter Offer', text2: 'The driver countered your bid.' });
           }
        });
+       socketInstance.on('booking_cancelled', (data: any) => {
+          console.log('Booking cancelled via socket on bookings tab:', data);
+          setBookings(prev => prev.filter(b => b._id !== data.bookingId));
+          Toast.show({ type: 'error', text1: 'Ride Cancelled', text2: 'A booking was cancelled by the driver.' });
+          fetchBookings();
+       });
        socketInstance.on('new_driver_bid', (data: any) => {
           setBookings(prev => prev.map(b => b._id === data.bookingId ? { ...b, driverOffers: data.driverOffers } : b));
           Toast.show({ type: 'info', text1: 'New Bid Received', text2: 'A driver has placed a new bid on your ride request.' });
        });
+       socketInstance.on('incoming_chat_notification', async (data: any) => {
+          console.log('Incoming chat notification on bookings tab:', data);
+          if (data.senderId === currentUserIdRef.current || data.senderRole === 'client') return;
+
+          // Play sound
+          try {
+            await Audio.setAudioModeAsync({
+              playsInSilentModeIOS: true,
+              staysActiveInBackground: true,
+              shouldDuckAndroid: true,
+            });
+            const { sound } = await Audio.Sound.createAsync(
+              require('../../assets/sounds/notification.wav')
+            );
+            sound.setOnPlaybackStatusUpdate((status) => {
+              if (status.isLoaded && status.didJustFinish) {
+                sound.unloadAsync();
+              }
+            });
+            await sound.playAsync();
+          } catch (e) {
+            console.log('Chat sound error:', e);
+          }
+
+          // Show Toast notification popup
+          if (!isChatOpenRef.current || chatBookingIdRef.current !== data.bookingId) {
+            Toast.show({
+              type: 'info',
+              text1: `💬 Message from ${data.senderName || 'Driver'}`,
+              text2: data.text,
+              visibilityTime: 7000,
+              onPress: () => {
+                setChatBookingId(data.bookingId);
+                setChatBookingName(data.bookingName || 'Ride Chat');
+                setIsChatOpen(true);
+              }
+            });
+          }
+       });
        socketInstance.on('connect', () => {
+          if (currentUserIdRef.current) {
+             socketInstance.emit('join_user', { userId: currentUserIdRef.current });
+          }
           setBookings(currentBookings => {
              currentBookings.forEach(b => socketInstance.emit('join_booking', { bookingId: b._id }));
              return currentBookings;
@@ -132,6 +194,9 @@ export default function BookingsScreen() {
        });
 
        return () => {
+         socketInstance.off('booking_updated');
+         socketInstance.off('new_driver_bid');
+         socketInstance.off('incoming_chat_notification');
          socketInstance.disconnect();
        };
     }
@@ -139,11 +204,14 @@ export default function BookingsScreen() {
 
   useEffect(() => {
     if (socket && bookings.length > 0) {
+      if (currentUserId) {
+        socket.emit('join_user', { userId: currentUserId });
+      }
       bookings.forEach(b => {
         socket.emit('join_booking', { bookingId: b._id });
       });
     }
-  }, [socket, bookings]);
+  }, [socket, bookings, currentUserId]);
 
   // ── Stats ────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -313,6 +381,8 @@ export default function BookingsScreen() {
             const statusColor = getStatusColor(booking.status);
             const statusBg    = getStatusBg(booking.status);
             const canCancel   = (booking.status || '').toLowerCase().includes('pending') && cancelling !== booking._id;
+            const activeChatStatuses = ['pending escrow', 'accepted', 'paid', 'paid - escrow secured', 'trip started', 'trip start pending', 'trip end pending', 'confirmed'];
+            const isChatActive = activeChatStatuses.includes((booking.status || '').toLowerCase());
 
             return (
               <View key={booking._id} style={styles.card}>
@@ -325,7 +395,22 @@ export default function BookingsScreen() {
                       {booking.status || 'Confirmed'}
                     </Text>
                   </View>
-                  <Text style={styles.refText}>#{(booking._id || '').slice(-6).toUpperCase()}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    {isChatActive && (
+                      <TouchableOpacity
+                        style={styles.chatIconBtn}
+                        onPress={() => {
+                          setChatBookingId(booking._id);
+                          setChatBookingName(booking.itemName || 'Chat with Driver');
+                          setIsChatOpen(true);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="chatbubble-ellipses" size={16} color="#000080" />
+                      </TouchableOpacity>
+                    )}
+                    <Text style={styles.refText}>#{(booking._id || '').slice(-6).toUpperCase()}</Text>
+                  </View>
                 </View>
 
                 {/* Item name */}
@@ -398,32 +483,17 @@ export default function BookingsScreen() {
                   </TouchableOpacity>
                 )}
 
-                {/* Action Buttons Row */}
-                <View style={{ flexDirection: 'column', gap: 10, marginTop: 14 }}>
-                  {/* Chat Button (Only if active trip or escrow secured/pending) */}
-                  {!(booking.status || '').toLowerCase().includes('cancelled') && (
-                    <TouchableOpacity 
-                      style={{ backgroundColor: '#004A99', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
-                      onPress={() => {
-                        setChatBookingId(booking._id);
-                        setChatBookingName(booking.itemName || 'Chat with Driver');
-                        setIsChatOpen(true);
-                      }}
-                    >
-                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700' }}>Chat with Driver</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Cancel button */}
-                  {canCancel && (
+                {/* Cancel button */}
+                {canCancel && (
+                  <View style={{ marginTop: 14 }}>
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(booking)}>
                       {cancelling === booking._id
                         ? <ActivityIndicator size="small" color="#E53E3E" />
                         : <Text style={styles.cancelBtnText}>Cancel Booking</Text>
                       }
                     </TouchableOpacity>
-                  )}
-                </View>
+                  </View>
+                )}
               </View>
             );
           })
@@ -525,6 +595,16 @@ const styles = StyleSheet.create({
   statusDot:   { width: 6, height: 6, borderRadius: 3 },
   statusText:  { fontSize: 12, fontWeight: '700' },
   refText:     { fontSize: 11, color: '#A0AEC0', fontWeight: '600' },
+  chatIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EEF2F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
 
   itemName: { fontSize: 16, fontWeight: '800', color: '#1A202C', marginBottom: 8, lineHeight: 22 },
 

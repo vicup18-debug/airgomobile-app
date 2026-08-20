@@ -117,7 +117,6 @@ function CheckoutContent() {
                 email: userEmail || 'guest@airgo.ng',
                 amount: Math.round(totalDue), // Paystack expects Naira in react-native-paystack-webview
                 reference: uniqueRef,
-                channels: ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer'],
                 metadata: {
                     custom_fields: [
                         { display_name: 'Booking ID', variable_name: 'bookingId', value: bookingId },
@@ -128,7 +127,7 @@ function CheckoutContent() {
                     Toast.show({ type: 'info', text1: 'Payment Cancelled', text2: 'You cancelled the payment process.' });
                     setIsProcessing(false);
                 },
-                onSuccess: async (res) => {
+                onSuccess: async (res: any) => {
                     // Update Booking to Paid
                     try {
                         const token = await AsyncStorage.getItem('authToken');
@@ -140,7 +139,7 @@ function CheckoutContent() {
                             },
                             body: JSON.stringify({
                                 status: 'Paid',
-                                paymentReference: res?.transactionRef?.reference || res?.reference || uniqueRef
+                                paymentReference: res?.transactionRef || res?.reference || uniqueRef
                             })
                         });
 
