@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import Toast from 'react-native-toast-message';
 import { API_URL } from '../constants/config';
+import DriverChatModal from '../components/ui/DriverChatModal';
 
 const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_61cbd3f05babdb54ab6c8f95ce8144fc8f786eeb';
 const AIRGO_PLATFORM_EMAIL = 'escrow@airgo.ng';
@@ -54,6 +55,9 @@ function TaxiEscrowContent() {
   const [errorMessage, setErrorMessage] = useState('');
   const [pollCount, setPollCount]       = useState(0);
   const [userEmail, setUserEmail]       = useState('');
+  const [userId, setUserId]             = useState('');
+  const [userName, setUserName]         = useState('');
+  const [isChatOpen, setIsChatOpen]     = useState(false);
 
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -105,17 +109,19 @@ function TaxiEscrowContent() {
 
   const initBooking = async () => {
     try {
-      const userId    = await AsyncStorage.getItem('userId');
-      const userName  = await AsyncStorage.getItem('userName');
-      const email     = await AsyncStorage.getItem('userEmail');
-      const userPhone = await AsyncStorage.getItem('userPhone');
+      const storedUserId   = await AsyncStorage.getItem('userId');
+      const storedUserName = await AsyncStorage.getItem('userName');
+      const email          = await AsyncStorage.getItem('userEmail');
+      const userPhone      = await AsyncStorage.getItem('userPhone');
 
-      if (!userId || !email) {
+      if (!storedUserId || !email) {
         setErrorMessage('You must be logged in to request a ride.');
         setPhase('error');
         return;
       }
 
+      setUserId(storedUserId);
+      setUserName(storedUserName || 'Airgo Client');
       setUserEmail(email);
 
       if (params.bookingId) {
@@ -291,17 +297,40 @@ function TaxiEscrowContent() {
         <Ionicons name="shield-checkmark" size={64} color="#38A169" />
         <Text style={styles.successTitle}>Escrow Secured!</Text>
         <Text style={styles.successSub}>
-          Your payment is safely held in Airgo Escrow. Nearby verified drivers are
-          being notified and will bid for your ride. You will receive a push
-          notification when a driver accepts.
+          Your payment is safely held in Airgo Escrow. Your driver has been notified and will proceed with the dispatch.
         </Text>
-        <TouchableOpacity
-          style={styles.successBtn}
-          onPress={() => router.replace('/(tabs)/bookings' as any)}
-        >
-          <Ionicons name="list" size={18} color="#000080" style={{ marginRight: 8 }} />
-          <Text style={styles.successBtnText}>View My Trips</Text>
-        </TouchableOpacity>
+
+        <View style={{ width: '100%', gap: 12, marginTop: 10, alignItems: 'center' }}>
+          {booking?._id && (
+            <TouchableOpacity
+              style={[styles.successBtn, { width: '100%', justifyContent: 'center', backgroundColor: '#000080' }]}
+              onPress={() => setIsChatOpen(true)}
+            >
+              <Ionicons name="chatbubble-ellipses" size={18} color="#FFB81C" style={{ marginRight: 8 }} />
+              <Text style={[styles.successBtnText, { color: '#FFF' }]}>Chat with Driver</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.successBtn, { width: '100%', justifyContent: 'center', backgroundColor: '#FFB81C' }]}
+            onPress={() => router.replace('/(tabs)/bookings' as any)}
+          >
+            <Ionicons name="list" size={18} color="#000080" style={{ marginRight: 8 }} />
+            <Text style={styles.successBtnText}>View My Trips</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── DRIVER CHAT MODAL ── */}
+        {booking?._id && (
+          <DriverChatModal
+            visible={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
+            bookingId={booking._id}
+            bookingName={booking.itemName || 'Taxi Ride'}
+            currentUserId={userId}
+            currentUserName={userName}
+          />
+        )}
       </SafeAreaView>
     );
   }

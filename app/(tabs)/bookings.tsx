@@ -381,21 +381,21 @@ export default function BookingsScreen() {
             const statusColor = getStatusColor(booking.status);
             const statusBg    = getStatusBg(booking.status);
             const canCancel   = (booking.status || '').toLowerCase().includes('pending') && cancelling !== booking._id;
-            const activeChatStatuses = ['pending escrow', 'accepted', 'paid', 'paid - escrow secured', 'trip started', 'trip start pending', 'trip end pending', 'confirmed'];
-            const isChatActive = activeChatStatuses.includes((booking.status || '').toLowerCase());
+            const inactiveStatuses = ['completed', 'completed & disbursed', 'archived', 'cancelled', 'paid out', 'refunded'];
+            const isChatActive = !inactiveStatuses.includes((booking.status || '').toLowerCase().trim());
 
             return (
               <View key={booking._id} style={styles.card}>
 
                 {/* Card top row */}
                 <View style={styles.cardTop}>
-                  <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: statusBg, flexShrink: 1, marginRight: 8 }]}>
                     <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                    <Text style={[styles.statusText, { color: statusColor }]}>
+                    <Text style={[styles.statusText, { color: statusColor }]} numberOfLines={1}>
                       {booking.status || 'Confirmed'}
                     </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                     {isChatActive && (
                       <TouchableOpacity
                         style={styles.chatIconBtn}
@@ -404,7 +404,7 @@ export default function BookingsScreen() {
                           setChatBookingName(booking.itemName || 'Chat with Driver');
                           setIsChatOpen(true);
                         }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
                         <Ionicons name="chatbubble-ellipses" size={16} color="#000080" />
                       </TouchableOpacity>
@@ -483,9 +483,24 @@ export default function BookingsScreen() {
                   </TouchableOpacity>
                 )}
 
+                {/* Chat with Driver Button */}
+                {isChatActive && booking.itemType === 'car' && (
+                  <TouchableOpacity 
+                    style={styles.chatActionBtn}
+                    onPress={() => {
+                      setChatBookingId(booking._id);
+                      setChatBookingName(booking.itemName || 'Chat with Driver');
+                      setIsChatOpen(true);
+                    }}
+                  >
+                    <Ionicons name="chatbubble-ellipses" size={16} color="#000080" style={{ marginRight: 6 }} />
+                    <Text style={styles.chatActionBtnText}>Chat with Driver</Text>
+                  </TouchableOpacity>
+                )}
+
                 {/* Cancel button */}
                 {canCancel && (
-                  <View style={{ marginTop: 14 }}>
+                  <View style={{ marginTop: 10 }}>
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(booking)}>
                       {cancelling === booking._id
                         ? <ActivityIndicator size="small" color="#E53E3E" />
@@ -620,8 +635,25 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 11, color: '#A0AEC0', textTransform: 'uppercase', fontWeight: '600', marginBottom: 4, letterSpacing: 0.4 },
   detailValue: { fontSize: 15, fontWeight: '700', color: '#1A202C' },
 
+  chatActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF2F6',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  chatActionBtnText: {
+    color: '#000080',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
   cancelBtn: {
-    marginTop: 14, borderWidth: 1.5, borderColor: '#FEB2B2', borderRadius: 12,
+    borderWidth: 1.5, borderColor: '#FEB2B2', borderRadius: 12,
     paddingVertical: 12, alignItems: 'center',
   },
   cancelBtnText: { color: '#E53E3E', fontSize: 14, fontWeight: '700' },
