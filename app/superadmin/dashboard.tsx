@@ -116,6 +116,8 @@ export default function SuperAdminDashboard() {
     // 🟢 NEW: LIVE QUEUES FOR QA & DISBURSEMENTS
     const [pendingPartners, setPendingPartners] = useState<any[]>([]);
     const [bookings, setBookings] = useState<any[]>([]);
+    const [bookingsPage, setBookingsPage] = useState(1);
+    const bookingsPerPage = 10;
     const [cars, setCars] = useState<any[]>([]);
     const [rooms, setRooms] = useState<any[]>([]);
     const [affiliates, setAffiliates] = useState<any[]>([]);
@@ -478,24 +480,49 @@ export default function SuperAdminDashboard() {
                 {/* ========================================= */}
                 {activeTab === 'bookings' && (
                     <View>
-                        <Text style={styles.sectionTitle}>Bookings Manager</Text>
-                        {bookings.length > 0 ? bookings.map((b: any, i) => (
-                            <View key={i} style={styles.reviewCard}>
-                                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
-                                    <Text style={[styles.hotelName, {marginBottom: 0}]}>{b.bookingId || `#BK-${b._id?.substring(0,6)}`}</Text>
-                                    <View style={{backgroundColor: b.status === 'Paid' || b.status === 'Paid - Escrow Secured' ? '#D1FAE5' : b.status === 'Cancelled' ? '#FEE2E2' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12}}>
-                                        <Text style={{color: b.status === 'Paid' || b.status === 'Paid - Escrow Secured' ? '#065F46' : b.status === 'Cancelled' ? '#991B1B' : '#92400E', fontSize: 10, fontWeight: 'bold'}}>{b.status}</Text>
+                        <Text style={styles.sectionTitle}>Bookings Manager ({bookings.length} Total)</Text>
+                        {bookings.length > 0 ? (
+                            <>
+                                {bookings.slice((bookingsPage - 1) * bookingsPerPage, bookingsPage * bookingsPerPage).map((b: any, i) => (
+                                    <View key={i} style={styles.reviewCard}>
+                                        <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+                                            <Text style={[styles.hotelName, {marginBottom: 0}]}>{b.bookingId || `#BK-${b._id?.substring(0,6)}`}</Text>
+                                            <View style={{backgroundColor: b.status === 'Paid' || b.status === 'Paid - Escrow Secured' ? '#D1FAE5' : b.status === 'Cancelled' ? '#FEE2E2' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12}}>
+                                                <Text style={{color: b.status === 'Paid' || b.status === 'Paid - Escrow Secured' ? '#065F46' : b.status === 'Cancelled' ? '#991B1B' : '#92400E', fontSize: 10, fontWeight: 'bold'}}>{b.status}</Text>
+                                            </View>
+                                        </View>
+                                        <Text style={{fontWeight: 'bold', color: '#111827', fontSize: 14, marginBottom: 4}}>{b.hotelName || b.carModel || 'N/A'} <Text style={{fontWeight: 'normal', color: '#6B7280', fontSize: 12}}>({b.itemType === 'car' ? 'Car' : 'Hotel/Apt'})</Text></Text>
+                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>👤 {b.clientName || 'N/A'} • 📞 {b.clientPhone || 'N/A'}</Text>
+                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>✉️ {b.clientEmail || 'N/A'}</Text>
+                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 6}}>📅 {b.startDate || 'N/A'} to {b.endDate || 'N/A'}</Text>
+                                        <Text style={{fontWeight: '900', color: '#000080', fontSize: 15, textAlign: 'right', marginTop: 4}}>
+                                            {typeof b.totalPrice === 'string' && b.totalPrice.includes('₦') ? b.totalPrice : `₦${b.totalPrice}`}
+                                        </Text>
                                     </View>
-                                </View>
-                                <Text style={{fontWeight: 'bold', color: '#111827', fontSize: 14, marginBottom: 4}}>{b.hotelName || b.carModel || 'N/A'} <Text style={{fontWeight: 'normal', color: '#6B7280', fontSize: 12}}>({b.itemType === 'car' ? 'Car' : 'Hotel/Apt'})</Text></Text>
-                                <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>👤 {b.clientName || 'N/A'} • 📞 {b.clientPhone || 'N/A'}</Text>
-                                <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>✉️ {b.clientEmail || 'N/A'}</Text>
-                                <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 6}}>📅 {b.startDate || 'N/A'} to {b.endDate || 'N/A'}</Text>
-                                <Text style={{fontWeight: '900', color: '#000080', fontSize: 15, textAlign: 'right', marginTop: 4}}>
-                                    {typeof b.totalPrice === 'string' && b.totalPrice.includes('₦') ? b.totalPrice : `₦${b.totalPrice}`}
-                                </Text>
-                            </View>
-                        )) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No bookings found.</Text>}
+                                ))}
+                                {bookings.length > bookingsPerPage && (
+                                    <View style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 16, marginBottom: 20}}>
+                                        <TouchableOpacity
+                                            onPress={() => setBookingsPage(p => Math.max(1, p - 1))}
+                                            disabled={bookingsPage === 1}
+                                            style={{paddingHorizontal: 12, paddingVertical: 6, backgroundColor: bookingsPage === 1 ? '#E2E8F0' : '#000080', borderRadius: 8}}
+                                        >
+                                            <Text style={{color: bookingsPage === 1 ? '#94A3B8' : '#FFF', fontWeight: 'bold', fontSize: 12}}>Prev</Text>
+                                        </TouchableOpacity>
+                                        <Text style={{fontSize: 12, fontWeight: 'bold', color: '#4A5568'}}>
+                                            Page {bookingsPage} of {Math.ceil(bookings.length / bookingsPerPage)}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => setBookingsPage(p => Math.min(Math.ceil(bookings.length / bookingsPerPage), p + 1))}
+                                            disabled={bookingsPage >= Math.ceil(bookings.length / bookingsPerPage)}
+                                            style={{paddingHorizontal: 12, paddingVertical: 6, backgroundColor: bookingsPage >= Math.ceil(bookings.length / bookingsPerPage) ? '#E2E8F0' : '#000080', borderRadius: 8}}
+                                        >
+                                            <Text style={{color: bookingsPage >= Math.ceil(bookings.length / bookingsPerPage) ? '#94A3B8' : '#FFF', fontWeight: 'bold', fontSize: 12}}>Next</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </>
+                        ) : <Text style={{textAlign: 'center', marginTop: 20, color: '#718096'}}>No bookings found.</Text>}
                     </View>
                 )}
 

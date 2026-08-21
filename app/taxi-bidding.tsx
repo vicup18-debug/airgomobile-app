@@ -212,12 +212,23 @@ export default function TaxiBiddingScreen() {
   }
 
   if (phase === 'error') {
+    const isBlockedByActiveTrip = errorMessage.toLowerCase().includes('active trip') || 
+                                   errorMessage.toLowerCase().includes('active ride request') ||
+                                   errorMessage.toLowerCase().includes('price negotiation');
     return (
       <SafeAreaView style={styles.centered}>
         <Ionicons name="close-circle" size={56} color="#E53E3E" />
         <Text style={styles.errorTitle}>Request Failed</Text>
         <Text style={styles.errorMsg}>{errorMessage}</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        {isBlockedByActiveTrip && (
+          <TouchableOpacity 
+            style={[styles.backBtn, { backgroundColor: '#E53E3E', marginBottom: 12 }]} 
+            onPress={() => router.push('/(tabs)/bookings')}
+          >
+            <Text style={styles.backBtnText}>View My Bookings</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: '#4A5568' }]} onPress={() => router.back()}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>

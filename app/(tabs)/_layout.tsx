@@ -68,13 +68,15 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
         }}
       />
-      {/* Hidden from tab bar — kept for router compatibility */}
+      {/* Taxi Tab */}
       <Tabs.Screen
         name="explore"
         options={{
-          href: null,
+          title: 'Taxi',
+          tabBarIcon: ({ color }) => <Ionicons name="car" size={24} color={color} />,
         }}
       />
+
     </Tabs>
   );
 }
