@@ -216,15 +216,43 @@ export default function BookingsScreen() {
   // ── Stats ────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     let active = 0, totalSpent = 0;
+    const paidStatuses = [
+      'paid',
+      'paid - escrow secured',
+      'escrow active',
+      'approved for disbursement',
+      'paid out',
+      'completed',
+      'completed & disbursed',
+      'trip started',
+      'trip start pending',
+      'trip end pending',
+      'confirmed'
+    ];
+    const activeStatuses = [
+      'paid - escrow secured',
+      'paid',
+      'escrow active',
+      'trip started',
+      'trip start pending',
+      'trip end pending',
+      'accepted',
+      'approved for disbursement'
+    ];
+
     bookings.forEach(b => {
-      const s = (b.status || '').toLowerCase();
-      if (s.includes('pending') || s.includes('escrow') || s.includes('paid') || s.includes('started')) active++;
-      const price = typeof b.totalPrice === 'string'
-        ? parseInt(b.totalPrice.replace(/\D/g, ''), 10)
-        : Number(b.totalPrice || 0);
-      if (!isNaN(price)) totalSpent += price;
+      const s = (b.status || '').toLowerCase().trim();
+      if (activeStatuses.includes(s)) active++;
+      if (paidStatuses.includes(s)) {
+        const price = typeof b.totalPrice === 'string'
+          ? parseInt(b.totalPrice.replace(/\D/g, ''), 10)
+          : Number(b.totalPrice || 0);
+        if (!isNaN(price) && price > 0) totalSpent += price;
+      }
     });
-    return { total: bookings.length, active, totalSpent };
+
+    const validBookings = bookings.filter(b => (b.status || '').toLowerCase() !== 'archived');
+    return { total: validBookings.length, active, totalSpent };
   }, [bookings]);
 
   const filtered = useMemo(

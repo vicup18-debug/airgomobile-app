@@ -248,10 +248,13 @@ function TaxiEscrowContent() {
   const handleCancel = async () => {
     if (booking?._id) {
       try {
+        const token = await AsyncStorage.getItem('authToken');
         await fetch(`${API_URL}/bookings/${booking._id}`, {
-          method:  'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ status: 'Cancelled' }),
+          method:  'DELETE',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
         });
       } catch (e) { console.warn('Failed to cancel booking:', e); }
     }

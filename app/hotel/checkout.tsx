@@ -134,8 +134,17 @@ function CheckoutContent() {
                         { display_name: 'Service', variable_name: 'service', value: 'Hotel Booking' }
                     ],
                 },
-                onCancel: () => {
+                onCancel: async () => {
                     Toast.show({ type: 'info', text1: 'Payment Cancelled', text2: 'You cancelled the payment process.' });
+                    if (bookingId) {
+                        try {
+                            const token = await AsyncStorage.getItem('authToken');
+                            await fetch(`${API_URL}/bookings/${bookingId}`, {
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                        } catch (e) { console.warn('Cancel booking cleanup error:', e); }
+                    }
                     setIsProcessing(false);
                 },
                 onSuccess: async (res: any) => {
