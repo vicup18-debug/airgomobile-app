@@ -16,7 +16,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Modal,
+  Modal, StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -239,11 +239,16 @@ export default function DriverChatModal({
   };
 
   // ── Modal UI ──────────────────────────────────────────────────────────────
+  const androidHeaderPadding = (StatusBar.currentHeight || 44) + 16;
+  const topHeaderPadding = Platform.OS === 'android'
+    ? Math.max(androidHeaderPadding, 60)
+    : Math.max(insets.top + 8, 16);
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
       onRequestClose={onClose}
       statusBarTranslucent
     >
@@ -251,7 +256,7 @@ export default function DriverChatModal({
         {/* Header */}
         <View style={[
           styles.header,
-          { paddingTop: Math.max(insets.top + (Platform.OS === 'android' ? 12 : 4), Platform.OS === 'android' ? 36 : 14) }
+          { paddingTop: topHeaderPadding }
         ]}>
           <View style={styles.headerAvatar}>
             <Text style={styles.headerAvatarText}>💬</Text>
