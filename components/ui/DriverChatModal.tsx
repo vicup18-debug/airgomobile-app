@@ -142,10 +142,12 @@ export default function DriverChatModal({
           } catch (e) {}
         }
         setMessages(prev => {
-          const exists = prev.some(
-            m => m._id === msg._id ||
-              (m.createdAt === msg.createdAt && m.senderId === msg.senderId && m.text === msg.text)
-          );
+          const msgIdStr = msg._id ? String(msg._id) : '';
+          const exists = prev.some(m => {
+            if (m._id && msgIdStr && String(m._id) === msgIdStr) return true;
+            if (m.senderId === msg.senderId && m.text.trim() === msg.text.trim()) return true;
+            return false;
+          });
           if (exists) return prev;
           return [...prev, msg];
         });
@@ -192,13 +194,17 @@ export default function DriverChatModal({
       if (res.ok) {
         const savedMsg: Message = await res.json();
 
-        // Broadcast via socket for real-time delivery
-        if (socketRef.current && isConnected) {
-          socketRef.current.emit('new_chat_message', savedMsg);
-        }
-
-        // Optimistically add to local state
-        setMessages(prev => [...prev, savedMsg]);
+        // Optimistically add to local state with robust deduplication check
+        setMessages(prev => {
+          const savedIdStr = savedMsg._id ? String(savedMsg._id) : '';
+          const exists = prev.some(m => {
+            if (m._id && savedIdStr && String(m._id) === savedIdStr) return true;
+            if (m.senderId === savedMsg.senderId && m.text.trim() === savedMsg.text.trim()) return true;
+            return false;
+          });
+          if (exists) return prev;
+          return [...prev, savedMsg];
+        });
         setInputText('');
       } else {
         const err = await res.json().catch(() => ({}));
