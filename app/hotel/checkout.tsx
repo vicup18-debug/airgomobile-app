@@ -11,7 +11,7 @@ const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_KEY || 'pk_live_61c
 
 function CheckoutContent() {
     // 🟢 ALL HOOKS MUST BE AT THE TOP
-    const { id, nights = "2", startDate, endDate, guests: paramGuests } = useLocalSearchParams();
+    const { id, roomId, nights = "2", startDate, endDate, guests: paramGuests } = useLocalSearchParams();
     const router = useRouter();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -19,9 +19,13 @@ function CheckoutContent() {
     
     const { popup } = usePaystack();
 
+    const selectedRoom = (hotel?.rooms && Array.isArray(hotel.rooms) && roomId && roomId !== 'apartment-base-room')
+        ? hotel.rooms.find((r: any) => r._id === roomId)
+        : (hotel?.rooms && Array.isArray(hotel.rooms) && hotel.rooms.length > 0 ? hotel.rooms[0] : null);
+
     // The Math Logic
-    const stayNights = parseInt(nights as string);
-    const basePrice = hotel?.pricePerNight || 85000; // Use database price if available
+    const stayNights = parseInt(nights as string) || 1;
+    const basePrice = selectedRoom?.pricePerNight || hotel?.pricePerNight || 85000;
     const subtotal = basePrice * stayNights;
 
     // CLIENT REQUEST: 11% for 1-2 days, 15% for 3 or more days
@@ -78,22 +82,29 @@ function CheckoutContent() {
 
             const guestsCount = paramGuests ? parseInt(paramGuests as string, 10) : 1;
 
+            const itemIdToSend = (selectedRoom?._id && selectedRoom._id !== 'apartment-base-room')
+                ? selectedRoom._id
+                : (hotel?._id || id);
+            const itemNameToSend = selectedRoom
+                ? `${hotel?.name || 'Hotel'} - ${selectedRoom.name}`
+                : (hotel?.name || 'Hotel Stay');
+
             // Create booking with Pending Escrow status first
             const response = await fetch(`${API_URL}/bookings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: userId,
-                    itemId: hotel._id,
-                    itemName: hotel.name,
+                    itemId: itemIdToSend,
+                    itemName: itemNameToSend,
                     itemType: 'hotel',
-                    partnerId: hotel.partnerId,
+                    partnerId: hotel?.partnerId || 'airgo_direct',
                     checkIn: checkInDate.toISOString(),
                     checkOut: checkOutDate.toISOString(),
                     guests: guestsCount,
                     totalPrice: totalDue,
                     status: 'Pending Escrow',
-                    city: hotel.location?.city || ''
+                    city: hotel?.location?.city || hotel?.city || ''
                 })
             });
 
@@ -184,7 +195,9 @@ function CheckoutContent() {
 
             <View style={styles.card}>
                 <Text style={styles.cardHeader}>ORDER SUMMARY</Text>
-                <Text style={styles.hotelName}>{hotel ? hotel.name : "Room Details Unavailable"}</Text>
+                <Text style={styles.hotelName}>
+                    {hotel ? (selectedRoom ? `${hotel.name} - ${selectedRoom.name}` : hotel.name) : "Room Details Unavailable"}
+                </Text>
                 <Text style={styles.statusText}>Status: Available</Text>
 
                 <View style={styles.divider} />
