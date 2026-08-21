@@ -16,8 +16,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Modal, SafeAreaView,
+  Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
@@ -66,6 +67,7 @@ export default function DriverChatModal({
   currentUserId,
   currentUserName,
 }: DriverChatModalProps) {
+  const insets = useSafeAreaInsets();
   const [messages, setMessages]     = useState<Message[]>([]);
   const [inputText, setInputText]   = useState('');
   const [isLoading, setIsLoading]   = useState(true);
@@ -243,10 +245,14 @@ export default function DriverChatModal({
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[
+          styles.header,
+          { paddingTop: Math.max(insets.top + (Platform.OS === 'android' ? 12 : 4), Platform.OS === 'android' ? 36 : 14) }
+        ]}>
           <View style={styles.headerAvatar}>
             <Text style={styles.headerAvatarText}>💬</Text>
           </View>
@@ -304,7 +310,10 @@ export default function DriverChatModal({
           )}
 
           {/* Input row */}
-          <View style={styles.inputRow}>
+          <View style={[
+            styles.inputRow,
+            { paddingBottom: Math.max(insets.bottom + 12, Platform.OS === 'android' ? 32 : 16) }
+          ]}>
             <TextInput
               style={styles.input}
               placeholder="Type a message..."
@@ -328,7 +337,7 @@ export default function DriverChatModal({
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
