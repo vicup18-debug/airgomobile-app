@@ -20,6 +20,7 @@ export default function AddRoomScreen() {
     const [description, setDescription] = useState('');
     const [images, setImages] = useState<string[]>([]);
     const [agreedToQA, setAgreedToQA] = useState(false);
+    const [isRefundable, setIsRefundable] = useState(true);
 
     // 🟢 QA RULE ENFORCEMENT: Image Picker Logic
     const handlePickImage = async () => {
@@ -104,7 +105,8 @@ export default function AddRoomScreen() {
                 description: description,
                 image: uploadedImageUrls[0],
                 images: uploadedImageUrls,
-                previewImage: uploadedImageUrls[0]
+                previewImage: uploadedImageUrls[0],
+                isRefundable: isRefundable
             };
 
             const response = await fetch(`${API_URL}/rooms`, {
@@ -245,6 +247,27 @@ export default function AddRoomScreen() {
                         onChangeText={setDescription}
                     />
                 </View>
+
+                {/* 🟢 REFUND POLICY TOGGLE */}
+                <TouchableOpacity
+                    style={[styles.checkboxContainer, { marginTop: 15 }]}
+                    onPress={() => setIsRefundable(!isRefundable)}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons
+                        name={isRefundable ? "checkbox" : "square-outline"}
+                        size={24}
+                        color={isRefundable ? "#004A99" : "#A0AEC0"}
+                    />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A202C' }}>
+                            Allow 70% Escrow Refund Policy
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#718096', marginTop: 2, lineHeight: 17 }}>
+                            When checked, guests who cancel eligible bookings under Airgo policy receive a 70% refund. Uncheck if your room tier is strictly Non-Refundable.
+                        </Text>
+                    </View>
+                </TouchableOpacity>
 
                 {/* 🟢 QA COMPLIANCE CHECKBOX */}
                 <TouchableOpacity

@@ -321,7 +321,12 @@ export default function HotelDetailsScreen() {
                                 >
                                     <View style={styles.roomHeader}>
                                         <Text style={styles.roomName}>{room.name}</Text>
-                                        <Text style={styles.roomPrice}>₦{room.price.toLocaleString()}<Text style={styles.priceSub}>/night</Text></Text>
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <Text style={styles.roomPrice}>₦{room.price.toLocaleString()}<Text style={styles.priceSub}>/night</Text></Text>
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: room.isRefundable !== false ? '#276749' : '#C53030', marginTop: 2 }}>
+                                                {room.isRefundable !== false ? '🛡️ 70% Refundable' : '⚠️ Non-Refundable'}
+                                            </Text>
+                                        </View>
                                     </View>
 
                                     <Text style={styles.roomCapacity}><Ionicons name="people" size={14} /> {room.capacity}</Text>

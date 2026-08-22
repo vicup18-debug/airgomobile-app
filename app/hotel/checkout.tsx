@@ -207,7 +207,12 @@ function CheckoutContent() {
                 <Text style={styles.hotelName}>
                     {hotel ? (selectedRoom ? `${hotel.name} - ${selectedRoom.name}` : hotel.name) : "Room Details Unavailable"}
                 </Text>
-                <Text style={styles.statusText}>Status: Available</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={styles.statusText}>Status: Available</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: (selectedRoom?.isRefundable !== false && hotel?.isRefundable !== false) ? '#276749' : '#C53030' }}>
+                        {(selectedRoom?.isRefundable !== false && hotel?.isRefundable !== false) ? '🛡️ 70% Refundable' : '⚠️ Non-Refundable'}
+                    </Text>
+                </View>
 
                 <View style={styles.divider} />
 
