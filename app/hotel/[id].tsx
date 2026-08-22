@@ -371,6 +371,11 @@ export default function HotelDetailsScreen() {
                             {!selectedRoomDetails.isRefundable && <Text style={{ fontWeight: 'bold', color: '#C53030' }}>NOT offer refunds</Text>}
                             {selectedRoomDetails.isRefundable ? "." : " for cancellations."}
                         </Text>
+                        <TouchableOpacity onPress={() => router.push('/info/refund-policy' as any)}>
+                            <Text style={{ fontSize: 10, color: '#004A99', fontWeight: '700', textDecorationLine: 'underline', marginTop: 4 }}>
+                                Read Airgo Refund &amp; Cancellation Policy
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 )}
                 <TouchableOpacity 

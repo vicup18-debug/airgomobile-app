@@ -238,6 +238,11 @@ function CheckoutContent() {
                 <TouchableOpacity style={styles.payButton} onPress={handlePayment} disabled={isProcessing}>
                     {isProcessing ? <ActivityIndicator color="#004A99" /> : <Text style={styles.payButtonText}>Confirm & Pay</Text>}
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/info/refund-policy' as any)} style={{ marginTop: 10, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 11, color: '#004A99', fontWeight: '700', textDecorationLine: 'underline' }}>
+                        View Airgo Refund &amp; Cancellation Policy
+                    </Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
