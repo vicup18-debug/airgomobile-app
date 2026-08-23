@@ -59,6 +59,8 @@ export default function TaxiScreen() {
     }
   };
 
+  const [pickupCoords, setPickupCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
   const handlePlaceSearch = (query: string, setter: (v: string) => void) => {
     setter(query);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -71,7 +73,7 @@ export default function TaxiScreen() {
           headers: { 'User-Agent': 'AirgoHotelBookingApp/1.0', 'Accept': 'application/json' }
         });
         const data = await res.json();
-        setPlacesSuggestions(data?.length > 0 ? data.map((d: any) => d.display_name) : []);
+        setPlacesSuggestions(data?.length > 0 ? data.map((d: any) => ({ name: d.display_name, lat: parseFloat(d.lat), lon: parseFloat(d.lon) })) : []);
       } catch { setPlacesSuggestions([]); }
     }, 300);
   };
@@ -84,7 +86,8 @@ export default function TaxiScreen() {
         return;
       }
       setTaxiFrom('Fetching location...');
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setPickupCoords({ latitude: location.coords.latitude, longitude: location.coords.longitude });
       try {
         const reverse = await Location.reverseGeocodeAsync({ latitude: location.coords.latitude, longitude: location.coords.longitude });
         if (reverse && reverse.length > 0) {
@@ -136,12 +139,27 @@ export default function TaxiScreen() {
       Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please enter a destination.' });
       return;
     }
+
+    // Attempt to get device GPS coordinates if not already captured
+    let finalCoords = pickupCoords;
+    if (!finalCoords) {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          finalCoords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     router.push({
       pathname: '/taxi-bidding' as any,
       params: {
         from: taxiFrom,
         to: taxiTo,
-        dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        dateTime: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+        pickupLat: finalCoords ? finalCoords.latitude.toString() : '',
+        pickupLon: finalCoords ? finalCoords.longitude.toString() : '',
       },
     });
   };
@@ -190,12 +208,22 @@ export default function TaxiScreen() {
               {locationType === 'from' && taxiFrom.length > 0 && placesSuggestions.length > 0 && (
                 <View style={styles.suggestions}>
                   <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 150 }}>
-                    {placesSuggestions.map((loc, i) => (
-                      <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => { setTaxiFrom(loc); setLocationType(''); setPlacesSuggestions([]); }}>
-                        <Ionicons name="location-outline" size={14} color="#718096" style={{ marginRight: 8 }} />
-                        <Text style={styles.suggestionText} numberOfLines={1}>{loc}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {placesSuggestions.map((loc: any, i) => {
+                      const locName = typeof loc === 'string' ? loc : loc.name;
+                      return (
+                        <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => {
+                          setTaxiFrom(locName);
+                          if (typeof loc === 'object' && loc.lat && loc.lon) {
+                            setPickupCoords({ latitude: loc.lat, longitude: loc.lon });
+                          }
+                          setLocationType('');
+                          setPlacesSuggestions([]);
+                        }}>
+                          <Ionicons name="location-outline" size={14} color="#718096" style={{ marginRight: 8 }} />
+                          <Text style={styles.suggestionText} numberOfLines={1}>{locName}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </ScrollView>
                 </View>
               )}

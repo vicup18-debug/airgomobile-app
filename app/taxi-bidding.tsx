@@ -7,9 +7,17 @@ import Toast from 'react-native-toast-message';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../constants/config';
 
+import * as Location from 'expo-location';
+
 export default function TaxiBiddingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ from: string; to: string; dateTime: string }>();
+  const params = useLocalSearchParams<{
+    from: string;
+    to: string;
+    dateTime: string;
+    pickupLat?: string;
+    pickupLon?: string;
+  }>();
 
   const [phase, setPhase] = useState<'creating' | 'bidding' | 'error'>('creating');
   const [errorMessage, setErrorMessage] = useState('');
@@ -96,6 +104,28 @@ export default function TaxiBiddingScreen() {
       let distance = 0;
       let finalPrice = 15000;
 
+      // 1. First priority: Exact GPS coordinates passed from explore.tsx
+      if (params.pickupLat && params.pickupLon) {
+        const lat = parseFloat(params.pickupLat);
+        const lon = parseFloat(params.pickupLon);
+        if (!isNaN(lat) && !isNaN(lon)) {
+          pickupCoords = { type: 'Point', coordinates: [lon, lat] };
+        }
+      }
+
+      // 2. Second priority: Fetch current device GPS position
+      if (!pickupCoords) {
+        try {
+          const { status } = await Location.getForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            pickupCoords = { type: 'Point', coordinates: [loc.coords.longitude, loc.coords.latitude] };
+          }
+        } catch (locErr) {
+          console.warn('Direct device GPS fetch error:', locErr);
+        }
+      }
+
       try {
         const safeFrom = params?.from || '';
         const safeTo = params?.to || '';
@@ -110,11 +140,15 @@ export default function TaxiBiddingScreen() {
         });
         const dataTo = await resTo.json();
 
-        if (dataFrom && dataFrom.length > 0 && dataTo && dataTo.length > 0) {
-          pickupCoords = { type: 'Point', coordinates: [parseFloat(dataFrom[0].lon), parseFloat(dataFrom[0].lat)] };
+        if (dataFrom && dataFrom.length > 0) {
+          if (!pickupCoords) {
+            pickupCoords = { type: 'Point', coordinates: [parseFloat(dataFrom[0].lon), parseFloat(dataFrom[0].lat)] };
+          }
           city = dataFrom[0].address?.city || dataFrom[0].address?.state || '';
+        }
 
-          const start = [parseFloat(dataFrom[0].lat), parseFloat(dataFrom[0].lon)];
+        if (pickupCoords && dataTo && dataTo.length > 0) {
+          const start = [pickupCoords.coordinates[1], pickupCoords.coordinates[0]];
           const end = [parseFloat(dataTo[0].lat), parseFloat(dataTo[0].lon)];
 
           const resRoute = await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=false`);
