@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, SafeAreaView, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, SafeAreaView, ScrollView, TextInput, BackHandler } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +24,21 @@ export default function TaxiBiddingScreen() {
   useEffect(() => {
     initRideRequest();
   }, []);
+
+  // Intercept Android hardware back button during active bidding
+  useEffect(() => {
+    if (phase === 'bidding') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        Toast.show({
+          type: 'info',
+          text1: 'Active Driver Matching',
+          text2: 'Please tap "Cancel Request" if you want to stop searching.'
+        });
+        return true; // Block default back navigation
+      });
+      return () => backHandler.remove();
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (phase === 'bidding' && rideRequestId) {
@@ -238,9 +253,7 @@ export default function TaxiBiddingScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <Ionicons name="close" size={22} color="#1A202C" />
-        </TouchableOpacity>
+        <View style={{ width: 60 }} />
         <Text style={styles.headerTitle}>Pulse Radar</Text>
         <View style={styles.escrowPill}>
            <Ionicons name="wifi" size={12} color="#000080" />
