@@ -21,12 +21,12 @@ const { width } = Dimensions.get('window');
 // BRANDED SPLASH / LOADING SCREEN
 // ─────────────────────────────────────────────
 function BrandedLoadingScreen() {
-  const pulseAnim  = useRef(new Animated.Value(1)).current;
-  const fadeAnim   = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim   = useRef(new Animated.Value(0.3)).current;
-  const floatAnim  = useRef(new Animated.Value(0)).current;
-  const spinAnim   = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0.3)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -36,7 +36,7 @@ function BrandedLoadingScreen() {
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.18, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     ).start();
 
@@ -50,7 +50,7 @@ function BrandedLoadingScreen() {
     Animated.loop(
       Animated.sequence([
         Animated.timing(progressAnim, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-        Animated.timing(progressAnim, { toValue: 0, duration: 0,    useNativeDriver: false }),
+        Animated.timing(progressAnim, { toValue: 0, duration: 0, useNativeDriver: false }),
       ])
     ).start();
 
@@ -69,7 +69,7 @@ function BrandedLoadingScreen() {
   }, []);
 
   const progressWidth = progressAnim.interpolate({
-    inputRange:  [0, 1],
+    inputRange: [0, 1],
     outputRange: ['0%', '100%'],
   });
 
@@ -198,7 +198,7 @@ function isHotelAvailable(hotel: any, checkIn: string, checkOut: string): boolea
 
 function getHotelState(hotel: any): string {
   if (!hotel) return 'Nigeria';
-  
+
   let city = hotel.city || '';
   let state = hotel.state || '';
   let location = '';
@@ -214,50 +214,50 @@ function getHotelState(hotel: any): string {
   } else if (typeof hotel.address === 'string') {
     location = hotel.address;
   }
-  
+
   city = city.trim();
   state = state.trim();
   location = location.trim();
-  
+
   let formatted = '';
-  
+
   if (city) {
     formatted += `(${city})`;
   }
-  
+
   if (state) {
     if (formatted) formatted += ' ';
     formatted += state;
   }
-  
+
   if (location) {
-    const isDuplicate = 
-        location.toLowerCase() === city.toLowerCase() || 
-        location.toLowerCase() === state.toLowerCase() ||
-        location.toLowerCase() === `${city}, ${state}`.toLowerCase() ||
-        location.toLowerCase() === `${city}, ${state}, nigeria`.toLowerCase();
-        
+    const isDuplicate =
+      location.toLowerCase() === city.toLowerCase() ||
+      location.toLowerCase() === state.toLowerCase() ||
+      location.toLowerCase() === `${city}, ${state}`.toLowerCase() ||
+      location.toLowerCase() === `${city}, ${state}, nigeria`.toLowerCase();
+
     if (!isDuplicate) {
-        if (formatted) {
-          formatted += ` - ${location}`;
-        } else {
-          formatted = location;
-        }
+      if (formatted) {
+        formatted += ` - ${location}`;
+      } else {
+        formatted = location;
+      }
     }
   }
-  
+
   return formatted || 'Nigeria';
 }
 
 export default function HomeScreen() {
-  const [hotels, setHotels]           = useState<any[]>([]);
-  const [loading, setLoading]         = useState(false);
+  const [hotels, setHotels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [isLoggedIn, setIsLoggedIn]   = useState(false);
-  const [userName, setUserName]       = useState('');
-  const [activeTab, setActiveTab]     = useState<'stays' | 'taxi'>('stays');
-  const [stayType, setStayType]       = useState<'any' | 'hotel' | 'apartment'>('any');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [activeTab, setActiveTab] = useState<'stays' | 'taxi'>('stays');
+  const [stayType, setStayType] = useState<'any' | 'hotel' | 'apartment'>('any');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -270,36 +270,36 @@ export default function HomeScreen() {
     const locString = typeof hotel.location === 'string' ? hotel.location.toLowerCase() : '';
     const stateString = getHotelState(hotel).toLowerCase();
     const nameString = hotel.name ? hotel.name.toLowerCase() : '';
-    
+
     if (searchWords.length === 0) {
       const hType = (hotel.partnerType || 'hotel').toLowerCase();
       return stayType === 'any' || hType === stayType;
     }
 
     const matchesName = searchWords.every(word => nameString.includes(word));
-    
+
     const ignoreWords = ['state', 'local', 'government', 'lga', 'nigeria', 'country', 'area', 'council'];
     const significantWords = searchWords.filter(w => !ignoreWords.includes(w) && isNaN(Number(w)) && w.length > 2);
     const wordsToMatch = significantWords.length > 0 ? significantWords : searchWords;
-    
-    const matchesLocation = wordsToMatch.some(word => 
+
+    const matchesLocation = wordsToMatch.some(word =>
       locString.includes(word) || stateString.includes(word)
     );
-    
+
     const hType = (hotel.partnerType || 'hotel').toLowerCase();
     const matchesType = stayType === 'any' || hType === stayType;
-    
+
     return (matchesName || matchesLocation) && matchesType;
   });
 
-  const [guests, setGuests]             = useState({ rooms: 1, adults: 2, children: 0 });
-  const [showGuestModal, setShowGuestModal]       = useState(false);
+  const [guests, setGuests] = useState({ rooms: 1, adults: 2, children: 0 });
+  const [showGuestModal, setShowGuestModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate]     = useState('');
+  const [endDate, setEndDate] = useState('');
 
-  const [taxiFrom, setTaxiFrom]         = useState('');
-  const [taxiTo, setTaxiTo]             = useState('');
+  const [taxiFrom, setTaxiFrom] = useState('');
+  const [taxiTo, setTaxiTo] = useState('');
   const [hasActiveTripLock, setHasActiveTripLock] = useState(false);
 
   // Alert Modal State
@@ -314,17 +314,17 @@ export default function HomeScreen() {
   const handlePlaceSearch = (query: string, setter: (val: string) => void) => {
     setter(query);
     if (searchPlacesTimeout.current) clearTimeout(searchPlacesTimeout.current);
-    
+
     if (!query || query.length < 3) {
       setPlacesSuggestions([]);
       return;
     }
-    
+
     searchPlacesTimeout.current = setTimeout(async () => {
       try {
-        const finalQuery = globalCity && !query.toLowerCase().includes(globalCity.toLowerCase()) 
-            ? `${query}, ${globalCity}` 
-            : query;
+        const finalQuery = globalCity && !query.toLowerCase().includes(globalCity.toLowerCase())
+          ? `${query}, ${globalCity}`
+          : query;
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(finalQuery)}&countrycodes=ng&limit=5`, {
           headers: {
             'User-Agent': 'AirgoHotelBookingApp/1.0',
@@ -357,7 +357,7 @@ export default function HomeScreen() {
         Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'Location permission denied. Please enable it in your device settings.' });
         return;
       }
-      
+
       let location;
       try {
         location = await Location.getCurrentPositionAsync({});
@@ -365,7 +365,7 @@ export default function HomeScreen() {
         Toast.show({ type: 'error', text1: 'Error', text2: 'Unable to detect location. Please try again.' });
         return;
       }
-      
+
       if (target === 'stays') {
         setSearchQuery('Current Location');
       } else {
@@ -379,7 +379,7 @@ export default function HomeScreen() {
         }
 
         let readableLocation = '';
-        
+
         try {
           const reverse = await Location.reverseGeocodeAsync({
             latitude: location.coords.latitude,
@@ -449,7 +449,7 @@ export default function HomeScreen() {
     }
     if (endDate) {
       marked[endDate] = { endingDay: true, color: '#000080', textColor: 'white', selected: true };
-      
+
       let start = new Date(startDate);
       const end = new Date(endDate);
       start.setDate(start.getDate() + 1);
@@ -478,9 +478,9 @@ export default function HomeScreen() {
 
 
 
-  const [lockCheckDone, setLockCheckDone]         = useState(false);
+  const [lockCheckDone, setLockCheckDone] = useState(false);
 
-  const router       = useRouter();
+  const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const HOTELS_API_URL = `${API_URL}/hotels`;
@@ -518,8 +518,8 @@ export default function HomeScreen() {
                 const detectedCity = rev[0].city || rev[0].subregion || rev[0].region;
                 if (detectedCity) setGlobalCity(detectedCity);
               }
-            }).catch(() => {});
-          }).catch(() => {});
+            }).catch(() => { });
+          }).catch(() => { });
         }
       });
     }
@@ -563,7 +563,7 @@ export default function HomeScreen() {
       const diff = new Date(endDate).getTime() - new Date(startDate).getTime();
       calculatedNights = Math.max(1, Math.round(diff / (1000 * 3600 * 24)));
     }
-    
+
     router.push(`/hotel/${hotelId}?nights=${calculatedNights}&startDate=${startDate}&endDate=${endDate}&guests=${guests.adults}`);
   };
 
@@ -610,8 +610,8 @@ export default function HomeScreen() {
 
   const trustItems = [
     { icon: 'shield-checkmark', label: 'Verified Partners', sub: 'Strictly vetted luxury properties' },
-    { icon: 'lock-closed',       label: 'Escrow-Protected',  sub: 'Funds held until service delivered' },
-    { icon: 'headset',           label: '24/7 Support',      sub: 'Always available VIP assistance' },
+    { icon: 'lock-closed', label: 'Escrow-Protected', sub: 'Funds held until service delivered' },
+    { icon: 'headset', label: '24/7 Support', sub: 'Always available VIP assistance' },
   ];
 
   const uniqueDestinations = useMemo(() => {
@@ -641,7 +641,7 @@ export default function HomeScreen() {
           <View style={styles.orb2} />
 
           <View style={styles.headerTop}>
-            <Text style={styles.homeLogoText}>Airgo<Text style={{color: '#FFB81C'}}>.ng</Text></Text>
+            <Text style={styles.homeLogoText}>Airgo<Text style={{ color: '#FFB81C' }}>.ng</Text></Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               {isLoggedIn && userName ? (
                 <View style={styles.userBadge}>
@@ -712,7 +712,7 @@ export default function HomeScreen() {
                   </View>
                   {locationType === 'search' && searchQuery.length > 0 && (
                     <View style={styles.inlineSuggestions}>
-                      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{maxHeight: 150}}>
+                      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 150 }}>
                         {placesSuggestions.map((loc, idx) => (
                           <TouchableOpacity key={`${loc}-${idx}`} style={styles.suggestionItem} onPress={() => { setSearchQuery(loc); setPlacesSuggestions([]); handleSearchPress(); }}>
                             <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
@@ -801,78 +801,78 @@ export default function HomeScreen() {
             ) : (
               <>
                 <Text style={styles.taxiConsoleTitle}>WHERE DO YOU WANT TO GO?</Text>
-                
+
                 <View style={{ zIndex: 20 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080', textTransform: 'uppercase' }}>Pickup Location</Text>
-                        <TouchableOpacity onPress={() => handleUseCurrentLocation('taxi')} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
-                            <Ionicons name="location" size={12} color="#000080" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080' }}>Use Current Location</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <View style={styles.taxiInputRow}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080', textTransform: 'uppercase' }}>Pickup Location</Text>
+                    <TouchableOpacity onPress={() => handleUseCurrentLocation('taxi')} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E2E8F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+                      <Ionicons name="location" size={12} color="#000080" style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#000080' }}>Use Current Location</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.taxiInputRow}>
                     <Ionicons name="location" size={18} color="#FFB81C" style={styles.taxiIcon} />
-                    <TextInput 
-                        style={styles.taxiInput}
-                        placeholder="Pickup Location..."
-                        placeholderTextColor="#A0AEC0"
-                        value={taxiFrom}
-                        onChangeText={(t) => { handlePlaceSearch(t, setTaxiFrom); setLocationType('from'); }}
-                        onFocus={() => setLocationType('from')}
-                        onSubmitEditing={() => setLocationType('')}
-                        onBlur={() => setTimeout(() => setLocationType(''), 150)}
+                    <TextInput
+                      style={styles.taxiInput}
+                      placeholder="Pickup Location..."
+                      placeholderTextColor="#A0AEC0"
+                      value={taxiFrom}
+                      onChangeText={(t) => { handlePlaceSearch(t, setTaxiFrom); setLocationType('from'); }}
+                      onFocus={() => setLocationType('from')}
+                      onSubmitEditing={() => setLocationType('')}
+                      onBlur={() => setTimeout(() => setLocationType(''), 150)}
                     />
+                  </View>
+                  {locationType === 'from' && taxiFrom.length > 0 && (
+                    <View style={styles.inlineSuggestions}>
+                      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 150 }}>
+                        {placesSuggestions.map((loc, idx) => (
+                          <TouchableOpacity key={`${loc}-${idx}`} style={styles.suggestionItem} onPress={() => { setTaxiFrom(loc); setLocationType(''); }}>
+                            <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
+                            <Text style={styles.suggestionText}>{loc}</Text>
+                          </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity style={styles.suggestionItem} onPress={() => setLocationType('')}>
+                          <Ionicons name="checkmark-circle-outline" size={16} color="#000080" style={{ marginRight: 10 }} />
+                          <Text style={[styles.suggestionText, { color: '#000080', fontWeight: 'bold' }]}>Use "{taxiFrom}"</Text>
+                        </TouchableOpacity>
+                      </ScrollView>
                     </View>
-                    {locationType === 'from' && taxiFrom.length > 0 && (
-                        <View style={styles.inlineSuggestions}>
-                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{maxHeight: 150}}>
-                            {placesSuggestions.map((loc, idx) => (
-                            <TouchableOpacity key={`${loc}-${idx}`} style={styles.suggestionItem} onPress={() => { setTaxiFrom(loc); setLocationType(''); }}>
-                                <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
-                                <Text style={styles.suggestionText}>{loc}</Text>
-                            </TouchableOpacity>
-                            ))}
-                            <TouchableOpacity style={styles.suggestionItem} onPress={() => setLocationType('')}>
-                                <Ionicons name="checkmark-circle-outline" size={16} color="#000080" style={{ marginRight: 10 }} />
-                                <Text style={[styles.suggestionText, { color: '#000080', fontWeight: 'bold' }]}>Use "{taxiFrom}"</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                        </View>
-                    )}
+                  )}
                 </View>
 
                 <View style={styles.consoleDivider} />
 
                 <View style={{ zIndex: 10 }}>
-                    <View style={styles.taxiInputRow}>
+                  <View style={styles.taxiInputRow}>
                     <Ionicons name="navigate" size={18} color="#FFB81C" style={styles.taxiIcon} />
-                    <TextInput 
-                        style={styles.taxiInput}
-                        placeholder="Destination..."
-                        placeholderTextColor="#A0AEC0"
-                        value={taxiTo}
-                        onChangeText={(t) => { handlePlaceSearch(t, setTaxiTo); setLocationType('to'); }}
-                        onFocus={() => setLocationType('to')}
-                        onSubmitEditing={() => setLocationType('')}
-                        onBlur={() => setTimeout(() => setLocationType(''), 150)}
+                    <TextInput
+                      style={styles.taxiInput}
+                      placeholder="Destination..."
+                      placeholderTextColor="#A0AEC0"
+                      value={taxiTo}
+                      onChangeText={(t) => { handlePlaceSearch(t, setTaxiTo); setLocationType('to'); }}
+                      onFocus={() => setLocationType('to')}
+                      onSubmitEditing={() => setLocationType('')}
+                      onBlur={() => setTimeout(() => setLocationType(''), 150)}
                     />
+                  </View>
+                  {locationType === 'to' && taxiTo.length > 0 && (
+                    <View style={styles.inlineSuggestions}>
+                      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{ maxHeight: 150 }}>
+                        {placesSuggestions.map((loc, idx) => (
+                          <TouchableOpacity key={`${loc}-${idx}`} style={styles.suggestionItem} onPress={() => { setTaxiTo(loc); setLocationType(''); }}>
+                            <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
+                            <Text style={styles.suggestionText}>{loc}</Text>
+                          </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity style={styles.suggestionItem} onPress={() => setLocationType('')}>
+                          <Ionicons name="checkmark-circle-outline" size={16} color="#000080" style={{ marginRight: 10 }} />
+                          <Text style={[styles.suggestionText, { color: '#000080', fontWeight: 'bold' }]}>Use "{taxiTo}"</Text>
+                        </TouchableOpacity>
+                      </ScrollView>
                     </View>
-                    {locationType === 'to' && taxiTo.length > 0 && (
-                        <View style={styles.inlineSuggestions}>
-                        <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={{maxHeight: 150}}>
-                            {placesSuggestions.map((loc, idx) => (
-                            <TouchableOpacity key={`${loc}-${idx}`} style={styles.suggestionItem} onPress={() => { setTaxiTo(loc); setLocationType(''); }}>
-                                <Ionicons name="location-outline" size={16} color="#718096" style={{ marginRight: 10 }} />
-                                <Text style={styles.suggestionText}>{loc}</Text>
-                            </TouchableOpacity>
-                            ))}
-                            <TouchableOpacity style={styles.suggestionItem} onPress={() => setLocationType('')}>
-                                <Ionicons name="checkmark-circle-outline" size={16} color="#000080" style={{ marginRight: 10 }} />
-                                <Text style={[styles.suggestionText, { color: '#000080', fontWeight: 'bold' }]}>Use "{taxiTo}"</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                        </View>
-                    )}
+                  )}
                 </View>
 
                 <View style={styles.consoleDivider} />
@@ -952,8 +952,8 @@ export default function HomeScreen() {
               <View style={styles.taxiStepsRow}>
                 {[
                   { step: '1', title: 'Specify Route', desc: 'Enter pickup, destination & timing.' },
-                  { step: '2', title: 'Get Bids',      desc: 'Chauffeurs submit live bids.' },
-                  { step: '3', title: 'Travel Safe',   desc: 'Payment held in escrow until arrival.' },
+                  { step: '2', title: 'Get Bids', desc: 'Chauffeurs submit live bids.' },
+                  { step: '3', title: 'Travel Safe', desc: 'Payment held in escrow until arrival.' },
                 ].map(s => (
                   <View key={s.step} style={styles.taxiStepCard}>
                     <View style={styles.taxiStepNum}>
@@ -972,7 +972,7 @@ export default function HomeScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Suggested Destinations</Text>
-<Text style={styles.sectionSub}>Most popular travel destinations in Nigeria</Text>
+                <Text style={styles.sectionSub}>Most popular travel destinations in Nigeria</Text>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
                 {uniqueDestinations.slice(0, 4).map((dest, index) => (
@@ -1021,73 +1021,73 @@ export default function HomeScreen() {
                   <View style={styles.dealsGrid}>
                     {filteredHotels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((item, index) => {
                       const available = isHotelAvailable(item, startDate, endDate);
-                    return (
-                      <TouchableOpacity
-                        key={item._id}
-                        style={[styles.propertyCard, !available && { opacity: 0.65 }]}
-                        activeOpacity={available ? 0.88 : 1}
-                        onPress={() => available ? navigateToHotel(item._id) : null}
-                      >
-                        <View style={styles.propertyImageWrap}>
-                          <Image
-                            source={{ uri: getSafeImage(item, index) }}
-                            style={styles.propertyImage}
-                            resizeMode="cover"
-                          />
-                          {/* Sold Out overlay — absolute, mirrors web's bg-black/50 + rotate badge */}
-                          {!available && (
-                            <View style={styles.soldOutOverlay}>
-                              <View style={styles.soldOutBadge}>
-                                <Text style={styles.soldOutText}>SOLD OUT</Text>
+                      return (
+                        <TouchableOpacity
+                          key={item._id}
+                          style={[styles.propertyCard, !available && { opacity: 0.65 }]}
+                          activeOpacity={available ? 0.88 : 1}
+                          onPress={() => available ? navigateToHotel(item._id) : null}
+                        >
+                          <View style={styles.propertyImageWrap}>
+                            <Image
+                              source={{ uri: getSafeImage(item, index) }}
+                              style={styles.propertyImage}
+                              resizeMode="cover"
+                            />
+                            {/* Sold Out overlay — absolute, mirrors web's bg-black/50 + rotate badge */}
+                            {!available && (
+                              <View style={styles.soldOutOverlay}>
+                                <View style={styles.soldOutBadge}>
+                                  <Text style={styles.soldOutText}>SOLD OUT</Text>
+                                </View>
+                              </View>
+                            )}
+                            {/* Discount badge — only shown when available */}
+                            {available && item.discountPercentage > 0 && (
+                              <View style={styles.discountBadge}>
+                                <Text style={styles.discountText}>{item.discountPercentage}% OFF</Text>
+                              </View>
+                            )}
+                            <View style={styles.escrowBadge}>
+                              <Ionicons name="shield-checkmark" size={10} color="#fff" />
+                              <Text style={styles.escrowText}>Escrow</Text>
+                            </View>
+                          </View>
+                          <View style={styles.propertyInfo}>
+                            <Text style={styles.propertyType}>{item.partnerType || 'Hotel'}</Text>
+                            <Text style={styles.propertyName} numberOfLines={1}>{item.hotelName || item.name}</Text>
+                            <Text style={styles.propertyLocation} numberOfLines={1}>
+                              <Ionicons name="location-outline" size={11} color="#718096" /> {getHotelState(item)}
+                            </Text>
+
+                            {item.isRefundable !== false && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+                                <Ionicons name="checkmark-circle" size={12} color="#38A169" />
+                                <Text style={{ fontSize: 10, color: '#38A169', fontWeight: 'bold', marginLeft: 4 }}>70% Refundable</Text>
+                              </View>
+                            )}
+
+                            <View style={styles.propertyFooter}>
+                              <Text style={styles.propertyPrice}>
+                                ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
+                              </Text>
+                              <View style={[styles.bookBadge, !available && styles.bookBadgeUnavailable]}>
+                                <Text style={styles.bookBadgeText}>{available ? 'Book' : 'Full'}</Text>
                               </View>
                             </View>
-                          )}
-                          {/* Discount badge — only shown when available */}
-                          {available && item.discountPercentage > 0 && (
-                            <View style={styles.discountBadge}>
-                              <Text style={styles.discountText}>{item.discountPercentage}% OFF</Text>
-                            </View>
-                          )}
-                          <View style={styles.escrowBadge}>
-                            <Ionicons name="shield-checkmark" size={10} color="#fff" />
-                            <Text style={styles.escrowText}>Escrow</Text>
                           </View>
-                        </View>
-                        <View style={styles.propertyInfo}>
-                          <Text style={styles.propertyType}>{item.partnerType || 'Hotel'}</Text>
-                          <Text style={styles.propertyName} numberOfLines={1}>{item.hotelName || item.name}</Text>
-                          <Text style={styles.propertyLocation} numberOfLines={1}>
-                            <Ionicons name="location-outline" size={11} color="#718096" /> {getHotelState(item)}
-                          </Text>
-                          
-                          {item.isRefundable !== false && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
-                              <Ionicons name="checkmark-circle" size={12} color="#38A169" />
-                              <Text style={{ fontSize: 10, color: '#38A169', fontWeight: 'bold', marginLeft: 4 }}>70% Refundable</Text>
-                            </View>
-                          )}
-                          
-                          <View style={styles.propertyFooter}>
-                            <Text style={styles.propertyPrice}>
-                              ₦{item.pricePerNight ? item.pricePerNight.toLocaleString() : '85,000'}
-                            </Text>
-                            <View style={[styles.bookBadge, !available && styles.bookBadgeUnavailable]}>
-                              <Text style={styles.bookBadgeText}>{available ? 'Book' : 'Full'}</Text>
-                            </View>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                   {Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) > 1 && (
                     <View style={{ marginVertical: 20 }}>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}>
                         {Array.from({ length: Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map(page => (
-                          <TouchableOpacity 
-                            key={page} 
+                          <TouchableOpacity
+                            key={page}
                             style={{
-                              paddingHorizontal: 16, 
+                              paddingHorizontal: 16,
                               paddingVertical: 10,
                               borderRadius: 12,
                               backgroundColor: currentPage === page ? '#004A99' : '#E2E8F0',
@@ -1158,15 +1158,15 @@ export default function HomeScreen() {
                       </View>
                     </TouchableOpacity>
                   ))}
-                  
+
                   {Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) > 1 && (
                     <View style={{ marginVertical: 20 }}>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}>
                         {Array.from({ length: Math.ceil(filteredHotels.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map(page => (
-                          <TouchableOpacity 
-                            key={page} 
+                          <TouchableOpacity
+                            key={page}
                             style={{
-                              paddingHorizontal: 16, 
+                              paddingHorizontal: 16,
                               paddingVertical: 10,
                               borderRadius: 12,
                               backgroundColor: currentPage === page ? '#004A99' : '#E2E8F0',
@@ -1284,7 +1284,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.footerDivider} />
             <Text style={styles.copyrightText}>© {new Date().getFullYear()} Airgo.ng — All rights reserved.</Text>
-            <Text style={{fontSize: 10, color: 'gray', textAlign: 'center', marginVertical: 10}}>v1.0.0-Sprint4</Text>
+            <Text style={{ fontSize: 10, color: 'gray', textAlign: 'center', marginVertical: 10 }}></Text>
           </View>
 
         </View>
@@ -1330,32 +1330,33 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             {[
-              { label: 'Rooms',    key: 'rooms'    as const, max: maxRoomsInventory },
-              { label: 'Adults',   key: 'adults'   as const, sub: 'Ages 13 or above', max: 10 },
+              { label: 'Rooms', key: 'rooms' as const, max: maxRoomsInventory },
+              { label: 'Adults', key: 'adults' as const, sub: 'Ages 13 or above', max: 10 },
               { label: 'Children', key: 'children' as const, sub: 'Ages 0-12', max: 10 },
             ].map(item => {
               const isMax = guests[item.key] >= item.max;
               return (
-              <View key={item.key} style={styles.counterRow}>
-                <View>
-                  <Text style={styles.counterLabel}>{item.label}</Text>
-                  {item.sub && <Text style={styles.counterSub}>{item.sub}</Text>}
+                <View key={item.key} style={styles.counterRow}>
+                  <View>
+                    <Text style={styles.counterLabel}>{item.label}</Text>
+                    {item.sub && <Text style={styles.counterSub}>{item.sub}</Text>}
+                  </View>
+                  <View style={styles.counterControls}>
+                    <TouchableOpacity style={styles.counterBtn} onPress={() => updateGuests(item.key, 'subtract')}>
+                      <Ionicons name="remove" size={20} color="#000080" />
+                    </TouchableOpacity>
+                    <Text style={styles.counterValue}>{guests[item.key]}</Text>
+                    <TouchableOpacity
+                      style={[styles.counterBtn, isMax && { opacity: 0.5 }]}
+                      disabled={isMax}
+                      onPress={() => updateGuests(item.key, 'add')}
+                    >
+                      <Ionicons name="add" size={20} color="#000080" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.counterControls}>
-                  <TouchableOpacity style={styles.counterBtn} onPress={() => updateGuests(item.key, 'subtract')}>
-                    <Ionicons name="remove" size={20} color="#000080" />
-                  </TouchableOpacity>
-                  <Text style={styles.counterValue}>{guests[item.key]}</Text>
-                  <TouchableOpacity 
-                    style={[styles.counterBtn, isMax && { opacity: 0.5 }]} 
-                    disabled={isMax}
-                    onPress={() => updateGuests(item.key, 'add')}
-                  >
-                    <Ionicons name="add" size={20} color="#000080" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )})}
+              )
+            })}
             <TouchableOpacity style={styles.modalApplyButton} onPress={() => setShowGuestModal(false)}>
               <Text style={styles.modalApplyText}>Apply</Text>
             </TouchableOpacity>

@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Dimensions, Alert, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { API_URL } from '../../constants/config';
 
@@ -62,6 +63,7 @@ const getHotelState = (hotel: any) => {
 export default function HotelDetailsScreen() {
     const { id, startDate, endDate, guests } = useLocalSearchParams();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
@@ -346,12 +348,12 @@ export default function HotelDetailsScreen() {
                         })}
                     </View>
                 )}
-                {/* Extra padding so scroll doesn't hide behind the taller bottom bar */}
-                <View style={{ height: selectedRoom ? 180 : 100 }} />
+                {/* Extra padding so scroll doesn't hide behind the bottom bar */}
+                <View style={{ height: selectedRoom ? 220 : 120 }} />
             </ScrollView>
 
             {/* Bottom Floating Bar */}
-            <View style={styles.bottomBar}>
+            <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 8, Platform.OS === 'android' ? 24 : 16) }]}>
 
                 {/* 🟢 NEW: AIRGO ESCROW POLICY BANNER */}
                 {selectedRoomDetails && (
@@ -491,16 +493,31 @@ const styles = StyleSheet.create({
     scarceText: { color: '#E53E3E', fontWeight: 'bold', fontSize: 12, backgroundColor: '#FFF5F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     soldOutText: { color: '#A0AEC0', fontWeight: 'bold', fontSize: 12 },
 
-    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', elevation: 15 },
+    bottomBar: { 
+        position: 'absolute', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        paddingHorizontal: 16, 
+        paddingTop: 10, 
+        backgroundColor: '#FFF', 
+        borderTopWidth: 1, 
+        borderTopColor: '#E2E8F0', 
+        elevation: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8
+    },
 
-    // 🟢 NEW STYLES: Escrow Protection Banner
-    protectionBanner: { backgroundColor: '#FEFCBF', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#F6E05E', marginBottom: 15 },
-    protectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    protectionTitle: { color: '#975A16', fontSize: 13, fontWeight: '900', marginLeft: 6, textTransform: 'uppercase' },
-    protectionText: { color: '#744210', fontSize: 12, lineHeight: 18 },
+    // 🟢 Escrow Protection Banner
+    protectionBanner: { backgroundColor: '#FEFCBF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#F6E05E', marginBottom: 10 },
+    protectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
+    protectionTitle: { color: '#975A16', fontSize: 12, fontWeight: '900', marginLeft: 6, textTransform: 'uppercase' },
+    protectionText: { color: '#744210', fontSize: 11, lineHeight: 16 },
 
-    continueButton: { backgroundColor: '#FFB81C', paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
-    continueText: { color: '#004A99', fontSize: 18, fontWeight: '900' },
+    continueButton: { backgroundColor: '#FFB81C', paddingVertical: 13, borderRadius: 12, alignItems: 'center', shadowColor: '#FFB81C', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 5, elevation: 3 },
+    continueText: { color: '#004A99', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 25, paddingBottom: 44 },

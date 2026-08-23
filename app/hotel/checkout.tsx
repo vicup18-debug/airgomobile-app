@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
@@ -13,6 +14,7 @@ function CheckoutContent() {
     // 🟢 ALL HOOKS MUST BE AT THE TOP
     const { id, roomId, nights = "2", startDate, endDate, guests: paramGuests } = useLocalSearchParams();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -234,11 +236,11 @@ function CheckoutContent() {
                 </View>
             </View>
 
-            <View style={styles.bottomBar}>
+            <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 8, Platform.OS === 'android' ? 24 : 16) }]}>
                 <TouchableOpacity style={styles.payButton} onPress={handlePayment} disabled={isProcessing}>
                     {isProcessing ? <ActivityIndicator color="#004A99" /> : <Text style={styles.payButtonText}>Confirm & Pay</Text>}
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push('/info/refund-policy' as any)} style={{ marginTop: 10, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => router.push('/info/refund-policy' as any)} style={{ marginTop: 8, alignItems: 'center' }}>
                     <Text style={{ fontSize: 11, color: '#004A99', fontWeight: '700', textDecorationLine: 'underline' }}>
                         View Airgo Refund &amp; Cancellation Policy
                     </Text>
@@ -282,7 +284,7 @@ const styles = StyleSheet.create({
     totalLabel: { fontSize: 18, color: '#1A202C', fontWeight: '800' },
     totalValue: { fontSize: 24, color: '#004A99', fontWeight: '900' },
 
-    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.1, shadowRadius: 10 },
-    payButton: { backgroundColor: '#FFB81C', paddingVertical: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#FFB81C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    payButtonText: { color: '#004A99', fontSize: 18, fontWeight: '900', letterSpacing: 0.5 }
+    bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 10, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 8 },
+    payButton: { backgroundColor: '#FFB81C', paddingVertical: 13, borderRadius: 12, alignItems: 'center', shadowColor: '#FFB81C', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 5, elevation: 3 },
+    payButtonText: { color: '#004A99', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 }
 });
