@@ -91,6 +91,10 @@ export default function BookingsScreen() {
   const [respondingOfferId, setRespondingOfferId] = useState<string | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
 
+  // ── Pagination ───────────────────────────────────────────────────────────
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchBookings = useCallback(async () => {
     try {
@@ -260,6 +264,15 @@ export default function BookingsScreen() {
     [bookings, activeTab]
   );
 
+  // Reset to page 1 whenever the tab or bookings change
+  useEffect(() => { setCurrentPage(1); }, [activeTab, bookings.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedBookings = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   // ── Handle Counter Offer Actions ─────────────────────────────────────────
   const handleOfferAction = async (bookingId: string, action: 'Accept' | 'Decline') => {
     setRespondingOfferId(bookingId);
@@ -405,7 +418,7 @@ export default function BookingsScreen() {
             )}
           </View>
         ) : (
-          filtered.map(booking => {
+          paginatedBookings.map(booking => {
             const statusColor = getStatusColor(booking.status);
             const statusBg    = getStatusBg(booking.status);
             const canCancel   = (booking.status || '').toLowerCase().includes('pending') && cancelling !== booking._id;
@@ -540,6 +553,36 @@ export default function BookingsScreen() {
               </View>
             );
           })
+        )}
+        {/* ── PAGINATION CONTROLS ── */}
+        {totalPages > 1 && (
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 8, marginBottom: 8 }}>
+            <TouchableOpacity
+              onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              style={{
+                paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
+                backgroundColor: currentPage === 1 ? '#F1F5F9' : '#000080',
+              }}
+            >
+              <Text style={{ color: currentPage === 1 ? '#A0AEC0' : '#FFF', fontWeight: '700', fontSize: 14 }}>← Prev</Text>
+            </TouchableOpacity>
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#4A5568' }}>
+              {currentPage} / {totalPages}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              style={{
+                paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12,
+                backgroundColor: currentPage === totalPages ? '#F1F5F9' : '#000080',
+              }}
+            >
+              <Text style={{ color: currentPage === totalPages ? '#A0AEC0' : '#FFF', fontWeight: '700', fontSize: 14 }}>Next →</Text>
+            </TouchableOpacity>
+          </View>
         )}
         <View style={{ height: 24 }} />
       </ScrollView>
