@@ -126,7 +126,7 @@ export default function DriverDashboard() {
   }, []);
 
   // ── Fetch all data ────────────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isSilent = false) => {
     try {
       const id = userId || await AsyncStorage.getItem('userId');
       const token = await AsyncStorage.getItem('authToken');
@@ -158,8 +158,10 @@ export default function DriverDashboard() {
     } catch (err) {
       console.error('Driver data fetch error:', err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isSilent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [userId]);
 
@@ -176,6 +178,17 @@ export default function DriverDashboard() {
     };
   }, [userId, fetchData]);
 
+  // ── Auto-Refresh Live Polling ───────────────────────────────────────────
+  // Automatically polls for new dispatches every 4 seconds while driver is online,
+  // guaranteeing the dashboard is always up to date without manual pull-to-refresh.
+  useEffect(() => {
+    if (!isAvailable || !userId) return;
+    const interval = setInterval(() => {
+      fetchData(true); // Silent background auto-refresh
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isAvailable, userId, fetchData]);
+
   const onRefresh = () => { setRefreshing(true); fetchData(); };
 
   // ── WebSocket Listener ────────────────────────────────────────────────────
@@ -184,20 +197,38 @@ export default function DriverDashboard() {
 
     const socketUrl = API_URL.replace('/api', '');
     const socket = io(socketUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
-    socket.on('connect', () => {
-      console.log('Driver connected to WebSocket:', socket.id);
+    const joinRooms = () => {
       if (userId) {
         socket.emit('join_driver', { driverId: userId });
         socket.emit('join_partner', { partnerId: userId });
       }
       socket.emit('join_drivers', {}); // Join general drivers room
+    };
+
+    socket.on('connect', () => {
+      console.log('Driver connected to WebSocket:', socket.id);
+      joinRooms();
+      fetchData(true);
+    });
+
+    socket.on('reconnect', () => {
+      console.log('Driver reconnected to WebSocket');
+      joinRooms();
+      fetchData(true);
     });
 
     socket.on('new_booking_request', async (data) => {
       console.log('New ride request via WS:', data);
+      
+      // Auto-fetch fresh data immediately
+      fetchData(true);
       
       // Add the new request directly to the feed (handles simultaneous requests)
       setAvailableRequests(prev => {
