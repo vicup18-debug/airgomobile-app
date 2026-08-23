@@ -469,7 +469,50 @@ export default function DriverDashboard() {
   const toggleAvailability = async (val: boolean) => {
     setIsAvailable(val);
     await AsyncStorage.setItem('driverAvailable', val ? 'true' : 'false');
+    // Push location immediately when going online
+    if (val) pushLocationUpdate();
   };
+
+  // ── GPS Location Tracking ────────────────────────────────────────────────
+  // Push driver's real GPS coordinates to the backend so the 5km proximity
+  // filter in ride-request dispatch works correctly.
+  const pushLocationUpdate = async () => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) return;
+
+      // Dynamically import expo-location to avoid issues if not installed
+      let Location: any;
+      try { Location = require('expo-location'); } catch { return; }
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Toast.show({ type: 'error', text1: 'Location Permission Denied', text2: 'Enable location to receive nearby ride requests.' });
+        return;
+      }
+
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { longitude, latitude } = pos.coords;
+
+      await fetch(`${API_URL}/driver/location`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ longitude, latitude }),
+      });
+      console.log(`📍 Driver location updated: [${longitude}, ${latitude}]`);
+    } catch (err) {
+      console.log('Location update error:', err);
+    }
+  };
+
+  // Push location every 2 minutes while driver is online
+  useEffect(() => {
+    if (!isAvailable || !userId) return;
+    pushLocationUpdate(); // Push once immediately when going online
+    const interval = setInterval(pushLocationUpdate, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAvailable, userId]);
+
 
   // ── Claim a direct ride (with bid-lock guard) ───────────────────────────
   const handleClaim = (booking: any) => {
