@@ -277,9 +277,13 @@ export default function DriverDashboard() {
 
     socket.on('booking_updated', (data) => {
       console.log('Booking updated via WS:', data);
+      const targetDriverId = (typeof data.driverId === 'object' ? data.driverId?._id : data.driverId)?.toString();
+      const targetPartnerId = (typeof data.partnerId === 'object' ? data.partnerId?._id : data.partnerId)?.toString();
+      const myId = userId?.toString();
+      const isForMe = (targetDriverId && targetDriverId === myId) || (targetPartnerId && targetPartnerId === myId);
       
       if (
-        (data.driverId === userId || data.partnerId === userId) &&
+        isForMe &&
         (data.status === 'Paid - Escrow Secured' || data.status === 'Paid')
       ) {
         // Client completed payment — play sound, toast, modal alert, switch to trips tab & auto-refresh
@@ -329,8 +333,8 @@ export default function DriverDashboard() {
         });
         setShowAlert(true);
         setActiveTab('trips');
-        fetchData();
-      } else if (data.isOffer && data.offerStatus === 'Pending Partner' && data.driverId === userId) {
+        fetchData(true);
+      } else if (data.isOffer && data.offerStatus === 'Pending Partner' && isForMe) {
         // Client sent a counter-offer — sound, toast, refresh feed and switch to dispatches tab
         try {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
@@ -338,12 +342,12 @@ export default function DriverDashboard() {
         } catch(e){}
         Toast.show({ type: 'info', text1: 'Counter Offer Received! 🚕', text2: 'Client countered your bid. Respond now!' });
         // Refresh data so the inline counter-offer card appears immediately
-        fetchData();
+        fetchData(true);
         // Switch to the Dispatches tab where pendingOffers are rendered
         setActiveTab('dispatches');
       } else if (
-        (data.isOffer && data.offerStatus === 'Accepted' && data.driverId === userId) ||
-        (data.driverId === userId && data.status === 'Pending Escrow')
+        (data.isOffer && data.offerStatus === 'Accepted' && isForMe) ||
+        (isForMe && data.status === 'Pending Escrow')
       ) {
         // Client accepted the driver's bid — switch to My Trips and refresh
         try {
@@ -352,15 +356,20 @@ export default function DriverDashboard() {
         } catch(e){}
         Toast.show({ type: 'success', text1: '🎉 Bid Accepted!', text2: `Client accepted your fare! Check Active Trips.` });
         setActiveTab('trips');
-        fetchData();
+        fetchData(true);
       } else {
-        fetchData();
+        fetchData(true);
       }
     });
 
     socket.on('payment_received', (data) => {
       console.log('Payment received via WS on driver dashboard:', data);
-      if (data.driverId === userId || data.partnerId === userId) {
+      const targetDriverId = (typeof data.driverId === 'object' ? data.driverId?._id : data.driverId)?.toString();
+      const targetPartnerId = (typeof data.partnerId === 'object' ? data.partnerId?._id : data.partnerId)?.toString();
+      const myId = userId?.toString();
+      const isForMe = (targetDriverId && targetDriverId === myId) || (targetPartnerId && targetPartnerId === myId);
+
+      if (isForMe) {
         try {
           Audio.setAudioModeAsync({
             playsInSilentModeIOS: true,
@@ -407,7 +416,9 @@ export default function DriverDashboard() {
         });
         setShowAlert(true);
         setActiveTab('trips');
-        fetchData();
+        fetchData(true);
+      } else {
+        fetchData(true);
       }
     });
 

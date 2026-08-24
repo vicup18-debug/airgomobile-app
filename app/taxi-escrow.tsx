@@ -94,12 +94,25 @@ function TaxiEscrowContent() {
       onSuccess: async (res: any) => { 
         if (booking?._id) {
           try {
+            setPhase('verifying');
             const token = await AsyncStorage.getItem('authToken');
-            await fetch(`${API_URL}/bookings/${booking._id}/status`, {
+            const paymentRef = res?.transactionRef || (res as any)?.reference || res?.data?.reference || uniqueRef;
+            const updateRes = await fetch(`${API_URL}/bookings/${booking._id}/status`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ status: 'Paid - Escrow Secured', paymentReference: res?.transactionRef || (res as any)?.reference || uniqueRef })
+                body: JSON.stringify({ status: 'Paid - Escrow Secured', paymentReference: paymentRef })
             });
+            if (updateRes.ok) {
+                const updated = await updateRes.json();
+                setBooking(updated);
+                setPhase('success');
+                Toast.show({
+                    type: 'success',
+                    text1: '💰 Escrow Secured!',
+                    text2: 'Payment verified successfully.'
+                });
+                return;
+            }
           } catch(e) { console.warn(e); }
           startPolling(booking._id); 
         } 

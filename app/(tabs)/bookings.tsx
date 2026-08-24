@@ -96,7 +96,7 @@ export default function BookingsScreen() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
-  const fetchBookings = useCallback(async () => {
+  const fetchBookings = useCallback(async (isSilent = false) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const userId = await AsyncStorage.getItem('userId');
@@ -108,8 +108,11 @@ export default function BookingsScreen() {
       }
       if (userName) setCurrentUserName(userName);
       
-      if (!userId || !token) { setLoading(false); return; }
-      const res  = await fetch(`${API_URL}/bookings/user/${userId}`, {
+      if (!userId || !token) { 
+        if (!isSilent) setLoading(false); 
+        return; 
+      }
+      const res = await fetch(`${API_URL}/bookings/user/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -119,31 +122,83 @@ export default function BookingsScreen() {
     } catch (err) {
       console.error('Fetch Bookings Error:', err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isSilent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useEffect(() => { if (isFocused) { setLoading(true); fetchBookings(); } }, [isFocused]);
+
+  // ── Auto-Refresh Live Polling (Every 4 seconds) ──────────────────────────
+  // Automatically keeps the client trips/escrow status up-to-date in real-time
+  // without the user having to manually pull down to refresh.
+  useEffect(() => {
+    if (!isFocused || !currentUserId) return;
+    const interval = setInterval(() => {
+      fetchBookings(true); // Silent background auto-refresh
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isFocused, currentUserId, fetchBookings]);
+
   const onRefresh = () => { setRefreshing(true); fetchBookings(); };
 
   useEffect(() => {
     if (isFocused) {
        const SOCKET_URL = API_URL.replace('/api', '');
-       const socketInstance = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+       const socketInstance = io(SOCKET_URL, { 
+         transports: ['websocket', 'polling'],
+         reconnection: true,
+         reconnectionAttempts: Infinity,
+         reconnectionDelay: 1000,
+       });
        setSocket(socketInstance);
+
+       const joinUserRooms = async () => {
+         const uid = currentUserIdRef.current || await AsyncStorage.getItem('userId');
+         if (uid) {
+           socketInstance.emit('join_user', { userId: uid });
+           console.log(`👤 Client joined user room: ${uid}`);
+         }
+       };
+
+       socketInstance.on('connect', () => {
+         console.log('Client connected to WebSocket on bookings tab:', socketInstance.id);
+         joinUserRooms();
+       });
+
+       socketInstance.on('reconnect', () => {
+         console.log('Client reconnected to WebSocket on bookings tab');
+         joinUserRooms();
+         fetchBookings(true);
+       });
+
        socketInstance.on('booking_updated', (updatedBooking: any) => {
-          setBookings(prev => prev.map(b => b._id === updatedBooking._id ? updatedBooking : b));
+          console.log('📡 Live booking_updated on client bookings tab:', updatedBooking);
+          setBookings(prev => prev.map(b => b._id === updatedBooking._id ? { ...b, ...updatedBooking } : b));
           if (updatedBooking.offerStatus === 'Pending Client') {
              Toast.show({ type: 'info', text1: 'Counter Offer', text2: 'The driver countered your bid.' });
           }
+          if (['Paid', 'Paid - Escrow Secured'].includes(updatedBooking.status)) {
+             Toast.show({ type: 'success', text1: '💰 Escrow Confirmed!', text2: 'Payment verified and secured in escrow.' });
+          }
+          fetchBookings(true);
        });
+
+       socketInstance.on('payment_received', (data: any) => {
+          console.log('📡 Live payment_received on client bookings tab:', data);
+          Toast.show({ type: 'success', text1: '💰 Payment Secured!', text2: 'Funds are locked in escrow.' });
+          fetchBookings(true);
+       });
+
        socketInstance.on('booking_cancelled', (data: any) => {
           console.log('Booking cancelled via socket on bookings tab:', data);
           setBookings(prev => prev.filter(b => b._id !== data.bookingId));
           Toast.show({ type: 'error', text1: 'Ride Cancelled', text2: 'A booking was cancelled by the driver.' });
-          fetchBookings();
+          fetchBookings(true);
        });
+
        socketInstance.on('new_driver_bid', (data: any) => {
           setBookings(prev => prev.map(b => b._id === data.bookingId ? { ...b, driverOffers: data.driverOffers } : b));
           Toast.show({ type: 'info', text1: 'New Bid Received', text2: 'A driver has placed a new bid on your ride request.' });
