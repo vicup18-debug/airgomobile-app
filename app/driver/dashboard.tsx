@@ -67,6 +67,20 @@ function allTimeEarnings(bookings: any[]): number {
     }, 0);
 }
 
+// 🌍 Pure Mathematical Haversine Distance Calculator (km)
+function calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // ── MAIN COMPONENT ─────────────────────────────────────────────────────────
 export default function DriverDashboard() {
   const router    = useRouter();
@@ -232,7 +246,18 @@ export default function DriverDashboard() {
       // Platform-wide available ride requests (RideRequest documents)
       if (reqRes.status === 'fulfilled' && reqRes.value.ok) {
         const reqData: any[] = await reqRes.value.json();
-        setAvailableRequests(Array.isArray(reqData) ? reqData : []);
+        const loc = driverCoordsRef.current;
+        const filtered = Array.isArray(reqData) ? reqData.filter(r => {
+          if (loc && r.pickupCoords && Array.isArray(r.pickupCoords.coordinates) && r.pickupCoords.coordinates.length >= 2) {
+            const [pLon, pLat] = r.pickupCoords.coordinates;
+            if (pLon !== 0 || pLat !== 0) {
+              const d = calculateHaversineDistanceKm(loc.latitude, loc.longitude, pLat, pLon);
+              return d <= 5.0; // Strictly 5.0km or less
+            }
+          }
+          return false; // Exclude if cannot verify distance <= 5.0km
+        }) : [];
+        setAvailableRequests(filtered);
       }
     } catch (err) {
       console.error('Driver data fetch error:', err);
@@ -288,7 +313,6 @@ export default function DriverDashboard() {
         socket.emit('join_driver', { driverId: userId });
         socket.emit('join_partner', { partnerId: userId });
       }
-      socket.emit('join_drivers', {}); // Join general drivers room
     };
 
     socket.on('connect', () => {
@@ -305,6 +329,20 @@ export default function DriverDashboard() {
 
     socket.on('new_booking_request', async (data) => {
       console.log('New ride request via WS:', data);
+
+      // Verify distance strictly <= 5.0km on client device
+      const loc = driverCoordsRef.current;
+      if (loc && data.pickupCoords && Array.isArray(data.pickupCoords.coordinates) && data.pickupCoords.coordinates.length >= 2) {
+        const [pLon, pLat] = data.pickupCoords.coordinates;
+        if (pLon !== 0 || pLat !== 0) {
+          const distKm = calculateHaversineDistanceKm(loc.latitude, loc.longitude, pLat, pLon);
+          console.log(`📏 Client proximity check for incoming request ${data._id}: ${distKm.toFixed(2)}km`);
+          if (distKm > 5.0) {
+            console.log(`🚫 Dropping ride request ${data._id}: Driver is ${distKm.toFixed(2)}km away (>5.0km).`);
+            return;
+          }
+        }
+      }
       
       // Auto-fetch fresh data immediately
       fetchData(true);
