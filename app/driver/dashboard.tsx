@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { useIsFocused } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import { API_URL } from '../../constants/config';
 import CustomAlertModal from '../../components/ui/CustomAlertModal';
 import DriverChatModal from '../../components/ui/DriverChatModal';
@@ -79,6 +80,9 @@ export default function DriverDashboard() {
   const [claimingId, setClaimingId]               = useState<string | null>(null);
   const [completingId, setCompletingId]           = useState<string | null>(null);
 
+  const [driverCoords, setDriverCoords]           = useState<{ latitude: number; longitude: number } | null>(null);
+  const driverCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
+
   const [activeTrip, setActiveTrip]               = useState<any>(null);
   const [myBookings, setMyBookings]               = useState<any[]>([]);
   const [availableRequests, setAvailableRequests] = useState<any[]>([]);
@@ -125,6 +129,77 @@ export default function DriverDashboard() {
     loadSession();
   }, []);
 
+  // ── Driver Live GPS Telemetry Watcher ───────────────────────────────────
+  // Continuously transmits the driver's real-time GPS location to backend MongoDB
+  // so the backend Haversine 5.0km geofence can instantly detect nearby drivers.
+  useEffect(() => {
+    if (!isAvailable || !userId) return;
+
+    let locationSubscription: Location.LocationSubscription | null = null;
+
+    const syncLocationToBackend = async (lat: number, lon: number) => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) return;
+        driverCoordsRef.current = { latitude: lat, longitude: lon };
+        setDriverCoords({ latitude: lat, longitude: lon });
+
+        await fetch(`${API_URL}/driver/location`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            latitude: lat,
+            longitude: lon
+          })
+        });
+        console.log(`📍 Driver GPS Telemetry synced: lat=${lat}, lon=${lon}`);
+      } catch (err) {
+        console.warn('Driver telemetry sync error:', err);
+      }
+    };
+
+    const startLocationTracking = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Driver location permission denied');
+          return;
+        }
+
+        // Get immediate initial position
+        const initialLoc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High
+        });
+        await syncLocationToBackend(initialLoc.coords.latitude, initialLoc.coords.longitude);
+
+        // Start continuous watcher (every 10 meters or 5 seconds)
+        locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 5000,
+            distanceInterval: 10
+          },
+          (loc) => {
+            syncLocationToBackend(loc.coords.latitude, loc.coords.longitude);
+          }
+        );
+      } catch (e) {
+        console.warn('Error starting driver location tracking:', e);
+      }
+    };
+
+    startLocationTracking();
+
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+    };
+  }, [isAvailable, userId]);
+
   // ── Fetch all data ────────────────────────────────────────────────────────
   const fetchData = useCallback(async (isSilent = false) => {
     try {
@@ -134,9 +209,13 @@ export default function DriverDashboard() {
 
       const headers = { 'Authorization': `Bearer ${token}` };
 
+      // Attach driver's live GPS coordinates to available requests query
+      const loc = driverCoordsRef.current;
+      const queryParams = loc ? `?lat=${loc.latitude}&lon=${loc.longitude}` : '';
+
       const [myRes, reqRes] = await Promise.allSettled([
         fetch(`${API_URL}/bookings`, { headers }),
-        fetch(`${API_URL}/ride-requests/available`, { headers }),
+        fetch(`${API_URL}/ride-requests/available${queryParams}`, { headers }),
       ]);
 
       // My bookings (trips I've claimed)

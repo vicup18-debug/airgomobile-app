@@ -116,9 +116,9 @@ export default function TaxiBiddingScreen() {
       // 2. Second priority: Fetch current device GPS position
       if (!pickupCoords) {
         try {
-          const { status } = await Location.getForegroundPermissionsAsync();
+          const { status } = await Location.requestForegroundPermissionsAsync();
           if (status === 'granted') {
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
             pickupCoords = { type: 'Point', coordinates: [loc.coords.longitude, loc.coords.latitude] };
           }
         } catch (locErr) {
