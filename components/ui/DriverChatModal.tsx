@@ -265,7 +265,7 @@ export default function DriverChatModal({
           { paddingTop: topHeaderPadding }
         ]}>
           <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>💬</Text>
+            <Ionicons name="chatbubbles" size={18} color="#000080" />
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle} numberOfLines={1}>{bookingName}</Text>
@@ -302,7 +302,7 @@ export default function DriverChatModal({
             </View>
           ) : messages.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyIcon}>💬</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={44} color="#CBD5E1" />
               <Text style={styles.emptyTitle}>Start the Conversation</Text>
               <Text style={styles.emptySubtitle}>
                 Coordinate pickup details, timing, or ask questions safely here.

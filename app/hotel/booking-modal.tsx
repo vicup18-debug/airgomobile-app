@@ -68,7 +68,6 @@ export default function BookingModal({ isOpen, onClose, hotel }: BookingModalPro
                         {/* AIRGO ESCROW & REFUND POLICY */}
                         <div className="bg-yellow-50 p-5 rounded-2xl border border-yellow-100 mb-6">
                             <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xl">🛡️</span>
                                 <h4 className="text-sm font-black text-yellow-800 uppercase tracking-wide">Airgo Escrow Protection</h4>
                             </div>
                             <p className="text-sm text-yellow-700 leading-relaxed mb-3">

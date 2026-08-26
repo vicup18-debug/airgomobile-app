@@ -76,14 +76,14 @@ export default function DriverRegisterScreen() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccessMsg("✅ Driver account created successfully! You can now log in.");
+      setSuccessMsg("Driver account created successfully! You can now log in.");
 
       setTimeout(() => {
         router.replace('/auth/login' as any);
       }, 3000);
 
     } catch (err: any) {
-      setErrorMsg(`⚠️ ${err.message}`);
+      setErrorMsg(err.message);
       setLoading(false);
     }
   };

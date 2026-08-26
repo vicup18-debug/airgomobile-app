@@ -64,14 +64,14 @@ export default function RegisterScreen() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccessMsg("✅ Account created successfully! Please check your email for a verification link to activate your account. Redirecting...");
+      setSuccessMsg("Account created successfully! Please check your email for a verification link to activate your account. Redirecting...");
 
       setTimeout(() => {
         router.replace('/auth/login?verifyEmail=true' as any);
       }, 5000);
 
     } catch (err: any) {
-      setErrorMsg(`⚠️ ${err.message}`);
+      setErrorMsg(err.message);
       setLoading(false);
     }
   };
@@ -120,7 +120,7 @@ export default function RegisterScreen() {
 
         syncPushTokenAfterLogin().catch(e => console.warn('FCM sync failed:', e));
 
-        setSuccessMsg("✅ Signed in with Google successfully! Redirecting...");
+        setSuccessMsg("Signed in with Google successfully! Redirecting...");
         setTimeout(() => {
           if (data.role === 'superadmin') {
             router.replace('/superadmin/dashboard' as any);

@@ -36,7 +36,7 @@ export default function SuperAdminDashboard() {
             const type = data.partnerType === 'apartment' ? 'Apartment' : 'Room';
             Toast.show({
                 type: 'info',
-                text1: `🔔 New ${type} Approval Request`,
+                text1: `New ${type} Approval Request`,
                 text2: `A new ${type.toLowerCase()} '${data.name}' was added and requires approval.`,
                 visibilityTime: 6000,
             });
@@ -492,9 +492,9 @@ export default function SuperAdminDashboard() {
                                             </View>
                                         </View>
                                         <Text style={{fontWeight: 'bold', color: '#111827', fontSize: 14, marginBottom: 4}}>{b.hotelName || b.carModel || 'N/A'} <Text style={{fontWeight: 'normal', color: '#6B7280', fontSize: 12}}>({b.itemType === 'car' ? 'Car' : 'Hotel/Apt'})</Text></Text>
-                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>👤 {b.clientName || 'N/A'} • 📞 {b.clientPhone || 'N/A'}</Text>
-                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>✉️ {b.clientEmail || 'N/A'}</Text>
-                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 6}}>📅 {b.startDate || 'N/A'} to {b.endDate || 'N/A'}</Text>
+                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>Client: {b.clientName || 'N/A'} • {b.clientPhone || 'N/A'}</Text>
+                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 2}}>Email: {b.clientEmail || 'N/A'}</Text>
+                                        <Text style={{fontSize: 12, color: '#4B5563', marginBottom: 6}}>Dates: {b.startDate || 'N/A'} to {b.endDate || 'N/A'}</Text>
                                         <Text style={{fontWeight: '900', color: '#000080', fontSize: 15, textAlign: 'right', marginTop: 4}}>
                                             {typeof b.totalPrice === 'string' && b.totalPrice.includes('₦') ? b.totalPrice : `₦${b.totalPrice}`}
                                         </Text>

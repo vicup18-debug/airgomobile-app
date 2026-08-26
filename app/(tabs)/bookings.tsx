@@ -181,14 +181,14 @@ export default function BookingsScreen() {
              Toast.show({ type: 'info', text1: 'Counter Offer', text2: 'The driver countered your bid.' });
           }
           if (['Paid', 'Paid - Escrow Secured'].includes(updatedBooking.status)) {
-             Toast.show({ type: 'success', text1: '💰 Escrow Confirmed!', text2: 'Payment verified and secured in escrow.' });
+             Toast.show({ type: 'success', text1: 'Escrow Confirmed', text2: 'Payment verified and secured in escrow.' });
           }
           fetchBookings(true);
        });
 
        socketInstance.on('payment_received', (data: any) => {
-          console.log('📡 Live payment_received on client bookings tab:', data);
-          Toast.show({ type: 'success', text1: '💰 Payment Secured!', text2: 'Funds are locked in escrow.' });
+          console.log('Live payment_received on client bookings tab:', data);
+          Toast.show({ type: 'success', text1: 'Payment Secured', text2: 'Funds are locked in escrow.' });
           fetchBookings(true);
        });
 
@@ -231,7 +231,7 @@ export default function BookingsScreen() {
           if (!isChatOpenRef.current || chatBookingIdRef.current !== data.bookingId) {
             Toast.show({
               type: 'info',
-              text1: `💬 Message from ${data.senderName || 'Driver'}`,
+              text1: `Message from ${data.senderName || 'Driver'}`,
               text2: data.text,
               visibilityTime: 7000,
               onPress: () => {

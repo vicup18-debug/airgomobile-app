@@ -301,7 +301,7 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 )}
 
-                {/* 🗑️ DELETE ACCOUNT BUTTON */}
+                {/* DELETE ACCOUNT BUTTON */}
                 {isLoggedIn && (
                     <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccountPress}>
                         <Ionicons name="trash-outline" size={20} color="#718096" style={{ marginRight: 8 }} />
@@ -313,7 +313,7 @@ export default function ProfileScreen() {
 
             </ScrollView>
 
-            {/* 🗑️ DELETE ACCOUNT CONFIRMATION MODAL */}
+            {/* DELETE ACCOUNT CONFIRMATION MODAL */}
             <Modal
                 visible={deleteModalVisible}
                 transparent

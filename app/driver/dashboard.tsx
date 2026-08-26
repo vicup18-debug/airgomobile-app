@@ -375,7 +375,7 @@ export default function DriverDashboard() {
         }
 
         setAlertConfig({
-            title: 'New Ride Request! 🚕 ',
+            title: 'New Ride Request',
             message: `Pickup: ${data.fromAddress || '—'}\nDrop-off: ${data.toAddress || '—'}\n\nA new ride request is available in your area. Open your feed to claim it!`,
             type: 'info',
           buttons: [{ text: 'View Details', onPress: () => { 
@@ -424,17 +424,17 @@ export default function DriverDashboard() {
 
         Toast.show({
           type: 'success',
-          text1: '💰 Payment Confirmed in Escrow!',
+          text1: 'Payment Confirmed in Escrow',
           text2: `Client paid for ${data.itemName || 'Trip'}. Prepare for pickup!`
         });
 
         setAlertConfig({
-          title: '💰 Payment Secured in Escrow!',
+          title: 'Payment Secured in Escrow',
           message: `Client has completed payment for:\n${data.itemName || 'Ride Request'}\n\nAmount: ₦${typeof data.totalPrice === 'number' ? data.totalPrice.toLocaleString() : (data.totalPrice || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\n\nFunds are locked in Airgo Escrow. You can start the trip now!`,
           type: 'success',
           buttons: [
             {
-              text: 'View Active Trip 🚗',
+              text: 'View Active Trip',
               onPress: () => {
                 setShowAlert(false);
                 setActiveTab('trips');
@@ -457,7 +457,7 @@ export default function DriverDashboard() {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
             .then(({ sound }) => sound.playAsync());
         } catch(e){}
-        Toast.show({ type: 'info', text1: 'Counter Offer Received! 🚕', text2: 'Client countered your bid. Respond now!' });
+        Toast.show({ type: 'info', text1: 'Counter Offer Received', text2: 'Client countered your bid. Respond now!' });
         // Refresh data so the inline counter-offer card appears immediately
         fetchData(true);
         // Switch to the Dispatches tab where pendingOffers are rendered
@@ -471,7 +471,7 @@ export default function DriverDashboard() {
           Audio.Sound.createAsync(require('../../assets/sounds/notification.wav'))
             .then(({ sound }) => sound.playAsync());
         } catch(e){}
-        Toast.show({ type: 'success', text1: '🎉 Bid Accepted!', text2: `Client accepted your fare! Check Active Trips.` });
+        Toast.show({ type: 'success', text1: 'Bid Accepted', text2: `Client accepted your fare! Check Active Trips.` });
         setActiveTab('trips');
         fetchData(true);
       } else {
@@ -507,17 +507,17 @@ export default function DriverDashboard() {
 
         Toast.show({
           type: 'success',
-          text1: '💰 Payment Confirmed in Escrow!',
+          text1: 'Payment Confirmed in Escrow',
           text2: `Client paid for ${data.itemName || 'Trip'}. Prepare for pickup!`
         });
 
         setAlertConfig({
-          title: '💰 Payment Secured in Escrow!',
+          title: 'Payment Secured in Escrow',
           message: `Client has completed payment for:\n${data.itemName || 'Ride Request'}\n\nAmount: ₦${typeof data.totalPrice === 'number' ? data.totalPrice.toLocaleString() : (data.totalPrice || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}\n\nFunds are locked in Airgo Escrow. You can start the trip now!`,
           type: 'success',
           buttons: [
             {
-              text: 'View Active Trip 🚗',
+              text: 'View Active Trip',
               onPress: () => {
                 setShowAlert(false);
                 setActiveTab('trips');
@@ -578,7 +578,7 @@ export default function DriverDashboard() {
       if (!isChatOpenRef.current || chatBookingIdRef.current !== data.bookingId) {
         Toast.show({
           type: 'info',
-          text1: `💬 ${data.senderName || 'Passenger'}`,
+          text1: data.senderName || 'Passenger',
           text2: data.text,
           visibilityTime: 7000,
           onPress: () => {
@@ -589,12 +589,12 @@ export default function DriverDashboard() {
         });
 
         setAlertConfig({
-          title: `💬 Message from ${data.senderName || 'Passenger'}`,
+          title: `Message from ${data.senderName || 'Passenger'}`,
           message: `Trip: ${data.bookingName || 'Active Ride'}\n\n"${data.text}"`,
           type: 'info',
           buttons: [
             {
-              text: 'Open Chat 💬',
+              text: 'Open Chat',
               onPress: () => {
                 setShowAlert(false);
                 setChatBookingId(data.bookingId);
@@ -697,7 +697,7 @@ export default function DriverDashboard() {
       buttons: [
         { text: 'Cancel', style: 'cancel', onPress: () => setShowAlert(false) },
         {
-          text: 'Claim Ride 🚕',
+          text: 'Claim Ride',
           onPress: async () => {
             setShowAlert(false);
             setClaimingId(booking._id);
@@ -712,7 +712,7 @@ export default function DriverDashboard() {
                 body: JSON.stringify({ driverId: userId }),
               });
               if (res.ok) {
-                Toast.show({ type: 'success', text1: '✅ Ride Claimed!', text2: 'Head to the pickup location. Safe journey!' });
+                Toast.show({ type: 'success', text1: 'Ride Claimed', text2: 'Head to the pickup location. Safe journey!' });
                 fetchData();
               } else {
                 const err = await res.json().catch(() => ({}));
@@ -745,7 +745,7 @@ export default function DriverDashboard() {
         body: JSON.stringify({ fare: Number(inputValue) }),
       });
       if (res.ok) {
-        Toast.show({ type: 'success', text1: 'Bid Submitted!', text2: 'Waiting for client to accept your bid.' });
+        Toast.show({ type: 'success', text1: 'Bid Submitted', text2: 'Waiting for client to accept your bid.' });
         fetchData();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -768,7 +768,7 @@ export default function DriverDashboard() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        Toast.show({ type: 'success', text1: '🚗 Trip Started!', text2: 'Drive safe. Head to the pickup location.' });
+        Toast.show({ type: 'success', text1: 'Trip Started', text2: 'Drive safe. Head to the pickup location.' });
         fetchData();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -791,7 +791,7 @@ export default function DriverDashboard() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        Toast.show({ type: 'success', text1: '✅ Trip Complete!', text2: 'Great work! Your earnings are being processed.' });
+        Toast.show({ type: 'success', text1: 'Trip Complete', text2: 'Great work! Your earnings are being processed.' });
         setActiveTrip(null);
         fetchData();
       } else {
@@ -943,7 +943,7 @@ export default function DriverDashboard() {
       <View style={styles.availabilityBar}>
         <View style={styles.availRow}>
           <View style={[styles.availDot, { backgroundColor: isAvailable ? '#38A169' : '#E53E3E' }]} />
-          <Text style={styles.availText}>{isAvailable ? '🟢 Available for Rides' : '🔴 Offline'}</Text>
+          <Text style={styles.availText}>{isAvailable ? 'Available for Rides' : 'Offline'}</Text>
         </View>
         <Switch
           value={isAvailable}
@@ -960,7 +960,7 @@ export default function DriverDashboard() {
           onPress={() => setActiveTab('dispatches')}
         >
           <Text style={[styles.tabText, activeTab === 'dispatches' && styles.activeTabText]}>
-            Dispatches {availableRequests.length > 0 ? `(${availableRequests.length})` : ''}{pendingOffers.length > 0 ? ` 🔴${pendingOffers.length}` : ''}
+            Dispatches {availableRequests.length > 0 ? `(${availableRequests.length})` : ''}{pendingOffers.length > 0 ? ` (${pendingOffers.length} offers)` : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -981,7 +981,7 @@ export default function DriverDashboard() {
 
         {/* ── EARNINGS PANEL ── */}
         <View style={styles.earningsCard}>
-          <Text style={styles.earningsTitle}>💰 Your Earnings</Text>
+          <Text style={styles.earningsTitle}>Your Earnings</Text>
           <View style={styles.earningsRow}>
             <View style={styles.earningBox}>
               <Text style={styles.earningAmount}>
@@ -1211,13 +1211,13 @@ export default function DriverDashboard() {
                             style={{ flex: 1, backgroundColor: '#38A169', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
                             onPress={() => submitOfferResponse(req._id, 'Accepted', req.totalPrice)}
                           >
-                            <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Accept 🤝</Text>
+                            <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>Accept</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={{ flex: 1, backgroundColor: '#D6BCFA', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
                             onPress={() => setActiveCounterId(req._id)}
                           >
-                            <Text style={{ color: '#553C9A', fontWeight: 'bold', fontSize: 13 }}>Counter 🚕</Text>
+                            <Text style={{ color: '#553C9A', fontWeight: 'bold', fontSize: 13 }}>Counter</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={{ flex: 1, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#FEB2B2', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
@@ -1316,7 +1316,7 @@ export default function DriverDashboard() {
                           disabled={!isAvailable}
                         >
                           <Text style={styles.claimBtnText}>
-                            {isAvailable ? 'Submit Bid 🚕' : 'Go Online to Bid'}
+                            {isAvailable ? 'Submit Bid' : 'Go Online to Bid'}
                           </Text>
                         </TouchableOpacity>
                       )}

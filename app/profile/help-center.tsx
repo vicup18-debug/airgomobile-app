@@ -64,10 +64,10 @@ export default function HelpCenterScreen() {
 
             <View style={styles.tabSelector}>
                 <TouchableOpacity style={[styles.tabBtn, activeTab === 'faqs' && styles.tabBtnActive]} onPress={() => setActiveTab('faqs')}>
-                    <Text style={[styles.tabBtnText, activeTab === 'faqs' && styles.tabBtnTextActive]}>❓ FAQs</Text>
+                    <Text style={[styles.tabBtnText, activeTab === 'faqs' && styles.tabBtnTextActive]}>FAQs</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.tabBtn, activeTab === 'chat' && styles.tabBtnActive]} onPress={() => setActiveTab('chat')}>
-                    <Text style={[styles.tabBtnText, activeTab === 'chat' && styles.tabBtnTextActive]}>💬 AI Chat</Text>
+                    <Text style={[styles.tabBtnText, activeTab === 'chat' && styles.tabBtnTextActive]}>AI Chat</Text>
                 </TouchableOpacity>
             </View>
 

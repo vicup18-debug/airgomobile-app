@@ -120,7 +120,7 @@ export default function AffiliateDashboard() {
           <Ionicons name="arrow-back" size={22} color="#FFF" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Affiliate Hub 💰</Text>
+          <Text style={styles.headerTitle}>Affiliate Hub</Text>
           <Text style={styles.headerSub}>Earn 5% on every referral booking</Text>
         </View>
       </View>

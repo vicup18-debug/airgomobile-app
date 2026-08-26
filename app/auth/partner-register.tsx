@@ -102,14 +102,14 @@ export default function PartnerRegisterScreen() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccessMsg("✅ Partner Account created successfully! Please check your email for verification. Redirecting...");
+      setSuccessMsg("Partner Account created successfully! Please check your email for verification. Redirecting...");
 
       setTimeout(() => {
         router.replace('/auth/login?verifyEmail=true' as any);
       }, 5000);
 
     } catch (err: any) {
-      setErrorMsg(`⚠️ ${err.message}`);
+      setErrorMsg(err.message);
       setLoading(false);
       setUploadingDoc(false);
     }

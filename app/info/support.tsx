@@ -127,12 +127,12 @@ export default function SupportScreen() {
                     </View>
                 </View>
 
-                {/* 📞 OFFICIAL CHANNELS (Left Panel on Web) */}
+                {/* OFFICIAL CHANNELS */}
                 <View style={styles.channelsCard}>
                     <Text style={styles.channelsTitle}>Official Channels</Text>
                     
                     <TouchableOpacity style={styles.channelRow} onPress={() => Linking.openURL('tel:+2347078344409')}>
-                        <View style={styles.channelIcon}><Text style={{fontSize: 20}}>📞</Text></View>
+                        <View style={styles.channelIcon}><Ionicons name="call-outline" size={20} color="#000080" /></View>
                         <View>
                             <Text style={styles.channelLabel}>Call Support 24/7</Text>
                             <Text style={styles.channelValue}>+234 707 834 4409</Text>
@@ -140,7 +140,7 @@ export default function SupportScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.channelRow} onPress={() => Linking.openURL('mailto:info@airgo.ng')}>
-                        <View style={styles.channelIcon}><Text style={{fontSize: 20}}>✉️</Text></View>
+                        <View style={styles.channelIcon}><Ionicons name="mail-outline" size={20} color="#000080" /></View>
                         <View>
                             <Text style={styles.channelLabel}>General Inquiries</Text>
                             <Text style={styles.channelValue}>info@airgo.ng</Text>
@@ -149,23 +149,23 @@ export default function SupportScreen() {
                 </View>
 
                 <View style={styles.escrowCard}>
-                    <Text style={styles.escrowTitle}>🛡️ Airgo Escrow Guarantee</Text>
+                    <Text style={styles.escrowTitle}>Airgo Escrow Guarantee</Text>
                     <Text style={styles.escrowText}>
                         Every reservation made on Airgo is fully backed by multi-sig partner protocol escrows. Your funds are secured until check-in or delivery is confirmed.
                     </Text>
                 </View>
 
-                {/* ⚙️ SMART CUSTOMER TABS (Right Panel on Web) */}
+                {/* SMART CUSTOMER TABS */}
                 <View style={styles.tabsContainer}>
                     <View style={styles.tabSelector}>
                         <TouchableOpacity style={[styles.tabBtn, activeTab === 'chat' && styles.tabBtnActive]} onPress={() => setActiveTab('chat')}>
-                            <Text style={[styles.tabBtnText, activeTab === 'chat' && styles.tabBtnTextActive]}>💬 AI Support</Text>
+                            <Text style={[styles.tabBtnText, activeTab === 'chat' && styles.tabBtnTextActive]}>AI Support</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.tabBtn, activeTab === 'faqs' && styles.tabBtnActive]} onPress={() => setActiveTab('faqs')}>
-                            <Text style={[styles.tabBtnText, activeTab === 'faqs' && styles.tabBtnTextActive]}>❓ FAQs</Text>
+                            <Text style={[styles.tabBtnText, activeTab === 'faqs' && styles.tabBtnTextActive]}>FAQs</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.tabBtn, activeTab === 'message' && styles.tabBtnActive]} onPress={() => setActiveTab('message')}>
-                            <Text style={[styles.tabBtnText, activeTab === 'message' && styles.tabBtnTextActive]}>✉️ Contact</Text>
+                            <Text style={[styles.tabBtnText, activeTab === 'message' && styles.tabBtnTextActive]}>Contact</Text>
                         </TouchableOpacity>
                     </View>
 

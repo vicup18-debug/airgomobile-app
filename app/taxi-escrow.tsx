@@ -108,7 +108,7 @@ function TaxiEscrowContent() {
                 setPhase('success');
                 Toast.show({
                     type: 'success',
-                    text1: '💰 Escrow Secured!',
+                    text1: 'Escrow Secured',
                     text2: 'Payment verified successfully.'
                 });
                 return;

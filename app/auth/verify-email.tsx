@@ -96,7 +96,7 @@ export default function VerifyEmailScreen() {
             {loading
               ? <ActivityIndicator color="#000080" />
               : <Text style={styles.resendBtnText}>
-                  {sent ? '✅ Email Sent' : 'Resend Verification Email'}
+                  {sent ? 'Verification Email Sent' : 'Resend Verification Email'}
                 </Text>
             }
           </TouchableOpacity>
