@@ -1210,7 +1210,7 @@ export default function HomeScreen() {
                   const res = await fetch(`${API_URL}/newsletter/subscribe`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: newsletterEmail })
+                    body: JSON.stringify({ email: newsletterEmail, source: 'mobile_app' })
                   });
                   const data = await res.json();
                   if (res.ok) {
