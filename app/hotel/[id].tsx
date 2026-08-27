@@ -121,6 +121,13 @@ export default function HotelDetailsScreen() {
         return marked;
     })();
 
+    const isApartment = (hotel?.partnerType === 'apartment') || 
+                        (hotel?.type === 'apartment') || 
+                        (hotel?.category === 'apartment') || 
+                        (hotel?.hotelName || hotel?.name || '').toLowerCase().includes('apartment') ||
+                        (hotel?.hotelName || hotel?.name || '').toLowerCase().includes('homes') ||
+                        (hotel?.hotelName || hotel?.name || '').toLowerCase().includes('shortlet');
+
     useEffect(() => {
         if (!id) return;
         fetch(`${API_URL}/hotels/${id}`)
@@ -128,8 +135,14 @@ export default function HotelDetailsScreen() {
             .then(data => {
                 setHotel(data);
                 setLoading(false);
-                // 🟢 NEW: Auto-select room for apartments so the user doesn't have to
-                if (data?.partnerType === 'apartment') {
+                const isApt = (data?.partnerType === 'apartment') || 
+                              (data?.type === 'apartment') || 
+                              (data?.category === 'apartment') || 
+                              (data?.hotelName || data?.name || '').toLowerCase().includes('apartment') ||
+                              (data?.hotelName || data?.name || '').toLowerCase().includes('homes') ||
+                              (data?.hotelName || data?.name || '').toLowerCase().includes('shortlet');
+                // 🟢 Auto-select room for apartments so the user doesn't have to
+                if (isApt) {
                     if (data.rooms && data.rooms.length > 0) {
                         setSelectedRoom(data.rooms[0]._id);
                     } else {
@@ -162,7 +175,7 @@ export default function HotelDetailsScreen() {
         return Math.max(0, room.totalAllocated - maxBooked);
     };
 
-    const availableRooms = hotel?.partnerType === 'apartment' ? [{
+    const availableRooms = isApartment ? [{
         id: (hotel.rooms && hotel.rooms.length > 0) ? hotel.rooms[0]._id : 'apartment-base-room',
         name: hotel.hotelName || hotel.name,
         price: hotel.pricePerNight || (hotel.rooms && hotel.rooms.length > 0 ? (hotel.rooms[0].pricePerNight || hotel.rooms[0].netPrice) : 0),
@@ -170,15 +183,20 @@ export default function HotelDetailsScreen() {
         available: 1,
         amenities: [],
         isRefundable: hotel.isRefundable !== false
-    }] : (Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => ({
-        id: r._id,
-        name: r.name,
-        price: r.pricePerNight || r.netPrice || 0,
-        capacity: r.description || "2 Adults",
-        available: getAvailableRoomsCount(r),
-        amenities: typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()) : (r.amenities || ["Free WiFi"]),
-        isRefundable: r.isRefundable !== false && hotel?.isRefundable !== false
-    })) : []);
+    }] : (Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => {
+        const rawAmenities = typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()).filter(Boolean) : (Array.isArray(r.amenities) ? r.amenities : ["Free WiFi"]);
+        const isRoomApt = isApartment || r.partnerType === 'apartment' || (r.name && (r.name.toLowerCase().includes('apartment') || r.name.toLowerCase().includes('homes')));
+        const cleanAmenities = isRoomApt ? rawAmenities.filter((a: string) => !a.toLowerCase().includes('pool')) : rawAmenities;
+        return {
+            id: r._id,
+            name: r.name,
+            price: r.pricePerNight || r.netPrice || 0,
+            capacity: r.description || "2 Adults",
+            available: getAvailableRoomsCount(r),
+            amenities: cleanAmenities,
+            isRefundable: r.isRefundable !== false && hotel?.isRefundable !== false
+        };
+    }) : []);
 
     // 🟢 NEW: Calculate selected room details for the Escrow Policy
     const selectedRoomDetails = availableRooms.find((r: any) => r.id === selectedRoom);
@@ -303,7 +321,7 @@ export default function HotelDetailsScreen() {
                 </View>
 
                 {/* 🟢 ROOM AVAILABILITY LIST */}
-                {hotel?.partnerType !== 'apartment' && (
+                {!isApartment && (
                     <View style={styles.roomsSection}>
                         <Text style={styles.sectionTitle}>Select a Room</Text>
                         
