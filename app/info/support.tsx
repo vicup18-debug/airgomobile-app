@@ -139,6 +139,14 @@ export default function SupportScreen() {
                         </View>
                     </TouchableOpacity>
 
+                    <TouchableOpacity style={styles.channelRow} onPress={() => Linking.openURL('https://wa.me/2347078344409')}>
+                        <View style={styles.channelIcon}><Ionicons name="logo-whatsapp" size={20} color="#25D366" /></View>
+                        <View>
+                            <Text style={styles.channelLabel}>WhatsApp Support</Text>
+                            <Text style={styles.channelValue}>+234 707 834 4409</Text>
+                        </View>
+                    </TouchableOpacity>
+
                     <TouchableOpacity style={styles.channelRow} onPress={() => Linking.openURL('mailto:info@airgo.ng')}>
                         <View style={styles.channelIcon}><Ionicons name="mail-outline" size={20} color="#000080" /></View>
                         <View>
