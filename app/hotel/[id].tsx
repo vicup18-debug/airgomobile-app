@@ -181,19 +181,17 @@ export default function HotelDetailsScreen() {
         price: hotel.pricePerNight || (hotel.rooms && hotel.rooms.length > 0 ? (hotel.rooms[0].pricePerNight || hotel.rooms[0].netPrice) : 0),
         capacity: hotel.rooms && hotel.rooms.length > 0 && hotel.rooms[0].description ? hotel.rooms[0].description : "Entire Property",
         available: 1,
-        amenities: [],
+        amenities: typeof hotel.amenities === 'string' ? hotel.amenities.split(',').map((a: string) => a.trim()).filter(Boolean) : (Array.isArray(hotel.amenities) ? hotel.amenities : []),
         isRefundable: hotel.isRefundable !== false
     }] : (Array.isArray(hotel?.rooms) && hotel.rooms.length > 0 ? hotel.rooms.map((r: any) => {
         const rawAmenities = typeof r.amenities === 'string' ? r.amenities.split(',').map((a: string) => a.trim()).filter(Boolean) : (Array.isArray(r.amenities) ? r.amenities : ["Free WiFi"]);
-        const isRoomApt = isApartment || r.partnerType === 'apartment' || (r.name && (r.name.toLowerCase().includes('apartment') || r.name.toLowerCase().includes('homes')));
-        const cleanAmenities = isRoomApt ? rawAmenities.filter((a: string) => !a.toLowerCase().includes('pool')) : rawAmenities;
         return {
             id: r._id,
             name: r.name,
             price: r.pricePerNight || r.netPrice || 0,
             capacity: r.description || "2 Adults",
             available: getAvailableRoomsCount(r),
-            amenities: cleanAmenities,
+            amenities: rawAmenities,
             isRefundable: r.isRefundable !== false && hotel?.isRefundable !== false
         };
     }) : []);
