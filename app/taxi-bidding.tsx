@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, SafeAreaView, ScrollView, TextInput, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, SafeAreaView, ScrollView, TextInput, BackHandler, Image } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -308,11 +308,41 @@ export default function TaxiBiddingScreen() {
       <ScrollView contentContainerStyle={styles.bidsContainer}>
         {bids.map((bid, index) => (
            <View key={index} style={styles.bidCard}>
-              <View style={styles.bidHeader}>
-                 <Text style={styles.driverName}>{bid.driverName}</Text>
-                 <Text style={styles.fare}>₦{Number(bid.fare).toLocaleString()}</Text>
+              {/* Car image banner */}
+              {bid.vehicleImage ? (
+                <Image source={{ uri: bid.vehicleImage }} style={styles.carImage} resizeMode="cover" />
+              ) : null}
+
+              {/* Driver info row */}
+              <View style={styles.driverRow}>
+                {/* Driver avatar */}
+                <View style={styles.avatarContainer}>
+                  {bid.driverPhoto ? (
+                    <Image source={{ uri: bid.driverPhoto }} style={styles.avatar} />
+                  ) : (
+                    <View style={styles.avatarFallback}>
+                      <Text style={styles.avatarInitial}>{(bid.driverName || 'D')[0]}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.bidHeader}>
+                    <Text style={styles.driverName}>{bid.driverName}</Text>
+                    <Text style={styles.fare}>₦{Number(bid.fare).toLocaleString()}</Text>
+                  </View>
+                  <Text style={styles.vehicle}>{bid.vehicleDetails || 'Standard Vehicle'}</Text>
+                  {(bid.vehicleType || bid.vehicleCapacity) ? (
+                    <Text style={styles.vehicleMeta}>{[bid.vehicleType, bid.vehicleCapacity].filter(Boolean).join(' • ')}</Text>
+                  ) : null}
+                  {bid.vehicleFeatures ? (
+                    <Text style={styles.vehicleFeatures}>{bid.vehicleFeatures}</Text>
+                  ) : null}
+                  {bid.driverPhone ? (
+                    <Text style={styles.driverPhone}>📞 {bid.driverPhone}</Text>
+                  ) : null}
+                  <Text style={styles.verifiedBadge}>✓ Verified Airgo Driver</Text>
+                </View>
               </View>
-              <Text style={styles.vehicle}>{bid.vehicleDetails || 'Standard Vehicle'}</Text>
 
               {counterActiveId === bid.driverId ? (
                  <View style={styles.counterBox}>
@@ -373,7 +403,7 @@ const styles = StyleSheet.create({
   bidHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   driverName: { fontSize: 16, fontWeight: '800', color: '#1A202C' },
   fare: { fontSize: 18, fontWeight: '900', color: '#000080' },
-  vehicle: { fontSize: 13, color: '#718096', marginBottom: 16 },
+  vehicle: { fontSize: 13, color: '#718096', marginBottom: 2 },
   actionsRow: { flexDirection: 'row', gap: 12 },
   btnSecondary: { flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   btnSecondaryText: { fontSize: 14, fontWeight: '700', color: '#4A5568' },
@@ -383,5 +413,15 @@ const styles = StyleSheet.create({
   counterInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#CBD5E0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#000000', marginBottom: 10 },
   counterActions: { flexDirection: 'row', gap: 10 },
   cancelRequestBtn: { marginTop: 16, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#FFF0F0', borderRadius: 8, borderWidth: 1, borderColor: '#FEB2B2' },
-  cancelRequestBtnText: { color: '#E53E3E', fontWeight: 'bold', fontSize: 14 }
+  cancelRequestBtnText: { color: '#E53E3E', fontWeight: 'bold', fontSize: 14 },
+  carImage: { width: '100%', height: 140, borderTopLeftRadius: 16, borderTopRightRadius: 16, marginBottom: 0 },
+  driverRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingTop: 14, paddingHorizontal: 2 },
+  avatarContainer: { width: 48, height: 48, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: '#000080', flexShrink: 0 },
+  avatar: { width: '100%', height: '100%' },
+  avatarFallback: { width: '100%', height: '100%', backgroundColor: '#E8EDF7', justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 20, fontWeight: '900', color: '#000080' },
+  vehicleMeta: { fontSize: 12, color: '#4A5568', fontWeight: '600', marginTop: 2 },
+  vehicleFeatures: { fontSize: 11, color: '#718096', marginTop: 2 },
+  driverPhone: { fontSize: 12, color: '#000080', fontWeight: '700', marginTop: 4 },
+  verifiedBadge: { fontSize: 10, color: '#276749', fontWeight: '700', marginTop: 4 },
 });
