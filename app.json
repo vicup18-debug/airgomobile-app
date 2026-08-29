@@ -70,6 +70,13 @@
           "enableBackgroundRemoteNotifications": true
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload profile and verification documents.",
+          "cameraPermission": "The app accesses your camera to let you take a photo of your passport and documents."
+        }
+      ],
       "@react-native-community/datetimepicker",
       "@react-native-google-signin/google-signin",
       "expo-font",

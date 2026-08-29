@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
@@ -45,18 +45,56 @@ export default function PersonalInfoScreen() {
         }
     };
 
-    const handlePickImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-            base64: true,
-        });
+    const promptImageSource = () => {
+        Alert.alert(
+            "Profile Photo",
+            "Choose how you want to add your photo:",
+            [
+                { text: "📸 Snap Photo (Camera)", onPress: () => handlePickImage(true) },
+                { text: "🖼️ Choose from Gallery", onPress: () => handlePickImage(false) },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
 
-        if (!result.canceled && result.assets[0].base64) {
-            const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-            setProfileImage(base64Image); // show preview immediately
+    const handlePickImage = async (useCamera: boolean) => {
+        try {
+            let result;
+            if (useCamera) {
+                const perm = await ImagePicker.requestCameraPermissionsAsync();
+                if (!perm.granted) {
+                    Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'Camera permission is required.' });
+                    return;
+                }
+                result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                    quality: 0.5,
+                    base64: true,
+                    cameraType: ImagePicker.CameraType.front,
+                });
+            } else {
+                const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!perm.granted) {
+                    Toast.show({ type: 'error', text1: 'Permission Denied', text2: 'Gallery permission is required.' });
+                    return;
+                }
+                result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                    quality: 0.5,
+                    base64: true,
+                });
+            }
+
+            if (!result.canceled && result.assets && result.assets[0].base64) {
+                const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                setProfileImage(base64Image); // show preview immediately
+            }
+        } catch (e: any) {
+            Toast.show({ type: 'error', text1: 'Error', text2: e.message || 'Failed to select image.' });
         }
     };
 
@@ -122,7 +160,7 @@ export default function PersonalInfoScreen() {
                         ) : (
                             <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
                         )}
-                        <TouchableOpacity style={styles.editAvatarBtn} onPress={handlePickImage}>
+                        <TouchableOpacity style={styles.editAvatarBtn} onPress={promptImageSource}>
                             <Ionicons name="camera" size={14} color="#FFF" />
                         </TouchableOpacity>
                     </View>

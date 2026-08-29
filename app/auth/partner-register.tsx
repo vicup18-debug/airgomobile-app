@@ -1,7 +1,7 @@
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator,
-  ScrollView
+  ScrollView, Image
 } from 'react-native';
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -25,7 +25,9 @@ export default function PartnerRegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const [documentUri, setDocumentUri] = useState<string | null>(null);
+  const [passportUri, setPassportUri] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   
   const [errorMsg, setErrorMsg] = useState('');
@@ -33,15 +35,69 @@ export default function PartnerRegisterScreen() {
 
   const REGISTER_API_URL = `${API_URL}/auth/register`;
 
-  const pickDocument = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      setDocumentUri(result.assets[0].uri);
+  const pickImage = async (type: 'doc' | 'passport', useCamera: boolean) => {
+    try {
+      setErrorMsg('');
+      let result;
+      if (useCamera) {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          setErrorMsg("Camera permission is required to snap a photo.");
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: type === 'passport' ? [1, 1] : [4, 3],
+          quality: 0.7,
+          cameraType: type === 'passport' ? ImagePicker.CameraType.front : ImagePicker.CameraType.back,
+        });
+      } else {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          setErrorMsg("Photo library permission is required to choose an image.");
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: type === 'passport' ? [1, 1] : [4, 3],
+          quality: 0.7,
+        });
+      }
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        if (type === 'doc') {
+          setDocumentUri(result.assets[0].uri);
+        } else {
+          setPassportUri(result.assets[0].uri);
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg("Failed to capture image: " + (e.message || 'Unknown error'));
     }
+  };
+
+  const uploadToCloudinary = async (uri: string) => {
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'upload.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    let type = match ? `image/${match[1]}` : `image/jpeg`;
+    if (type === 'image/jpg') type = 'image/jpeg';
+
+    formData.append('file', { uri, name: filename, type } as any);
+    formData.append('upload_preset', 'airgo_fleet');
+
+    const uploadRes = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const uploadData = await uploadRes.json();
+    if (uploadData.secure_url) {
+      return uploadData.secure_url;
+    }
+    throw new Error('Failed to upload image to server.');
   };
 
   const handleRegister = async () => {
@@ -51,43 +107,33 @@ export default function PartnerRegisterScreen() {
     if (password.length < 6) return setErrorMsg("Password must be at least 6 characters.");
     if ((partnerType === 'hotel' || partnerType === 'apartment') && !cacNumber) return setErrorMsg("CAC Number is required.");
     if (!documentUri) return setErrorMsg("Please upload your required verification document.");
+    if ((partnerType === 'car' || partnerType === 'shuttle') && !passportUri) {
+      return setErrorMsg("Passport photograph / driver headshot is required.");
+    }
 
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
 
     try {
+      setUploadingDoc(true);
       let uploadedDocUrl = '';
+      let uploadedPassportUrl = '';
+
       if (documentUri) {
-        setUploadingDoc(true);
-        const formData = new FormData();
-        const filename = documentUri.split('/').pop() || 'upload.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        let type = match ? `image/${match[1]}` : `image/jpeg`; // default to jpeg if no extension
-        if (type === 'image/jpg') type = 'image/jpeg';
-
-        formData.append('file', { uri: documentUri, name: filename, type } as any);
-        formData.append('upload_preset', 'airgo_fleet');
-
-        const uploadRes = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const uploadData = await uploadRes.json();
-        setUploadingDoc(false);
-
-        if (uploadData.secure_url) {
-          uploadedDocUrl = uploadData.secure_url;
-        } else {
-          throw new Error('Failed to upload document. Please try again.');
-        }
+        uploadedDocUrl = await uploadToCloudinary(documentUri);
       }
+      if (passportUri) {
+        uploadedPassportUrl = await uploadToCloudinary(passportUri);
+      }
+      setUploadingDoc(false);
 
       const isHotel = partnerType === 'hotel' || partnerType === 'apartment';
       const payload = {
         name, businessName, email, password, phone, role: 'partner', businessAddress, partnerType, cacNumber,
         cacCertificateUrl: isHotel ? uploadedDocUrl : undefined,
-        driversLicenseUrl: !isHotel ? uploadedDocUrl : undefined
+        driversLicenseUrl: !isHotel ? uploadedDocUrl : undefined,
+        profileImageUrl: uploadedPassportUrl || undefined
       };
 
       const response = await fetch(REGISTER_API_URL, {
@@ -178,15 +224,65 @@ export default function PartnerRegisterScreen() {
                 </>
             )}
 
-            <Text style={styles.label}>
-              {partnerType === 'hotel' || partnerType === 'apartment' ? 'Upload CAC / Ownership Document *' : "Upload Driver's License *"}
-            </Text>
-            <TouchableOpacity style={styles.uploadBtn} onPress={pickDocument}>
-              <Ionicons name={documentUri ? "checkmark-circle" : "cloud-upload"} size={20} color={documentUri ? "#2F855A" : "#000080"} style={{marginRight: 8}} />
-              <Text style={[styles.uploadBtnText, documentUri && {color: '#2F855A'}]}>
-                {documentUri ? "Document Selected" : "Tap to Select Document (Image)"}
+            {/* VERIFICATION DOCUMENT */}
+            <View style={styles.uploadSection}>
+              <Text style={styles.uploadTitle}>
+                {partnerType === 'hotel' || partnerType === 'apartment' ? 'CAC / Ownership Document *' : "Driver's License *"}
               </Text>
-            </TouchableOpacity>
+              <Text style={styles.uploadSubtitle}>
+                {partnerType === 'hotel' || partnerType === 'apartment' ? 'Certificate or ownership proof' : "Front view of valid Driver's License"}
+              </Text>
+              
+              {documentUri ? (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: documentUri }} style={styles.docPreview} resizeMode="cover" />
+                  <TouchableOpacity style={styles.removeBtn} onPress={() => setDocumentUri(null)}>
+                    <Ionicons name="trash-outline" size={16} color="#E53E3E" />
+                    <Text style={styles.removeBtnText}>Change Document</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.btnRow}>
+                  <TouchableOpacity style={styles.snapBtn} onPress={() => pickImage('doc', true)}>
+                    <Ionicons name="camera" size={18} color="#FFF" />
+                    <Text style={styles.snapBtnText}>Snap Document</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.galleryBtn} onPress={() => pickImage('doc', false)}>
+                    <Ionicons name="document-text-outline" size={18} color="#000080" />
+                    <Text style={styles.galleryBtnText}>Choose File</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* PASSPORT PHOTOGRAPH / HEADSHOT */}
+            <View style={styles.uploadSection}>
+              <Text style={styles.uploadTitle}>
+                {partnerType === 'car' || partnerType === 'shuttle' ? 'Passport Photograph / Driver Headshot *' : 'Representative Photo (Optional)'}
+              </Text>
+              <Text style={styles.uploadSubtitle}>Clear headshot for rider trust & superadmin verification.</Text>
+              
+              {passportUri ? (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: passportUri }} style={styles.passportPreview} />
+                  <TouchableOpacity style={styles.removeBtn} onPress={() => setPassportUri(null)}>
+                    <Ionicons name="trash-outline" size={16} color="#E53E3E" />
+                    <Text style={styles.removeBtnText}>Change Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.btnRow}>
+                  <TouchableOpacity style={styles.snapBtn} onPress={() => pickImage('passport', true)}>
+                    <Ionicons name="camera" size={18} color="#FFF" />
+                    <Text style={styles.snapBtnText}>Snap Selfie</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.galleryBtn} onPress={() => pickImage('passport', false)}>
+                    <Ionicons name="image-outline" size={18} color="#000080" />
+                    <Text style={styles.galleryBtnText}>Choose Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
 
             <Text style={styles.label}>Partner's Full Name *</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. John Doe" />
@@ -229,11 +325,18 @@ export default function PartnerRegisterScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity 
-                style={[styles.submitBtn, (loading || !agreed) && styles.submitBtnDisabled]} 
+                style={[styles.submitBtn, (loading || uploadingDoc || !agreed) && styles.submitBtnDisabled]} 
                 onPress={handleRegister} 
                 disabled={loading || uploadingDoc || !agreed}
             >
-                {loading || uploadingDoc ? <ActivityIndicator color="#000080" /> : <Text style={styles.submitBtnText}>Create Partner Account</Text>}
+                {loading || uploadingDoc ? (
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                    <ActivityIndicator color="#000080" />
+                    <Text style={styles.submitBtnText}>{uploadingDoc ? "Uploading..." : "Processing..."}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.submitBtnText}>Create Partner Account</Text>
+                )}
             </TouchableOpacity>
 
             <View style={styles.footerLinks}>
@@ -268,6 +371,20 @@ const styles = StyleSheet.create({
   label: { fontSize: 11, fontWeight: 'bold', color: '#718096', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 },
   input: { backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#EDF2F7', borderRadius: 12, paddingHorizontal: 16, height: 50, fontSize: 15, color: '#1A202C', marginBottom: 16 },
   
+  uploadSection: { backgroundColor: '#F8F9FA', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16 },
+  uploadTitle: { fontSize: 12, fontWeight: '800', color: '#1A202C', textTransform: 'uppercase', letterSpacing: 0.5 },
+  uploadSubtitle: { fontSize: 11, color: '#718096', marginTop: 2, marginBottom: 12 },
+  btnRow: { flexDirection: 'row', gap: 10 },
+  snapBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#000080', paddingVertical: 12, borderRadius: 10 },
+  snapBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  galleryBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#000080', paddingVertical: 12, borderRadius: 10 },
+  galleryBtnText: { color: '#000080', fontSize: 12, fontWeight: '700' },
+  previewContainer: { alignItems: 'center', gap: 8, paddingVertical: 6 },
+  passportPreview: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, borderColor: '#000080' },
+  docPreview: { width: '100%', height: 130, borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E0' },
+  removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#FFF5F5', borderRadius: 6, borderWidth: 1, borderColor: '#FED7D7' },
+  removeBtnText: { fontSize: 11, color: '#E53E3E', fontWeight: 'bold' },
+
   uploadBtn: { flexDirection: 'row', backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#EDF2F7', borderRadius: 12, paddingHorizontal: 16, height: 50, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   uploadBtnText: { fontSize: 14, fontWeight: 'bold', color: '#000080' },
   

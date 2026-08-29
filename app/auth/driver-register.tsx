@@ -1,13 +1,13 @@
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator,
-  ScrollView
+  ScrollView, Image
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../constants/config';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncPushTokenAfterLogin } from '../../hooks/usePushNotifications';
 
@@ -21,6 +21,10 @@ export default function DriverRegisterScreen() {
   const [partnerId, setPartnerId] = useState('');
   const [partners, setPartners] = useState<any[]>([]);
   
+  const [licenseUri, setLicenseUri] = useState<string | null>(null);
+  const [passportUri, setPassportUri] = useState<string | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -51,9 +55,76 @@ export default function DriverRegisterScreen() {
     fetchPartners();
   }, []);
 
+  const pickImage = async (type: 'license' | 'passport', useCamera: boolean) => {
+    try {
+      setErrorMsg('');
+      let result;
+      if (useCamera) {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          setErrorMsg("Camera permission is required to snap a photo.");
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: type === 'passport' ? [1, 1] : [4, 3],
+          quality: 0.7,
+          cameraType: type === 'passport' ? ImagePicker.CameraType.front : ImagePicker.CameraType.back,
+        });
+      } else {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          setErrorMsg("Photo library permission is required to choose an image.");
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: type === 'passport' ? [1, 1] : [4, 3],
+          quality: 0.7,
+        });
+      }
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        if (type === 'license') {
+          setLicenseUri(result.assets[0].uri);
+        } else {
+          setPassportUri(result.assets[0].uri);
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg("Failed to capture image: " + (e.message || 'Unknown error'));
+    }
+  };
+
+  const uploadToCloudinary = async (uri: string) => {
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'upload.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    let type = match ? `image/${match[1]}` : `image/jpeg`;
+    if (type === 'image/jpg') type = 'image/jpeg';
+
+    formData.append('file', { uri, name: filename, type } as any);
+    formData.append('upload_preset', 'airgo_fleet');
+
+    const uploadRes = await fetch('https://api.cloudinary.com/v1_1/drdosbrru/image/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    const uploadData = await uploadRes.json();
+    if (uploadData.secure_url) {
+      return uploadData.secure_url;
+    }
+    throw new Error('Failed to upload image to server.');
+  };
+
   const handleRegister = async () => {
     if (!agreed) return setErrorMsg("You must agree to the Terms & Conditions.");
     if (!phone) return setErrorMsg("Phone number is required.");
+    if (!licenseUri) return setErrorMsg("Driver's License photo is required.");
+    if (!passportUri) return setErrorMsg("Passport photograph / headshot is required.");
     if (password !== confirmPassword) return setErrorMsg("Passwords do not match.");
     if (password.length < 6) return setErrorMsg("Password must be at least 6 characters.");
 
@@ -62,11 +133,25 @@ export default function DriverRegisterScreen() {
     setSuccessMsg('');
 
     try {
+      setUploadingDoc(true);
+      const [uploadedLicenseUrl, uploadedPassportUrl] = await Promise.all([
+        uploadToCloudinary(licenseUri),
+        uploadToCloudinary(passportUri)
+      ]);
+      setUploadingDoc(false);
+
       const response = await fetch(REGISTER_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name, email, password, phone, role: 'driver', partnerId
+          name,
+          email,
+          password,
+          phone,
+          role: 'driver',
+          partnerId,
+          driversLicenseUrl: uploadedLicenseUrl,
+          profileImageUrl: uploadedPassportUrl
         })
       });
 
@@ -76,7 +161,7 @@ export default function DriverRegisterScreen() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccessMsg("Driver account created successfully! You can now log in.");
+      setSuccessMsg("Driver account submitted successfully! Pending superadmin verification.");
 
       setTimeout(() => {
         router.replace('/auth/login' as any);
@@ -85,6 +170,7 @@ export default function DriverRegisterScreen() {
     } catch (err: any) {
       setErrorMsg(err.message);
       setLoading(false);
+      setUploadingDoc(false);
     }
   };
 
@@ -146,6 +232,60 @@ export default function DriverRegisterScreen() {
             <Text style={styles.label}>Phone Number</Text>
             <TextInput style={styles.input} keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
 
+            {/* PASSPORT PHOTOGRAPH / HEADSHOT */}
+            <View style={styles.uploadSection}>
+              <Text style={styles.uploadTitle}>Passport Photograph / Headshot *</Text>
+              <Text style={styles.uploadSubtitle}>Clear headshot for rider trust and verification.</Text>
+              
+              {passportUri ? (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: passportUri }} style={styles.passportPreview} />
+                  <TouchableOpacity style={styles.removeBtn} onPress={() => setPassportUri(null)}>
+                    <Ionicons name="trash-outline" size={16} color="#E53E3E" />
+                    <Text style={styles.removeBtnText}>Change Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.btnRow}>
+                  <TouchableOpacity style={styles.snapBtn} onPress={() => pickImage('passport', true)}>
+                    <Ionicons name="camera" size={18} color="#FFF" />
+                    <Text style={styles.snapBtnText}>Snap Selfie</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.galleryBtn} onPress={() => pickImage('passport', false)}>
+                    <Ionicons name="image-outline" size={18} color="#000080" />
+                    <Text style={styles.galleryBtnText}>Choose Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* DRIVER'S LICENSE */}
+            <View style={styles.uploadSection}>
+              <Text style={styles.uploadTitle}>Driver's License *</Text>
+              <Text style={styles.uploadSubtitle}>Front view of your valid Nigerian Driver's License.</Text>
+              
+              {licenseUri ? (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: licenseUri }} style={styles.docPreview} resizeMode="cover" />
+                  <TouchableOpacity style={styles.removeBtn} onPress={() => setLicenseUri(null)}>
+                    <Ionicons name="trash-outline" size={16} color="#E53E3E" />
+                    <Text style={styles.removeBtnText}>Change Document</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.btnRow}>
+                  <TouchableOpacity style={styles.snapBtn} onPress={() => pickImage('license', true)}>
+                    <Ionicons name="camera" size={18} color="#FFF" />
+                    <Text style={styles.snapBtnText}>Snap License</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.galleryBtn} onPress={() => pickImage('license', false)}>
+                    <Ionicons name="document-text-outline" size={18} color="#000080" />
+                    <Text style={styles.galleryBtnText}>Choose File</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
             <View style={{position: 'relative'}}>
                 <Text style={styles.label}>Password</Text>
                 <TextInput style={[styles.input, {paddingRight: 50}]} secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
@@ -172,11 +312,18 @@ export default function DriverRegisterScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity 
-                style={[styles.submitBtn, (loading || !agreed) && styles.submitBtnDisabled]} 
+                style={[styles.submitBtn, (loading || uploadingDoc || !agreed) && styles.submitBtnDisabled]} 
                 onPress={handleRegister} 
-                disabled={loading || !agreed}
+                disabled={loading || uploadingDoc || !agreed}
             >
-                {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>Create Account</Text>}
+                {loading || uploadingDoc ? (
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                    <ActivityIndicator color="#FFF" />
+                    <Text style={styles.submitBtnText}>{uploadingDoc ? "Uploading Photos..." : "Creating Account..."}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.submitBtnText}>Create Account</Text>
+                )}
             </TouchableOpacity>
 
             <View style={styles.footerLinks}>
@@ -216,6 +363,20 @@ const styles = StyleSheet.create({
   label: { fontSize: 11, fontWeight: 'bold', color: '#718096', textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 },
   input: { backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#EDF2F7', borderRadius: 12, paddingHorizontal: 16, height: 50, fontSize: 15, color: '#1A202C', marginBottom: 16 },
   
+  uploadSection: { backgroundColor: '#F8F9FA', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16 },
+  uploadTitle: { fontSize: 12, fontWeight: '800', color: '#1A202C', textTransform: 'uppercase', letterSpacing: 0.5 },
+  uploadSubtitle: { fontSize: 11, color: '#718096', marginTop: 2, marginBottom: 12 },
+  btnRow: { flexDirection: 'row', gap: 10 },
+  snapBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#000080', paddingVertical: 12, borderRadius: 10 },
+  snapBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  galleryBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#000080', paddingVertical: 12, borderRadius: 10 },
+  galleryBtnText: { color: '#000080', fontSize: 12, fontWeight: '700' },
+  previewContainer: { alignItems: 'center', gap: 8, paddingVertical: 6 },
+  passportPreview: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, borderColor: '#000080' },
+  docPreview: { width: '100%', height: 130, borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E0' },
+  removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: '#FFF5F5', borderRadius: 6, borderWidth: 1, borderColor: '#FED7D7' },
+  removeBtnText: { fontSize: 11, color: '#E53E3E', fontWeight: 'bold' },
+
   eyeBtn: { position: 'absolute', right: 16, top: 34 },
   eyeText: { fontSize: 10, fontWeight: 'bold', color: '#A0AEC0' },
   
